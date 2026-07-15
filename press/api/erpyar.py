@@ -176,6 +176,137 @@ def submit_lead(
 		return _error_response("Unable to submit lead right now", 500)
 
 
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def provision_trial_site(slug: str, email: str, addons: str | None = None):
+	"""
+	Self-serve trial provisioning foundation (Phases 3 & 4).
+	Prepares and validates the creation of slug.erpyar.ir trial site.
+	"""
+	slug = cstr(slug or "").strip().lower()
+	email = cstr(email or "").strip().lower()
+	if not slug:
+		return _error_response("Subdomain (slug) is required", 400)
+	if not email:
+		return _error_response("Email address is required", 400)
+
+	try:
+		validate_email_address(email, throw=True)
+	except Exception:
+		return _error_response("Invalid email address", 400)
+
+	if not slug.isalnum():
+		return _error_response("Subdomain must be alphanumeric only", 400)
+
+	# Check if site already exists
+	existing_site = frappe.db.exists("Site", {"subdomain": slug, "domain": "erpyar.ir"})
+	if existing_site:
+		return _error_response("این آدرس قبلاً ثبت شده است. لطفاً آدرس دیگری انتخاب کنید.", 400)
+
+	from frappe.utils import add_days, getdate
+	today = getdate()
+	trial_end = add_days(today, 14)
+
+	addon_ids = [a.strip() for f in (addons or "").split(",") if (a := f.strip())]
+	apps_to_install = []
+	for addon_id in addon_ids:
+		if addon_id == "erpnext":
+			apps_to_install.append({"app": "erpnext"})
+		elif addon_id == "crm":
+			apps_to_install.append({"app": "crm"})
+		elif addon_id == "restaurant":
+			apps_to_install.append({"app": "restaurant"})
+		elif addon_id == "coffeeyar":
+			apps_to_install.append({"app": "coffeeyar"})
+
+	try:
+		bench = frappe.db.get_value("Bench", {"status": "Active"}, "name")
+		server = frappe.db.get_value("Server", {"status": "Active"}, "name")
+
+		team = frappe.db.get_value("Team", {"user": email}, "name")
+		if not team:
+			team = frappe.db.get_value("Team", {}, "name") or "Primary Team"
+
+		site_doc = frappe.get_doc({
+			"doctype": "Site",
+			"subdomain": slug,
+			"domain": "erpyar.ir",
+			"bench": bench or "primary-bench",
+			"server": server or "primary-server",
+			"team": team,
+			"status": "Pending",
+			"apps": apps_to_install,
+			"trial_end_date": trial_end,
+			"free": 0,
+			"is_standby": 0,
+		})
+
+		site_doc.insert(ignore_permissions=True)
+
+		return {
+			"ok": True,
+			"message": "سایت آزمایشی شما با موفقیت رزرو شد و در صف راه‌اندازی قرار گرفت.",
+			"site_name": f"{slug}.erpyar.ir",
+			"trial_end_date": trial_end.strftime("%Y-%m-%d"),
+		}
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Erpyar Provisioning Error")
+		return _error_response(
+			f"خطا در ایجاد بستر آزمایشی: {str(e)}. (زیرساخت فعال جهت جفت‌سازی سرور یافت نشد)",
+			500
+		)
+
+
+def check_erpyar_trial_lifecycle():
+	"""
+	Trial lifecycle state machine (Phase 5).
+	Executes daily to suspend expired trial sites and enforce 7 days grace period.
+	"""
+	from frappe.utils import add_days, getdate, now_datetime
+	today = getdate()
+
+	# 1) Suspend trial sites whose trial has ended and are still active/pending
+	expired_active_sites = frappe.get_all(
+		"Site",
+		filters={
+			"domain": "erpyar.ir",
+			"status": ["in", ["Active", "Pending"]],
+			"trial_end_date": ["<", today]
+		},
+		fields=["name", "subdomain"]
+	)
+
+	for site in expired_active_sites:
+		try:
+			site_doc = frappe.get_doc("Site", site.name)
+			site_doc.status = "Suspended"
+			site_doc.suspended_at = now_datetime()
+			site_doc.save(ignore_permissions=True)
+			frappe.log_error(f"Erpyar site {site.subdomain}.erpyar.ir suspended due to trial expiration.", "Trial Lifecycle")
+		except Exception as e:
+			frappe.log_error(f"Failed to suspend site {site.name}: {str(e)}", "Trial Lifecycle")
+
+	# 2) Disable/Archive sites that have been suspended past the 7 days grace period
+	grace_limit = add_days(today, -7)
+	expired_grace_sites = frappe.get_all(
+		"Site",
+		filters={
+			"domain": "erpyar.ir",
+			"status": "Suspended",
+			"suspended_at": ["<", grace_limit]
+		},
+		fields=["name", "subdomain"]
+	)
+
+	for site in expired_grace_sites:
+		try:
+			site_doc = frappe.get_doc("Site", site.name)
+			site_doc.status = "Archived"
+			site_doc.save(ignore_permissions=True)
+			frappe.log_error(f"Erpyar site {site.subdomain}.erpyar.ir archived after 7 days grace period.", "Trial Lifecycle")
+		except Exception as e:
+			frappe.log_error(f"Failed to archive site {site.name}: {str(e)}", "Trial Lifecycle")
+
+
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 def get_catalog():
 	"""
