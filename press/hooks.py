@@ -540,4 +540,5 @@ before_migrate = ["press.overrides.before_after_migrate"]
 after_migrate = [
 	"press.overrides.before_after_migrate",
 	"press.overrides.sync_press_workspace_on_migrate",
+	"press.api.erpyar.seed_erpyar_products",
 ]

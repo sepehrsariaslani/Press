@@ -51,3 +51,25 @@ export async function fetchErpyarCatalog() {
 
   return data.catalog;
 }
+
+export async function provisionTrialSite(payload) {
+  const body = new URLSearchParams(payload);
+
+  const response = await fetch('/api/method/press.api.erpyar.provision_trial_site', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    },
+    body,
+    credentials: 'same-origin',
+  });
+
+  const json = await response.json().catch(() => ({}));
+  const data = json?.message || json;
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.message || 'خطا در ایجاد بستر آزمایشی. لطفا مجددا تلاش کنید.');
+  }
+
+  return data;
+}

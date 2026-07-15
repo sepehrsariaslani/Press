@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { submitErpyarLead } from '@/api';
+import { submitErpyarLead, provisionTrialSite } from '@/api';
 import { baseProduct, publicAddons } from '@/content';
 
 const route = useRoute();
@@ -21,7 +21,7 @@ const hasQuery = computed(() => {
 const selectedAddons = computed(() => {
   if (!hasQuery.value) return [];
   const queryVal = route.query.addons;
-  if (!queryVal) return []; // base-only has route.query.addons as empty string ""
+  if (!queryVal) return [];
   return queryVal.toString().split(',').map(s => s.trim()).filter(Boolean);
 });
 
@@ -67,10 +67,19 @@ const form = reactive({
   teamSize: draftData.teamSize || '',
   phone: draftData.phone || '',
   email: draftData.email || '',
+  slug: draftData.slug || '',
   product: hasQuery.value ? calculatedSummary.value : (draftData.product && draftData.product !== 'ERPNext' ? draftData.product : 'پلتفرم پایه ارپ‌یار'),
   description: hasQuery.value ? calculatedDescription.value : (draftData.description || ''),
   website: draftData.website || '',
 });
+
+// Clean slug: lowercase, replace anything that is not alphanumeric or hyphen
+const cleanSlug = () => {
+  form.slug = (form.slug || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/^-+|-+$/g, ''); // no leading/trailing hyphens
+};
 
 // Watch query parameters reactively in case of back-and-forth transitions
 watch(
@@ -91,6 +100,7 @@ watch(
     teamSize: form.teamSize,
     phone: form.phone,
     email: form.email,
+    slug: form.slug,
     product: form.product,
     description: form.description,
     website: form.website,
@@ -123,10 +133,16 @@ async function submitDemo() {
     return;
   }
 
+  if (!form.slug) {
+    state.value = 'error';
+    notice.value = 'انتخاب آدرس اختصاصی (Slug) الزامی است.';
+    return;
+  }
+
   isSubmitting.value = true;
 
   try {
-    // Lead data matches the current selected package exactly
+    // 1. Submit Lead Capture (secondary background flow)
     await submitErpyarLead({
       lead_type: 'demo',
       full_name: form.fullName,
@@ -135,26 +151,40 @@ async function submitDemo() {
       email: form.email,
       product_interest: form.product,
       company_size: form.teamSize,
-      message: form.description,
+      message: `${form.description || ''} (آدرس درخواستی: ${form.slug}.erpyar.ir)`.trim(),
       source_path: '/demo',
       website: form.website,
+    }).catch(() => {
+      // Ignore background lead capture errors to keep provisioning primary path intact
+    });
+
+    // 2. Map current selected public addons to parameter string
+    const addonsParam = selectedAddons.value.join(',');
+
+    // 3. Initiate site self-serve trial provisioning (primary successful path)
+    const response = await provisionTrialSite({
+      slug: form.slug,
+      email: form.email || `${form.slug}@erpyar.ir`,
+      addons: addonsParam
     });
 
     state.value = 'success';
-    notice.value = 'سفارش سایت آزمایشی شما ثبت شد. تیم پشتیبانی ارپ‌یار طی چند ساعت آینده برای راه‌اندازی نهایی و ارائه دسترسی با شما تماس خواهند گرفت.';
+    notice.value = `سایت اختصاصی شما با موفقیت رزرو شد! آدرس اختصاصی شما: ${response.site_name} است. دوره تست رایگان ۱۴ روزه شما آغاز گردید. (تاریخ انقضای تست: ${response.trial_end_date})`;
 
+    // Reset Form
     form.fullName = '';
     form.company = '';
     form.teamSize = '';
     form.phone = '';
     form.email = '';
+    form.slug = '';
     form.product = hasQuery.value ? calculatedSummary.value : 'پلتفرم پایه ارپ‌یار';
     form.description = hasQuery.value ? calculatedDescription.value : '';
     form.website = '';
     localStorage.removeItem(DRAFT_KEY);
   } catch (error) {
     state.value = 'error';
-    notice.value = error?.message || 'ارسال فرم انجام نشد. لطفا دوباره تلاش کنید.';
+    notice.value = error?.message || 'ثبت‌نام و ایجاد سایت آزمایشی با خطا مواجه شد. لطفا دوباره تلاش کنید.';
   } finally {
     isSubmitting.value = false;
   }
@@ -164,9 +194,9 @@ async function submitDemo() {
 <template>
   <div class="demo-page-layout">
     <section class="page-card demo-form-section">
-      <h1 class="section-title">راه‌اندازی سایت آزمایشی و درخواست دمو</h1>
+      <h1 class="section-title">راه‌اندازی سایت آزمایشی اختصاصی</h1>
       <p>
-        برای فعال‌سازی دوره تست رایگان ۱۴ روزه یا هماهنگی جلسه دمو، اطلاعات زیر را وارد کنید. تیم ارپ‌یار در کوتاه‌ترین زمان ممکن فرآیند را برای شما نهایی خواهد کرد.
+        آدرس انگلیسی مورد علاقه خود را انتخاب کنید تا سایت اختصاصی شما بر روی دامنه <strong>erpyar.ir</strong> فوراً رزرو و راه‌اندازی آزمایشی شود.
       </p>
 
       <form class="grid" style="margin-top: 20px" @submit.prevent="submitDemo">
@@ -179,6 +209,25 @@ async function submitDemo() {
             <label for="company">نام شرکت یا سازمان</label>
             <input id="company" v-model.trim="form.company" type="text" placeholder="مثال: فناوران تجارت" />
           </div>
+          
+          <!-- Slug Subdomain Input Flow (reserve slug.erpyar.ir) -->
+          <div class="field col-span-2">
+            <label for="slug">آدرس اینترنتی اختصاصی شما *</label>
+            <div class="slug-input-container">
+              <input 
+                id="slug" 
+                v-model.trim="form.slug" 
+                type="text" 
+                placeholder="my-company" 
+                dir="ltr" 
+                required 
+                @input="cleanSlug"
+              />
+              <span class="slug-domain-suffix">.erpyar.ir</span>
+            </div>
+            <small class="field-help">آدرس سایت آزمایشی شما به این صورت خواهد بود: <strong>{{ form.slug ? form.slug : 'my-company' }}.erpyar.ir</strong> (فقط حروف انگلیسی کوچک، اعداد و خط تیره مجاز است).</small>
+          </div>
+
           <div class="field">
             <label for="teamSize">اندازه تیم / پرسنل</label>
             <input id="teamSize" v-model.trim="form.teamSize" type="text" placeholder="مثال: ۲۰ تا ۵۰ نفر" />
@@ -225,7 +274,7 @@ async function submitDemo() {
 
         <div class="hero-actions">
           <button class="btn btn-primary" type="submit" :disabled="isSubmitting">
-            {{ isSubmitting ? 'در حال ارسال...' : 'تایید و ارسال درخواست' }}
+            {{ isSubmitting ? 'در حال راه‌اندازی...' : 'تایید و راه‌اندازی سایت آزمایشی' }}
           </button>
           <RouterLink class="btn btn-outline" to="/">بازگشت به صفحه اصلی</RouterLink>
         </div>
@@ -297,6 +346,53 @@ async function submitDemo() {
 
 .demo-form-section {
   background: #ffffff;
+}
+
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
+
+@media (max-width: 980px) {
+  .col-span-2 {
+    grid-column: span 1 / span 1;
+  }
+}
+
+/* Slug subdomain input */
+.slug-input-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--erpyar-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+  min-height: 44px;
+}
+
+.slug-input-container input {
+  border: none !important;
+  border-radius: 0 !important;
+  flex: 1;
+  padding: 10px 12px;
+  font-weight: 700;
+  color: var(--erpyar-text);
+  font-family: monospace;
+}
+
+.slug-domain-suffix {
+  padding: 10px 14px;
+  background: #f1f5f9;
+  border-right: 1px solid var(--erpyar-border);
+  color: var(--erpyar-muted);
+  font-family: monospace;
+  font-weight: 700;
+  user-select: none;
+}
+
+.field-help {
+  font-size: 11.5px;
+  color: var(--erpyar-muted);
+  margin-top: 2px;
 }
 
 .read-only-input {

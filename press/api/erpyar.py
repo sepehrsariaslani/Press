@@ -194,8 +194,14 @@ def provision_trial_site(slug: str, email: str, addons: str | None = None):
 	except Exception:
 		return _error_response("Invalid email address", 400)
 
-	if not slug.isalnum():
-		return _error_response("Subdomain must be alphanumeric only", 400)
+	# Harden subdomain validation: use Press/Frappe validate_subdomain
+	from press.utils import validate_subdomain
+	try:
+		validate_subdomain(slug)
+	except frappe.ValidationError as e:
+		return _error_response(str(e), 400)
+	except Exception as e:
+		return _error_response("Invalid subdomain format", 400)
 
 	# Check if site already exists
 	existing_site = frappe.db.exists("Site", {"subdomain": slug, "domain": "erpyar.ir"})
@@ -415,4 +421,125 @@ def get_catalog():
 		}
 	]
 	return {"ok": True, "catalog": fallback_catalog}
+
+
+def seed_erpyar_products():
+	"""
+	Seeds default products into the Erpyar Product DocType on migrate (Phase 2).
+	Ensures a fresh migrated system is populated with DB-backed rows.
+	"""
+	try:
+		if not frappe.db.count("Erpyar Product"):
+			import json
+			default_products = [
+				{
+					"product_id": "base",
+					"product_name": "پلتفرم پایه ارپ‌یار",
+					"price": 5000000,
+					"period": "ماهانه",
+					"is_addon": 0,
+					"linked_app": None,
+					"description": "بستر ابری مدیریت‌شده ارپ‌یار با قابلیت پایداری بالا، پشتیبانی ۲۴/۷، بکاپ خودکار روزانه و ابزارهای مانیتورینگ پیشرفته.",
+					"features": json.dumps([
+						"زیرساخت ابری پایدار روی لایه Press",
+						"پشتیبانی فنی و مانیتورینگ ۲۴/۷",
+						"پشتیبان‌گیری (بکاپ) خودکار روزانه و هفتگی",
+						"دامنه اختصاصی با SSL رایگان",
+						"۱۴ روز دوره تست کاملاً رایگان",
+						"۷ روز مهلت پرداخت (Grace Period) پس از پایان تست"
+					])
+				},
+				{
+					"product_id": "erpnext",
+					"product_name": "ERPNext",
+					"price": 15000000,
+					"period": "ماهانه",
+					"is_addon": 1,
+					"linked_app": "erpnext",
+					"description": "ماژول حسابداری و مالی، مدیریت انبار، خرید و فروش، تولید و زنجیره تامین.",
+					"features": json.dumps([
+						"یکپارچگی کامل مالی و خزانه‌داری",
+						"مدیریت انبارداری چندسطحی",
+						"کنترل زنجیره تامین و فروش",
+						"گزارش‌دهی مالی و سود و زیان"
+					])
+				},
+				{
+					"product_id": "crm",
+					"product_name": "CRM",
+					"price": 10000000,
+					"period": "ماهانه",
+					"is_addon": 1,
+					"linked_app": "crm",
+					"description": "مدیریت ارتباط با مشتریان، سرنخ‌ها، فرصت‌های فروش و گزارش‌های تحلیلی تیم فروش.",
+					"features": json.dumps([
+						"رهگیری سرنخ و قیف فروش",
+						"مدیریت جلسات و وظایف تیم",
+						"گزارش‌های تحلیلی نرخ تبدیل",
+						"اتصال به ابزارهای ارتباطی"
+					])
+				},
+				{
+					"product_id": "restaurant",
+					"product_name": "رستوران (Restaurant)",
+					"price": 5000000,
+					"period": "ماهانه",
+					"is_addon": 1,
+					"linked_app": "restaurant",
+					"description": "مدیریت منو، ثبت سفارش سالن، صندوق فروشگاهی، فاکتوردهی سریع و تحلیل فروش رستوران.",
+					"features": json.dumps([
+						"منوی دیجیتال و سفارش‌گیری سریع",
+						"مدیریت میزها و سالن",
+						"اتصال آسان به فیش پرینتر",
+						"گزارش صندوق و صندوق‌دارها"
+					])
+				},
+				{
+					"product_id": "coffeeyar",
+					"product_name": "کافی‌یار (Coffeeyar)",
+					"price": 5000000,
+					"period": "ماهانه",
+					"is_addon": 1,
+					"linked_app": "coffeeyar",
+					"description": "سیستم هوشمند مدیریت کافه، سفارش‌گیری سریع، منوی اختصاصی و وفاداری مشتریان.",
+					"features": json.dumps([
+						"پنل سفارش‌گیری لمسی و سریع",
+						"باشگاه مشتریان و تخفیف‌ها",
+						"مدیریت انبار مواد اولیه و بارکد",
+						"تحلیل اقلام پرفروش کافه"
+					])
+				}
+			]
+
+			for p in default_products:
+				doc = frappe.get_doc({
+					"doctype": "Erpyar Product",
+					"product_id": p["product_id"],
+					"product_name": p["product_name"],
+					"price": p["price"],
+					"period": p["period"],
+					"is_addon": p["is_addon"],
+					"linked_app": p["linked_app"],
+					"description": p["description"],
+					"features": p["features"]
+				})
+				doc.insert(ignore_permissions=True)
+			
+			# Commit changes to DB
+			frappe.db.commit()
+
+		# Seed erpyar.ir root domain if missing (Phase 4)
+		if not frappe.db.exists("Root Domain", "erpyar.ir"):
+			cluster = frappe.db.get_value("Cluster", {"status": "Active"}, "name") or frappe.db.get_value("Cluster", {}, "name")
+			if cluster:
+				root_domain_doc = frappe.get_doc({
+					"doctype": "Root Domain",
+					"name": "erpyar.ir",
+					"default_cluster": cluster
+				})
+				root_domain_doc.insert(ignore_permissions=True)
+				frappe.db.commit()
+	except Exception as e:
+		frappe.log_error(f"Error seeding Erpyar Products: {str(e)}", "Erpyar Seed")
+
 
