@@ -1,0 +1,530 @@
+{%- extends "templates/base.html" -%}
+
+{%- block navbar -%}
+{%- endblock -%}
+
+{%- block footer -%}
+{%- endblock -%}
+
+{%- block content -%}
+<main id="erpyar-home" dir="rtl">
+  <div class="er-shell">
+    <header class="er-header">
+      <a class="er-brand" href="/erpyar/">
+        <span class="er-brand-mark">E</span>
+        <span>
+          <strong>ارپ یار</strong>
+          <small>راهکارهای Frappe/ERPNext</small>
+        </span>
+      </a>
+      <nav class="er-nav">
+        {%- for item in homepage.menu -%}
+        <a href="{{ item.href }}">{{ item.label }}</a>
+        {%- endfor -%}
+      </nav>
+      <div class="er-header-actions">
+        <a class="er-btn er-btn-outline" href="#">درخواست دمو</a>
+        <a class="er-btn er-btn-primary" href="#">شروع کنید</a>
+      </div>
+    </header>
+
+    <section class="er-hero" id="top">
+      <div>
+        <p class="er-eyebrow">Erpyar + Press Infrastructure</p>
+        <h1>راهکارهای Frappe و ERPNext برای کسب‌وکارهای ایرانی</h1>
+        <p class="er-lead">
+          ارپ‌یار بستری برای معرفی، فروش، استقرار و مدیریت اپلیکیشن‌های مبتنی بر Frappe در کنار زیرساخت Press است.
+        </p>
+        <div class="er-hero-actions">
+          <a class="er-btn er-btn-primary" href="#">درخواست دمو</a>
+          <a class="er-btn er-btn-soft" href="#products">مشاهده محصولات</a>
+        </div>
+      </div>
+      <aside class="er-hero-card">
+        <h3>مسیر رشد برای تیم های SaaS و مالی</h3>
+        <ul>
+          <li>استقرار استاندارد Frappe/ERPNext روی Press</li>
+          <li>مدیریت افزونه ها و سرویس های مکمل از یک پنل یکپارچه</li>
+          <li>آماده برای توسعه اکوسیستم اپلیکیشن های ایرانی</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="er-section" id="solutions">
+      <div class="er-section-head">
+        <p class="er-eyebrow dark">اعتماد و عملکرد</p>
+        <h2>پایه ای مطمئن برای ارائه خدمات سازمانی</h2>
+      </div>
+      <div class="er-stats-grid">
+        {%- for stat in homepage.stats -%}
+        <article class="er-stat-card">
+          <strong>{{ stat.value }}</strong>
+          <p>{{ stat.label }}</p>
+        </article>
+        {%- endfor -%}
+      </div>
+    </section>
+
+    <section class="er-section" id="products">
+      <div class="er-section-head">
+        <p class="er-eyebrow dark">محصولات</p>
+        <h2>سبد محصول برای دیجیتال سازی فرایندهای کسب وکار</h2>
+      </div>
+      <div class="er-product-grid">
+        {%- for product in homepage.products -%}
+        <article class="er-product-card">
+          <h3>{{ product.title }}</h3>
+          <p>{{ product.description }}</p>
+          <a href="{{ product.href }}">مشاهده بیشتر</a>
+        </article>
+        {%- endfor -%}
+      </div>
+    </section>
+
+    <section class="er-section" id="marketplace">
+      <div class="er-section-head">
+        <p class="er-eyebrow dark">مارکت‌پلیس</p>
+        <h2>پیش نمایش اپلیکیشن های آماده نصب</h2>
+      </div>
+      <div class="er-app-grid">
+        {%- for app in homepage.marketplace_apps -%}
+        <article class="er-app-card">
+          <span class="er-badge">آماده نصب روی Press</span>
+          <h3>{{ app.name }}</h3>
+          <p class="er-category">{{ app.category }}</p>
+          <p>{{ app.description }}</p>
+        </article>
+        {%- endfor -%}
+      </div>
+    </section>
+
+    <section class="er-section er-hosting" id="pricing">
+      <div class="er-section-head">
+        <p class="er-eyebrow dark">زیرساخت Press</p>
+        <h2>میزبانی، عملیات و مقیاس پذیری در کنار تیم شما</h2>
+      </div>
+      <div class="er-hosting-grid">
+        <article>
+          <h3>راه اندازی سریع</h3>
+          <p>از محیط آزمایشی تا سرویس عملیاتی با فرایند استقرار استاندارد و قابل تکرار.</p>
+        </article>
+        <article>
+          <h3>پایداری و بکاپ</h3>
+          <p>مدیریت نسخه، پایش سرویس و بکاپ منظم برای کاهش ریسک های عملیاتی.</p>
+        </article>
+        <article>
+          <h3>آماده رشد</h3>
+          <p>طراحی برای مقیاس پذیری تا بتوانید مشتریان بیشتر را بدون افت کیفیت پوشش دهید.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="er-section" id="docs">
+      <div class="er-section-head">
+        <p class="er-eyebrow dark">سوالات متداول</p>
+        <h2>پیش نمایش پاسخ های کلیدی قبل از شروع همکاری</h2>
+      </div>
+      <div class="er-faq-grid">
+        {%- for row in homepage.faq -%}
+        <article class="er-faq-card">
+          <h3>{{ row.question }}</h3>
+          <p>{{ row.answer }}</p>
+        </article>
+        {%- endfor -%}
+      </div>
+    </section>
+
+    <section class="er-cta" id="contact">
+      <div>
+        <p class="er-eyebrow">Erpyar Launchpad</p>
+        <h2>برای شروع مسیر استقرار یا توسعه SaaS آماده اید؟</h2>
+        <p>با یک جلسه دمو، نیازهای فعلی کسب وکار شما را به نقشه راه اجرایی تبدیل می کنیم.</p>
+      </div>
+      <div class="er-hero-actions">
+        <a class="er-btn er-btn-primary" href="#">درخواست دمو</a>
+        <a class="er-btn er-btn-soft" href="#">مشاهده محصولات</a>
+      </div>
+    </section>
+
+    <footer class="er-footer">
+      <p>© ارپ یار - ساخته شده روی Press</p>
+      <div>
+        <a href="#">حریم خصوصی</a>
+        <a href="#">شرایط استفاده</a>
+        <a href="#">تماس با ما</a>
+      </div>
+    </footer>
+  </div>
+</main>
+{%- endblock -%}
+
+{%- block style -%}
+<style>
+  #erpyar-home {
+    --erpyar-primary: #12b886;
+    --erpyar-primary-dark: #0e9f75;
+    --erpyar-secondary: #3b82f6;
+    --erpyar-accent: #8b5cf6;
+    --erpyar-text: #0f172a;
+    --erpyar-muted: #64748b;
+    --erpyar-border: #e2e8f0;
+    --erpyar-surface: #ffffff;
+    --erpyar-soft-bg: #f8fafc;
+    --erpyar-radius-md: 16px;
+    --erpyar-radius-lg: 24px;
+    --erpyar-radius-xl: 32px;
+    min-height: 100vh;
+    background:
+      radial-gradient(620px 320px at 8% 0%, rgba(18, 184, 134, 0.16), transparent 70%),
+      radial-gradient(660px 340px at 95% 10%, rgba(59, 130, 246, 0.14), transparent 72%),
+      var(--erpyar-soft-bg);
+    color: var(--erpyar-text);
+    font-family: "Peyda", "Vazirmatn", Tahoma, sans-serif;
+    padding: 20px 14px 40px;
+  }
+
+  #erpyar-home * {
+    box-sizing: border-box;
+  }
+
+  #erpyar-home a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .er-shell {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: 14px;
+  }
+
+  .er-header,
+  .er-section,
+  .er-hero,
+  .er-cta {
+    border: 1px solid var(--erpyar-border);
+    background: var(--erpyar-surface);
+    border-radius: var(--erpyar-radius-lg);
+  }
+
+  .er-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    position: sticky;
+    top: 12px;
+    z-index: 30;
+    backdrop-filter: blur(8px);
+  }
+
+  .er-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .er-brand strong {
+    display: block;
+    font-size: 17px;
+  }
+
+  .er-brand small {
+    color: var(--erpyar-muted);
+    font-size: 12px;
+  }
+
+  .er-brand-mark {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--erpyar-primary), var(--erpyar-secondary));
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .er-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .er-nav a {
+    padding: 7px 11px;
+    border: 1px solid var(--erpyar-border);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--erpyar-muted);
+  }
+
+  .er-nav a:hover {
+    border-color: var(--erpyar-primary);
+    color: var(--erpyar-primary);
+  }
+
+  .er-header-actions,
+  .er-hero-actions {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .er-btn {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .er-btn-primary {
+    background: linear-gradient(125deg, var(--erpyar-primary), var(--erpyar-primary-dark));
+    color: #fff;
+  }
+
+  .er-btn-outline {
+    background: #fff;
+    border-color: var(--erpyar-border);
+  }
+
+  .er-btn-soft {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--erpyar-secondary);
+  }
+
+  .er-hero {
+    padding: clamp(20px, 4vw, 32px);
+    display: grid;
+    grid-template-columns: 1.2fr 0.9fr;
+    gap: 14px;
+    background:
+      radial-gradient(220px 140px at 98% 0%, rgba(139, 92, 246, 0.22), transparent 80%),
+      linear-gradient(140deg, #f8fffc 0%, #eef8ff 100%);
+  }
+
+  .er-eyebrow {
+    margin: 0;
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(18, 184, 134, 0.14);
+    color: var(--erpyar-primary-dark);
+  }
+
+  .er-eyebrow.dark {
+    background: rgba(15, 23, 42, 0.06);
+    color: var(--erpyar-muted);
+  }
+
+  .er-hero h1 {
+    margin: 10px 0;
+    font-size: clamp(28px, 4vw, 46px);
+    line-height: 1.2;
+  }
+
+  .er-lead {
+    margin: 0;
+    color: var(--erpyar-muted);
+    line-height: 1.9;
+    max-width: 68ch;
+  }
+
+  .er-hero-card {
+    border: 1px solid var(--erpyar-border);
+    background: #fff;
+    border-radius: var(--erpyar-radius-md);
+    padding: 14px;
+  }
+
+  .er-hero-card h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .er-hero-card ul {
+    margin: 12px 0 0;
+    padding-right: 18px;
+    display: grid;
+    gap: 8px;
+    color: var(--erpyar-muted);
+  }
+
+  .er-section {
+    padding: clamp(18px, 3vw, 28px);
+  }
+
+  .er-section-head h2 {
+    margin: 8px 0 0;
+    font-size: clamp(22px, 3vw, 34px);
+  }
+
+  .er-stats-grid,
+  .er-product-grid,
+  .er-app-grid,
+  .er-hosting-grid,
+  .er-faq-grid {
+    margin-top: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .er-stats-grid,
+  .er-hosting-grid,
+  .er-faq-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .er-product-grid,
+  .er-app-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .er-stat-card,
+  .er-product-card,
+  .er-app-card,
+  .er-hosting-grid article,
+  .er-faq-card {
+    border: 1px solid var(--erpyar-border);
+    border-radius: var(--erpyar-radius-md);
+    padding: 14px;
+    background: #fff;
+  }
+
+  .er-stat-card strong {
+    font-size: clamp(26px, 4vw, 36px);
+    color: var(--erpyar-primary-dark);
+  }
+
+  .er-stat-card p,
+  .er-product-card p,
+  .er-hosting-grid p,
+  .er-faq-card p,
+  .er-app-card p {
+    margin: 6px 0 0;
+    color: var(--erpyar-muted);
+    line-height: 1.8;
+  }
+
+  .er-product-card h3,
+  .er-app-card h3,
+  .er-hosting-grid h3,
+  .er-faq-card h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .er-product-card a {
+    display: inline-block;
+    margin-top: 11px;
+    color: var(--erpyar-secondary);
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .er-badge {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 4px 10px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    background: rgba(18, 184, 134, 0.12);
+    color: var(--erpyar-primary-dark);
+    font-weight: 700;
+  }
+
+  .er-category {
+    color: var(--erpyar-secondary);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .er-hosting {
+    background: linear-gradient(145deg, #ffffff 0%, #f2f8ff 100%);
+  }
+
+  .er-cta {
+    padding: clamp(18px, 3vw, 30px);
+    background: linear-gradient(130deg, #0f172a, #11395e);
+    color: #eef9ff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .er-cta h2 {
+    margin: 8px 0;
+    font-size: clamp(24px, 4vw, 38px);
+  }
+
+  .er-cta p {
+    margin: 0;
+    color: #dbeafe;
+    line-height: 1.9;
+  }
+
+  .er-cta .er-btn-soft {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+
+  .er-footer {
+    padding: 10px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--erpyar-muted);
+    font-size: 13px;
+  }
+
+  .er-footer div {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .er-footer a:hover {
+    color: var(--erpyar-primary);
+  }
+
+  @media (max-width: 1024px) {
+    .er-header {
+      grid-template-columns: 1fr;
+      position: static;
+    }
+
+    .er-nav,
+    .er-header-actions {
+      justify-content: flex-start;
+    }
+
+    .er-hero,
+    .er-product-grid,
+    .er-app-grid,
+    .er-stats-grid,
+    .er-hosting-grid,
+    .er-faq-grid,
+    .er-cta {
+      grid-template-columns: 1fr;
+      display: grid;
+    }
+
+    .er-cta {
+      justify-content: stretch;
+    }
+
+    .er-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+{%- endblock -%}

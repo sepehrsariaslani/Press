@@ -1,0 +1,515 @@
+{%- extends "templates/saas/billing_layout.html" -%}
+
+{%- block content -%}
+<section class="sc-wrap" dir="rtl">
+	<div class="sc-hero-bg" aria-hidden="true">
+		<span class="orb orb-a"></span>
+		<span class="orb orb-b"></span>
+		<span class="orb orb-c"></span>
+	</div>
+
+	<div class="sc-shell">
+		<header class="sc-topbar">
+			<div class="sc-brand">DEN Cloud</div>
+			<nav class="sc-nav">
+				<a href="#apps">اپ ها</a>
+				<a href="#pricing">مدل درآمد</a>
+				<a href="#estimator">تخمین منابع</a>
+				<a href="#faq">سوالات</a>
+			</nav>
+			<a class="sc-pill" href="/dashboard">ورود مشتری</a>
+		</header>
+
+		<section class="sc-hero">
+			<div class="sc-hero-main">
+				<span class="sc-eyebrow">SaaS + Marketplace + Usage Billing</span>
+				<h1>همه چیز داخل Press: انتخاب اپ، پیشنهاد منابع، پرداخت ماهانه/سالانه</h1>
+				<p>
+					با این مدل، اپ ها را خودت منتشر می کنی، مشتری اپلیکیشن را انتخاب می کند و سیستم به صورت خودکار
+					حداقل CPU/RAM/Disk لازم را پیشنهاد می دهد.
+				</p>
+				<div class="sc-hero-actions">
+					<a class="sc-btn sc-btn-primary" href="#apps">شروع انتخاب اپ</a>
+					<a class="sc-btn sc-btn-ghost" href="#estimator">دیدن تخمین هزینه</a>
+				</div>
+			</div>
+			<div class="sc-hero-card">
+				<h3>جریان مشتری شبیه Frappe Cloud</h3>
+				<ol>
+					<li>انتخاب اپلیکیشن ها</li>
+					<li>توصیه منابع امن</li>
+					<li>انتخاب دوره صورتحساب</li>
+					<li>شروع دمو یا خرید پلن</li>
+				</ol>
+			</div>
+		</section>
+
+		<section id="apps" class="sc-section">
+			<div class="sc-section-head">
+				<span class="sc-eyebrow">Customer App Catalog</span>
+				<h2>کاتالوگ اپلیکیشن مشتری</h2>
+				<p>این لیست مستقیم از Saas App و Saas App Plan داخل Press پر می شود.</p>
+			</div>
+			<div id="sc-app-grid" class="sc-grid"></div>
+		</section>
+
+		<section id="pricing" class="sc-section">
+			<div class="sc-section-head">
+				<span class="sc-eyebrow">Revenue Model</span>
+				<h2>مدل درآمدی سه لایه</h2>
+			</div>
+			<div class="sc-pricing-grid">
+				<article class="sc-card"><h3>اشتراک اپ</h3><p>برای هر اپ مبلغ جداگانه ماهانه/سالانه.</p></article>
+				<article class="sc-card"><h3>هزینه زیرساخت</h3><p>vCPU / RAM / Disk براساس منابع رزرو شده.</p></article>
+				<article class="sc-card"><h3>مصرف مازاد</h3><p>در صورت عبور از سقف، روی فاکتور به صورت شفاف ثبت می شود.</p></article>
+			</div>
+		</section>
+
+		<section id="estimator" class="sc-section">
+			<div class="sc-section-head">
+				<span class="sc-eyebrow">Smart Estimator</span>
+				<h2>تخمین لحظه ای منابع و مبلغ</h2>
+				<p>منابع پایین تر از حداقل امن اپ های انتخاب شده قفل می شوند.</p>
+			</div>
+			<div class="sc-estimator-grid">
+				<article class="sc-card">
+					<div class="sc-toggle" id="sc-billing-toggle">
+						<button type="button" data-period="monthly" class="active">ماهانه</button>
+						<button type="button" data-period="yearly">سالانه</button>
+					</div>
+					<div class="sc-slider">
+						<label>CPU (vCPU)</label>
+						<div><input id="sc-cpu" type="range" min="1" max="64" value="2" /><strong id="sc-cpu-val">2</strong></div>
+					</div>
+					<div class="sc-slider">
+						<label>RAM (GB)</label>
+						<div><input id="sc-ram" type="range" min="2" max="256" value="4" /><strong id="sc-ram-val">4</strong></div>
+					</div>
+					<div class="sc-slider">
+						<label>Disk (GB)</label>
+						<div><input id="sc-disk" type="range" min="20" max="2048" value="50" /><strong id="sc-disk-val">50</strong></div>
+					</div>
+					<p id="sc-hint" class="sc-hint"></p>
+				</article>
+				<article class="sc-card">
+					<h3 id="sc-invoice-title">پیش فاکتور ماهانه</h3>
+					<div class="sc-line"><span>اشتراک اپ های انتخابی</span><strong id="sc-app-fee">-</strong></div>
+					<div class="sc-line"><span>زیرساخت</span><strong id="sc-infra-fee">-</strong></div>
+					<div class="sc-line sc-total"><span>جمع کل</span><strong id="sc-total-fee">-</strong></div>
+					<ul class="sc-rules">
+						<li>افزایش منابع آزاد است.</li>
+						<li>کاهش زیر حداقل امن غیرفعال است.</li>
+						<li>کاهش پلن، از دوره بعدی اعمال می شود.</li>
+					</ul>
+				</article>
+			</div>
+		</section>
+
+		<section id="faq" class="sc-section">
+			<div class="sc-section-head">
+				<span class="sc-eyebrow">FAQ</span>
+				<h2>پرسش های رایج مشتری</h2>
+			</div>
+			<div class="sc-faq">
+				<details><summary>دمو اپلیکیشن چطور کار می کند؟</summary><p>دمو براساس Product Trial فعال می شود و بعد از پایان روزهای Trial دسترسی محدود می شود.</p></details>
+				<details><summary>اپ ها را از کجا مدیریت می کنم؟</summary><p>از Doctype های Saas App، Saas App Plan و Product Trial داخل Press.</p></details>
+				<details><summary>چطور جلوی کاهش منابع خطرناک را می گیرم؟</summary><p>حداقل منابع از پلان های اپ خوانده می شود و اسلایدرها پایین تر از آن مقدار نمی روند.</p></details>
+			</div>
+		</section>
+	</div>
+</section>
+{%- endblock -%}
+
+{%- block script -%}
+{{ super() }}
+<script>
+	const APPS = {{ apps_payload | tojson }};
+	let selected = new Set(APPS.length ? [APPS[0].id] : []);
+	let billingPeriod = 'monthly';
+	let resources = { cpu: 2, ram: 4, disk: 50 };
+
+	const appGrid = document.getElementById('sc-app-grid');
+	const cpuInput = document.getElementById('sc-cpu');
+	const ramInput = document.getElementById('sc-ram');
+	const diskInput = document.getElementById('sc-disk');
+	const cpuVal = document.getElementById('sc-cpu-val');
+	const ramVal = document.getElementById('sc-ram-val');
+	const diskVal = document.getElementById('sc-disk-val');
+	const hint = document.getElementById('sc-hint');
+	const appFeeEl = document.getElementById('sc-app-fee');
+	const infraFeeEl = document.getElementById('sc-infra-fee');
+	const totalFeeEl = document.getElementById('sc-total-fee');
+	const titleEl = document.getElementById('sc-invoice-title');
+
+	function currency(value) {
+		return new Intl.NumberFormat('fa-IR').format(Math.round(value || 0)) + ' تومان';
+	}
+
+	function selectedApps() {
+		return APPS.filter((app) => selected.has(app.id));
+	}
+
+	function calculateMinimums() {
+		const apps = selectedApps();
+		const minCpu = apps.reduce((sum, app) => sum + (app.min_cpu || 1), 0) || 1;
+		const minRam = apps.reduce((sum, app) => sum + (app.min_ram || 2), 0) || 2;
+		const minDisk = apps.reduce((sum, app) => sum + (app.min_disk || 20), 0) || 20;
+		const recCpu = apps.reduce((sum, app) => sum + (app.recommended_cpu || 2), 0) || 2;
+		const recRam = apps.reduce((sum, app) => sum + (app.recommended_ram || 4), 0) || 4;
+		const recDisk = apps.reduce((sum, app) => sum + (app.recommended_disk || 50), 0) || 50;
+		return { minCpu, minRam, minDisk, recCpu, recRam, recDisk };
+	}
+
+	function calculateFees() {
+		const apps = selectedApps();
+		const appFee = apps.reduce((sum, app) => {
+			return sum + (billingPeriod === 'yearly' ? (app.price_yearly || 0) : (app.price_monthly || 0));
+		}, 0);
+
+		let infraFee = resources.cpu * 390000 + resources.ram * 160000 + resources.disk * 4200;
+		if (billingPeriod === 'yearly') {
+			infraFee = infraFee * 12 * 0.9;
+		}
+
+		return { appFee, infraFee, total: appFee + infraFee };
+	}
+
+	function renderApps() {
+		if (!APPS.length) {
+			appGrid.innerHTML = '<article class="sc-card"><p>هنوز اپی در Saas App منتشر نشده است.</p></article>';
+			return;
+		}
+
+		appGrid.innerHTML = APPS.map((app) => {
+			const active = selected.has(app.id);
+			const trialLabel = app.trial_days ? `${app.trial_days} روز دمو` : 'بدون دمو';
+			return `
+				<article class="sc-app-card ${active ? 'active' : ''}">
+					<div class="sc-app-head">
+						<h3>${app.title || app.id}</h3>
+						<button class="sc-pill-btn" data-app="${app.id}">${active ? 'انتخاب شده' : 'انتخاب اپ'}</button>
+					</div>
+					<p>${app.description || ''}</p>
+					<div class="sc-app-meta">
+						<span>${currency(app.price_monthly || 0)} / ماه</span>
+						<span>${trialLabel}</span>
+					</div>
+					<div class="sc-app-min">حداقل: ${app.min_cpu || 1} vCPU / ${app.min_ram || 2}GB / ${app.min_disk || 20}GB</div>
+				</article>
+			`;
+		}).join('');
+
+		document.querySelectorAll('[data-app]').forEach((btn) => {
+			btn.addEventListener('click', () => {
+				const id = btn.getAttribute('data-app');
+				if (selected.has(id)) {
+					if (selected.size === 1) return;
+					selected.delete(id);
+				} else {
+					selected.add(id);
+				}
+				renderApps();
+				renderEstimator();
+			});
+		});
+	}
+
+	function renderEstimator() {
+		const mins = calculateMinimums();
+		cpuInput.min = mins.minCpu;
+		ramInput.min = mins.minRam;
+		diskInput.min = mins.minDisk;
+
+		if (resources.cpu < mins.minCpu) resources.cpu = mins.recCpu;
+		if (resources.ram < mins.minRam) resources.ram = mins.recRam;
+		if (resources.disk < mins.minDisk) resources.disk = mins.recDisk;
+
+		cpuInput.value = resources.cpu;
+		ramInput.value = resources.ram;
+		diskInput.value = resources.disk;
+		cpuVal.textContent = resources.cpu;
+		ramVal.textContent = resources.ram;
+		diskVal.textContent = resources.disk;
+
+		hint.textContent = `حداقل امن: ${mins.minCpu} vCPU / ${mins.minRam}GB / ${mins.minDisk}GB - پیشنهاد: ${mins.recCpu} vCPU / ${mins.recRam}GB / ${mins.recDisk}GB`;
+		titleEl.textContent = `پیش فاکتور ${billingPeriod === 'yearly' ? 'سالانه' : 'ماهانه'}`;
+
+		const fees = calculateFees();
+		appFeeEl.textContent = currency(fees.appFee);
+		infraFeeEl.textContent = currency(fees.infraFee);
+		totalFeeEl.textContent = currency(fees.total);
+	}
+
+	document.getElementById('sc-billing-toggle').addEventListener('click', (event) => {
+		const button = event.target.closest('button[data-period]');
+		if (!button) return;
+		billingPeriod = button.getAttribute('data-period');
+		document.querySelectorAll('#sc-billing-toggle button').forEach((btn) => btn.classList.remove('active'));
+		button.classList.add('active');
+		renderEstimator();
+	});
+
+	cpuInput.addEventListener('input', () => {
+		resources.cpu = Number(cpuInput.value);
+		renderEstimator();
+	});
+	ramInput.addEventListener('input', () => {
+		resources.ram = Number(ramInput.value);
+		renderEstimator();
+	});
+	diskInput.addEventListener('input', () => {
+		resources.disk = Number(diskInput.value);
+		renderEstimator();
+	});
+
+	renderApps();
+	renderEstimator();
+</script>
+{%- endblock -%}
+
+{%- block style -%}
+{{ super() }}
+<style>
+	.sc-wrap {
+		--bg: #f4f8ff;
+		--surface: #fff;
+		--border: rgba(24, 56, 92, 0.12);
+		--text: #10233f;
+		--muted: rgba(16, 35, 63, 0.72);
+		--brand: #0f4fa8;
+		--accent: #0b9c8b;
+		--warm: #f8a932;
+		min-height: 100vh;
+		background: radial-gradient(760px 380px at 90% -12%, rgba(11, 156, 139, 0.24), transparent 66%), radial-gradient(840px 420px at 6% 0%, rgba(15, 79, 168, 0.2), transparent 70%), var(--bg);
+		padding: 28px 14px 50px;
+		position: relative;
+		overflow: hidden;
+	}
+
+	.sc-hero-bg {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+
+	.orb {
+		position: absolute;
+		border-radius: 50%;
+		filter: blur(76px);
+		opacity: 0.42;
+	}
+	.orb-a { width: 340px; height: 340px; right: -90px; top: -110px; background: rgba(23, 132, 183, 0.8); }
+	.orb-b { width: 380px; height: 380px; left: -130px; bottom: -140px; background: rgba(11, 156, 139, 0.68); }
+	.orb-c { width: 280px; height: 280px; left: 48%; top: 8%; background: rgba(248, 169, 50, 0.5); }
+
+	.sc-shell {
+		position: relative;
+		z-index: 2;
+		width: min(1160px, 100%);
+		margin: 0 auto;
+		display: grid;
+		gap: 14px;
+	}
+
+	.sc-topbar,
+	.sc-section,
+	.sc-hero,
+	.sc-hero-card,
+	.sc-card,
+	.sc-app-card,
+	.sc-faq details {
+		backdrop-filter: blur(6px);
+	}
+
+	.sc-topbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 12px 14px;
+		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.78);
+		border: 1px solid var(--border);
+	}
+
+	.sc-brand {
+		font-size: 20px;
+		font-weight: 900;
+		color: var(--brand);
+	}
+
+	.sc-nav {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	.sc-nav a,
+	.sc-pill,
+	.sc-pill-btn {
+		text-decoration: none;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 7px 12px;
+		font-size: 13px;
+		font-weight: 700;
+		background: rgba(255, 255, 255, 0.8);
+		color: var(--text);
+	}
+
+	.sc-pill,
+	.sc-pill-btn,
+	.sc-btn {
+		cursor: pointer;
+	}
+
+	.sc-hero {
+		display: grid;
+		grid-template-columns: 1.4fr 1fr;
+		gap: 14px;
+		padding: 16px;
+		border-radius: 20px;
+		background: linear-gradient(138deg, #0f2f67 0%, #0b5a88 55%, #0f8f7e 100%);
+		color: #f7fcff;
+		box-shadow: 0 20px 48px rgba(9, 38, 74, 0.24);
+	}
+
+	.sc-eyebrow {
+		display: inline-block;
+		width: fit-content;
+		font-size: 12px;
+		font-weight: 800;
+		padding: 4px 10px;
+		border-radius: 999px;
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		background: rgba(255, 255, 255, 0.12);
+		color: #d2f8f2;
+	}
+
+	.sc-hero h1 {
+		margin: 10px 0;
+		font-size: clamp(28px, 3.2vw, 44px);
+		line-height: 1.15;
+	}
+
+	.sc-hero p { margin: 0; color: rgba(247, 252, 255, 0.9); }
+	.sc-hero-actions { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+	.sc-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 999px;
+		padding: 10px 14px;
+		font-size: 13px;
+		font-weight: 800;
+		text-decoration: none;
+	}
+	.sc-btn-primary { background: linear-gradient(120deg, var(--warm), #ef7b2c); color: #fff; }
+	.sc-btn-ghost { border: 1px solid rgba(255, 255, 255, 0.35); color: #fff; background: rgba(255, 255, 255, 0.12); }
+
+	.sc-hero-card {
+		padding: 14px;
+		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.14);
+		border: 1px solid rgba(255, 255, 255, 0.24);
+	}
+	.sc-hero-card h3 { margin: 0 0 8px; }
+	.sc-hero-card ol { margin: 0; padding-right: 18px; display: grid; gap: 6px; }
+
+	.sc-section {
+		border: 1px solid var(--border);
+		border-radius: 18px;
+		padding: 16px;
+		background: rgba(255, 255, 255, 0.86);
+		box-shadow: 0 10px 26px rgba(10, 40, 80, 0.08);
+	}
+	.sc-section-head h2 { margin: 8px 0; font-size: clamp(22px, 2.6vw, 32px); color: var(--text); }
+	.sc-section-head p { margin: 0; color: var(--muted); }
+
+	.sc-grid,
+	.sc-pricing-grid,
+	.sc-estimator-grid,
+	.sc-faq {
+		display: grid;
+		gap: 10px;
+		margin-top: 12px;
+	}
+	.sc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+	.sc-pricing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+	.sc-estimator-grid { grid-template-columns: 1.15fr 1fr; }
+
+	.sc-card,
+	.sc-app-card {
+		padding: 12px;
+		border-radius: 14px;
+		border: 1px solid var(--border);
+		background: #fff;
+	}
+
+	.sc-app-card.active {
+		border-color: rgba(11, 156, 139, 0.54);
+		box-shadow: inset 0 0 0 2px rgba(11, 156, 139, 0.16);
+		background: linear-gradient(180deg, #fbfffe, #f3fbf9);
+	}
+
+	.sc-app-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+	}
+	.sc-app-head h3 { margin: 0; font-size: 18px; color: var(--text); }
+	.sc-app-card p { margin: 8px 0; color: var(--muted); min-height: 44px; }
+	.sc-app-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--accent); font-weight: 700; }
+	.sc-app-min { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+	.sc-toggle {
+		display: inline-flex;
+		padding: 3px;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: #eff5ff;
+	}
+	.sc-toggle button {
+		border: 0;
+		background: transparent;
+		border-radius: 999px;
+		padding: 6px 12px;
+		font-size: 13px;
+		font-weight: 800;
+		color: var(--muted);
+	}
+	.sc-toggle button.active {
+		background: linear-gradient(120deg, var(--brand), var(--accent));
+		color: #fff;
+	}
+
+	.sc-slider { margin-top: 10px; }
+	.sc-slider label { font-size: 13px; font-weight: 700; color: var(--muted); }
+	.sc-slider div { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+	.sc-slider input { width: 100%; accent-color: var(--brand); }
+	.sc-slider strong { min-width: 42px; text-align: left; }
+	.sc-hint { margin: 10px 0 0; color: var(--accent); font-size: 13px; }
+
+	.sc-line { display: flex; justify-content: space-between; margin: 8px 0; gap: 8px; }
+	.sc-line span { color: var(--muted); }
+	.sc-line strong { color: var(--text); }
+	.sc-total { padding-top: 8px; border-top: 1px dashed var(--border); }
+	.sc-rules { margin: 10px 0 0; padding-right: 18px; color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+
+	.sc-faq details { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: #fff; }
+	.sc-faq summary { cursor: pointer; font-weight: 800; color: var(--text); }
+	.sc-faq p { margin: 8px 0 0; color: var(--muted); }
+
+	@media (max-width: 980px) {
+		.sc-hero,
+		.sc-grid,
+		.sc-pricing-grid,
+		.sc-estimator-grid {
+			grid-template-columns: 1fr;
+		}
+		.sc-topbar { flex-wrap: wrap; }
+	}
+</style>
+{%- endblock -%}

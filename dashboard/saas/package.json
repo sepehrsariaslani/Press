@@ -1,0 +1,19 @@
+{
+  "name": "press-saas-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "vue": "^3.5.15",
+    "vue-router": "^4.1.6",
+    "frappe-ui": "0.1.277"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.5",
+    "vite": "8.0.1"
+  }
+}

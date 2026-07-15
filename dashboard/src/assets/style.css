@@ -1,0 +1,110 @@
+@import 'frappe-ui/style.css';
+
+@font-face {
+	font-family: 'Peyda';
+	src: url('/fonts/peyda/Pevda-Reqular.ttf') format('truetype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Peyda';
+	src: url('/fonts/peyda/peyda-light.ttf') format('truetype');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Peyda';
+	src: url('/fonts/peyda/Peyda-Medium.ttf') format('truetype');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Peyda';
+	src: url('/fonts/peyda/Peyda-SemiBold.ttf') format('truetype');
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Peyda';
+	src: url('/fonts/peyda/Peyda-Bold.ttf') format('truetype');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Peyda';
+	src: url('/fonts/peyda/Peyda-ExtraBold.ttf') format('truetype');
+	font-weight: 800;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Peyda';
+	src: url('/fonts/peyda/Peyda-Black.ttf') format('truetype');
+	font-weight: 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+@layer base {
+	html,
+	body {
+		direction: rtl;
+	}
+
+	body,
+	button,
+	input,
+	select,
+	textarea,
+	#app {
+		font-family: 'Peyda', sans-serif;
+	}
+}
+
+@layer components {
+	/* Works on Firefox */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: #c0c6cc #ebeef0;
+	}
+
+	html {
+		scrollbar-width: auto;
+	}
+
+	/* Works on Chrome, Edge, and Safari */
+	*::-webkit-scrollbar-thumb {
+		background: #c0c6cc;
+		border-radius: 6px;
+	}
+
+	*::-webkit-scrollbar-track,
+	*::-webkit-scrollbar-corner {
+		background: #ebeef0;
+	}
+
+	*::-webkit-scrollbar {
+		width: 6px;
+		height: 6px;
+	}
+
+	body::-webkit-scrollbar {
+		width: 12px;
+		height: 12px;
+	}
+
+.dialog-overlay[data-state='open'] {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+}

@@ -1,0 +1,196 @@
+---
+- name: Install NGINX
+  apt:
+    pkg:
+      - nginx
+      - nginx-extras
+      - apache2-utils
+      - libpcre3-dev
+    state: present
+  ignore_errors: yes
+
+- name: Disable NGINX Source Repository (restricted network safe)
+  file:
+    path: /etc/apt/sources.list.d/nginx.list
+    state: absent
+
+- name: Add NGINX Repository Key
+  apt_key:
+    url: https://nginx.org/keys/nginx_signing.key
+    state: present
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Update APT Cache
+  apt:
+    update_cache: yes
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Install NGINX Build Dependencies
+  apt:
+    pkg:
+      - nginx
+    state: build-dep
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Extract NGINX Version
+  shell: "nginx -v 2>&1 | grep -oP '[\\d.]*'"
+  register: nginx_version
+  when: nginx_vts_compile | default(false)
+
+- name: Create NGINX Source Directory
+  file:
+    dest: /opt/nginx
+    state: directory
+  when: nginx_vts_compile | default(false)
+
+- name: Download NGINX Source Archive
+  unarchive:
+    src: http://nginx.org/download/nginx-{{ nginx_version.stdout }}.tar.gz
+    dest: /opt/nginx
+    remote_src: yes
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Clone NGINX VTS Module Repository
+  git:
+    repo: https://github.com/vozlt/nginx-module-vts
+    dest: /opt/nginx-modules/nginx-module-vts
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Extract NGINX Compile Flags
+  shell: "nginx -V 2>&1 | grep -oP '\\--with-[-\\w]* '  | tr '\\n' ' '"
+  register: nginx_compile_flags
+  when: nginx_vts_compile | default(false)
+
+- name: Configure NGINX Modules
+  shell: './configure {{ nginx_compile_flags.stdout }} --add-dynamic-module=/opt/nginx-modules/nginx-module-vts'
+  args:
+    chdir: '/opt/nginx/nginx-{{ nginx_version.stdout }}'
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Compile NGINX modules
+  shell: 'make modules'
+  args:
+    chdir: '/opt/nginx/nginx-{{ nginx_version.stdout }}'
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Copy NGINX VTS Module Shared Object File
+  copy:
+    src: '/opt/nginx/nginx-{{ nginx_version.stdout }}/objs/ngx_http_vhost_traffic_status_module.so'
+    dest: /usr/lib/nginx/modules
+    remote_src: yes
+  ignore_errors: yes
+  when: nginx_vts_compile | default(false)
+
+- name: Create VTS Database File
+  file:
+    path: /var/log/nginx/vts.db
+    state: touch
+    owner: www-data
+    group: www-data
+  when: nginx_vts_compile | default(false)
+
+- name: Remove Default Enabled NGINX Virtual Host
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Remove Default Available NGINX Virtual Host
+  file:
+    path: /etc/nginx/sites-available/default
+    state: absent
+
+- name: Add www-data user to Frappe group
+  user:
+    name: www-data
+    groups: frappe
+    append: yes
+  when: ansible_distribution == "Ubuntu" and ansible_distribution_release == 'jammy'
+
+- name: Check if NGINX main config is symlinked
+  stat:
+    path: /etc/nginx/nginx.conf
+    follow: false
+  register: nginx_main_conf
+
+- name: Reset broken NGINX symlink config to baseline
+  block:
+    - name: Remove symlinked NGINX config
+      file:
+        path: /etc/nginx/nginx.conf
+        state: absent
+
+    - name: Write baseline NGINX config
+      copy:
+        dest: /etc/nginx/nginx.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          user www-data;
+          worker_processes auto;
+          pid /run/nginx.pid;
+          include /etc/nginx/modules-enabled/*.conf;
+
+          events {
+              worker_connections 768;
+          }
+
+          http {
+              sendfile on;
+              tcp_nopush on;
+              types_hash_max_size 2048;
+              include /etc/nginx/mime.types;
+              default_type application/octet-stream;
+              ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+              ssl_prefer_server_ciphers on;
+              access_log /var/log/nginx/access.log;
+              error_log /var/log/nginx/error.log;
+              gzip on;
+              include /etc/nginx/conf.d/*.conf;
+              include /etc/nginx/sites-enabled/*;
+          }
+  when: nginx_main_conf.stat.islnk | default(false)
+
+- name: Remove VTS directives when module is unavailable
+  shell: |
+    if [ ! -f /usr/share/nginx/modules/ngx_http_vhost_traffic_status_module.so ]; then
+      sed -i '/ngx_http_vhost_traffic_status_module\.so/d' /etc/nginx/nginx.conf || true
+      sed -i '/vhost_traffic_status/d' /etc/nginx/nginx.conf || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Remove VTS directives from agent.conf when module is unavailable
+  shell: |
+    if [ -f /etc/nginx/conf.d/agent.conf ] && [ ! -f /usr/share/nginx/modules/ngx_http_vhost_traffic_status_module.so ]; then
+      sed -i '/ngx_http_vhost_traffic_status_module\.so/d' /etc/nginx/conf.d/agent.conf || true
+      sed -i '/vhost_traffic_status/d' /etc/nginx/conf.d/agent.conf || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Ensure non-empty TLS chain for agent nginx config
+  shell: |
+    if [ -f /etc/nginx/conf.d/agent.conf ] && [ -f /home/frappe/agent/tls/fullchain.pem ] && [ -f /home/frappe/agent/tls/chain.pem ] && [ ! -s /home/frappe/agent/tls/chain.pem ]; then
+      cp /home/frappe/agent/tls/fullchain.pem /home/frappe/agent/tls/chain.pem
+      chown frappe:frappe /home/frappe/agent/tls/chain.pem || true
+      chmod 664 /home/frappe/agent/tls/chain.pem || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Restart NGINX and Enable at Boot
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes

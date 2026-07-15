@@ -1,0 +1,3581 @@
+{
+ "app": "press",
+ "charts": [],
+ "content": "[{\"id\":\"press-home-title\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Press Operations</span>\",\"col\":12}},{\"id\":\"press-home-subtitle\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"text-muted\\\">Domain-based navigation similar to ERP/HR workspaces</span>\",\"col\":12}},{\"id\":\"press-home-spacer-1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"press-home-quick-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>Quick Access</b></span>\",\"col\":12}},{\"id\":\"quick-sc-000\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Sites\",\"col\":3}},{\"id\":\"quick-sc-001\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Broken Sites\",\"col\":3}},{\"id\":\"quick-sc-002\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pending Sites\",\"col\":3}},{\"id\":\"quick-sc-003\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Suspended Sites\",\"col\":3}},{\"id\":\"quick-sc-004\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Benches\",\"col\":3}},{\"id\":\"quick-sc-005\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Broken Benches\",\"col\":3}},{\"id\":\"quick-sc-006\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Application Server\",\"col\":3}},{\"id\":\"quick-sc-007\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Database Server\",\"col\":3}},{\"id\":\"quick-sc-008\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Proxy Server\",\"col\":3}},{\"id\":\"quick-sc-009\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"App Release\",\"col\":3}},{\"id\":\"quick-sc-010\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Deploy Candidate\",\"col\":3}},{\"id\":\"quick-sc-011\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Subscription\",\"col\":3}},{\"id\":\"quick-sc-012\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Invoice\",\"col\":3}},{\"id\":\"quick-sc-013\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Team\",\"col\":3}},{\"id\":\"quick-sc-014\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Press Settings\",\"col\":3}},{\"id\":\"press-home-spacer-2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"press-home-cards-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>Domains & Reports</b></span>\",\"col\":12}},{\"id\":\"card-00\",\"type\":\"card\",\"data\":{\"card_name\":\"1. Core Platform\",\"col\":4}},{\"id\":\"card-01\",\"type\":\"card\",\"data\":{\"card_name\":\"2. Site Management\",\"col\":4}},{\"id\":\"card-02\",\"type\":\"card\",\"data\":{\"card_name\":\"3. App Lifecycle & Release Management\",\"col\":4}},{\"id\":\"card-03\",\"type\":\"card\",\"data\":{\"card_name\":\"4. Bench & Runtime Operations\",\"col\":4}},{\"id\":\"card-04\",\"type\":\"card\",\"data\":{\"card_name\":\"5. Infrastructure & Compute\",\"col\":4}},{\"id\":\"card-05\",\"type\":\"card\",\"data\":{\"card_name\":\"6. Backup, Restore & Disaster Recovery\",\"col\":4}},{\"id\":\"card-06\",\"type\":\"card\",\"data\":{\"card_name\":\"7. Database & Data Services\",\"col\":4}},{\"id\":\"card-07\",\"type\":\"card\",\"data\":{\"card_name\":\"8. Automation, Agent & Jobs\",\"col\":4}},{\"id\":\"card-08\",\"type\":\"card\",\"data\":{\"card_name\":\"9. Monitoring, Logs & Observability\",\"col\":4}},{\"id\":\"card-09\",\"type\":\"card\",\"data\":{\"card_name\":\"10. Security & Access Control\",\"col\":4}},{\"id\":\"card-10\",\"type\":\"card\",\"data\":{\"card_name\":\"11. Users, Teams & Permissions\",\"col\":4}},{\"id\":\"card-11\",\"type\":\"card\",\"data\":{\"card_name\":\"12. Billing, Subscription & Payments\",\"col\":4}},{\"id\":\"card-12\",\"type\":\"card\",\"data\":{\"card_name\":\"13. Marketplace\",\"col\":4}},{\"id\":\"card-13\",\"type\":\"card\",\"data\":{\"card_name\":\"14. Communication & Notification\",\"col\":4}},{\"id\":\"card-14\",\"type\":\"card\",\"data\":{\"card_name\":\"15. Webhooks & Integrations\",\"col\":4}},{\"id\":\"card-15\",\"type\":\"card\",\"data\":{\"card_name\":\"16. Compliance, Audit & Misc\",\"col\":4}}]",
+ "creation": "2026-04-25 12:07:09.435332",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "tool",
+ "idx": 0,
+ "indicator_color": "",
+ "is_hidden": 0,
+ "label": "Press",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "1. Core Platform",
+   "link_count": 17,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site",
+   "link_count": 0,
+   "link_to": "Site",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App",
+   "link_count": 0,
+   "link_to": "App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server",
+   "link_count": 0,
+   "link_to": "Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench",
+   "link_count": 0,
+   "link_to": "Bench",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cluster",
+   "link_count": 0,
+   "link_to": "Cluster",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Region",
+   "link_count": 0,
+   "link_to": "Region",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cloud Provider",
+   "link_count": 0,
+   "link_to": "Cloud Provider",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cloud Providers",
+   "link_count": 0,
+   "link_to": "Cloud Providers",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cloud Region",
+   "link_count": 0,
+   "link_to": "Cloud Region",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Plan",
+   "link_count": 0,
+   "link_to": "Server Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Plan Type",
+   "link_count": 0,
+   "link_to": "Server Plan Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Storage Plan",
+   "link_count": 0,
+   "link_to": "Server Storage Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Plan",
+   "link_count": 0,
+   "link_to": "Site Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Plan Feature",
+   "link_count": 0,
+   "link_to": "Plan Feature",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Required Apps",
+   "link_count": 0,
+   "link_to": "Required Apps",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Common Site Config",
+   "link_count": 0,
+   "link_to": "Common Site Config",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Settings",
+   "link_count": 0,
+   "link_to": "Press Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "2. Site Management",
+   "link_count": 25,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site App",
+   "link_count": 0,
+   "link_to": "Site App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Activity",
+   "link_count": 0,
+   "link_to": "Site Activity",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Update",
+   "link_count": 0,
+   "link_to": "Site Update",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Domain",
+   "link_count": 0,
+   "link_to": "Site Domain",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Config",
+   "link_count": 0,
+   "link_to": "Site Config",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Config Key",
+   "link_count": 0,
+   "link_to": "Site Config Key",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Config Key Blacklist",
+   "link_count": 0,
+   "link_to": "Site Config Key Blacklist",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Database User",
+   "link_count": 0,
+   "link_to": "Site Database User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Database Table Permission",
+   "link_count": 0,
+   "link_to": "Site Database Table Permission",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Backup",
+   "link_count": 0,
+   "link_to": "Site Backup",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Backup Time",
+   "link_count": 0,
+   "link_to": "Site Backup Time",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Usage",
+   "link_count": 0,
+   "link_to": "Site Usage",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Analytics",
+   "link_count": 0,
+   "link_to": "Site Analytics",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Analytics Active",
+   "link_count": 0,
+   "link_to": "Site Analytics Active",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Analytics User",
+   "link_count": 0,
+   "link_to": "Site Analytics User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Analytics Login",
+   "link_count": 0,
+   "link_to": "Site Analytics Login",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Analytics App",
+   "link_count": 0,
+   "link_to": "Site Analytics App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Analytics DocType",
+   "link_count": 0,
+   "link_to": "Site Analytics DocType",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Replication",
+   "link_count": 0,
+   "link_to": "Site Replication",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Migration",
+   "link_count": 0,
+   "link_to": "Site Migration",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Migration Step",
+   "link_count": 0,
+   "link_to": "Site Migration Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Access Token",
+   "link_count": 0,
+   "link_to": "Site Access Token",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Action",
+   "link_count": 0,
+   "link_to": "Site Action",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Action Step",
+   "link_count": 0,
+   "link_to": "Site Action Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Endpoints Audit",
+   "link_count": 0,
+   "link_to": "Press Endpoints Audit",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Site",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "3. App Lifecycle & Release Management",
+   "link_count": 32,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Source",
+   "link_count": 0,
+   "link_to": "App Source",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Source Version",
+   "link_count": 0,
+   "link_to": "App Source Version",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Tag",
+   "link_count": 0,
+   "link_to": "App Tag",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Patch",
+   "link_count": 0,
+   "link_to": "App Patch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Rename",
+   "link_count": 0,
+   "link_to": "App Rename",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Release",
+   "link_count": 0,
+   "link_to": "App Release",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Release Approval Request",
+   "link_count": 0,
+   "link_to": "App Release Approval Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Release Difference",
+   "link_count": 0,
+   "link_to": "App Release Difference",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group",
+   "link_count": 0,
+   "link_to": "Release Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group App",
+   "link_count": 0,
+   "link_to": "Release Group App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group Dependency",
+   "link_count": 0,
+   "link_to": "Release Group Dependency",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group Package",
+   "link_count": 0,
+   "link_to": "Release Group Package",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group Variable",
+   "link_count": 0,
+   "link_to": "Release Group Variable",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group Server",
+   "link_count": 0,
+   "link_to": "Release Group Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group Mount",
+   "link_count": 0,
+   "link_to": "Release Group Mount",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group Policy",
+   "link_count": 0,
+   "link_to": "Release Group Policy",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Group Policy App",
+   "link_count": 0,
+   "link_to": "Release Group Policy App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy",
+   "link_count": 0,
+   "link_to": "Deploy",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Bench",
+   "link_count": 0,
+   "link_to": "Deploy Bench",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate",
+   "link_count": 0,
+   "link_to": "Deploy Candidate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate App",
+   "link_count": 0,
+   "link_to": "Deploy Candidate App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate Build",
+   "link_count": 0,
+   "link_to": "Deploy Candidate Build",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate Build Step",
+   "link_count": 0,
+   "link_to": "Deploy Candidate Build Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate Package",
+   "link_count": 0,
+   "link_to": "Deploy Candidate Package",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate Dependency",
+   "link_count": 0,
+   "link_to": "Deploy Candidate Dependency",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate Variable",
+   "link_count": 0,
+   "link_to": "Deploy Candidate Variable",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate Difference",
+   "link_count": 0,
+   "link_to": "Deploy Candidate Difference",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deploy Candidate Difference App",
+   "link_count": 0,
+   "link_to": "Deploy Candidate Difference App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Release Pipeline",
+   "link_count": 0,
+   "link_to": "Release Pipeline",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "App Release Approval Code Comments",
+   "link_count": 0,
+   "link_to": "App Release Approval Code Comments",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Yanked App Release",
+   "link_count": 0,
+   "link_to": "Yanked App Release",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Version Upgrade",
+   "link_count": 0,
+   "link_to": "Version Upgrade",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "4. Bench & Runtime Operations",
+   "link_count": 15,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench App",
+   "link_count": 0,
+   "link_to": "Bench App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Update",
+   "link_count": 0,
+   "link_to": "Bench Update",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Update App",
+   "link_count": 0,
+   "link_to": "Bench Update App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Site Update",
+   "link_count": 0,
+   "link_to": "Bench Site Update",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Dependency",
+   "link_count": 0,
+   "link_to": "Bench Dependency",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Dependency Version",
+   "link_count": 0,
+   "link_to": "Bench Dependency Version",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Variable",
+   "link_count": 0,
+   "link_to": "Bench Variable",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Mount",
+   "link_count": 0,
+   "link_to": "Bench Mount",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Shell",
+   "link_count": 0,
+   "link_to": "Bench Shell",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Shell Log",
+   "link_count": 0,
+   "link_to": "Bench Shell Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Get App Cache",
+   "link_count": 0,
+   "link_to": "Bench Get App Cache",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Build Metric",
+   "link_count": 0,
+   "link_to": "Build Metric",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scheduled Auto Update Log",
+   "link_count": 0,
+   "link_to": "Scheduled Auto Update Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "New Bench Queue",
+   "link_count": 0,
+   "link_to": "New Bench Queue",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bench Memory Limits",
+   "link_count": 0,
+   "link_to": "Bench Memory Limits",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Bench",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "5. Infrastructure & Compute",
+   "link_count": 39,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine",
+   "link_count": 0,
+   "link_to": "Virtual Machine",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Volume",
+   "link_count": 0,
+   "link_to": "Virtual Machine Volume",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Image",
+   "link_count": 0,
+   "link_to": "Virtual Machine Image",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Image Volume",
+   "link_count": 0,
+   "link_to": "Virtual Machine Image Volume",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Temporary Volume",
+   "link_count": 0,
+   "link_to": "Virtual Machine Temporary Volume",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Migration",
+   "link_count": 0,
+   "link_to": "Virtual Machine Migration",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Migration Step",
+   "link_count": 0,
+   "link_to": "Virtual Machine Migration Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Migration Volume",
+   "link_count": 0,
+   "link_to": "Virtual Machine Migration Volume",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Migration Mount",
+   "link_count": 0,
+   "link_to": "Virtual Machine Migration Mount",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Migration Bind Mount",
+   "link_count": 0,
+   "link_to": "Virtual Machine Migration Bind Mount",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Machine Replacement",
+   "link_count": 0,
+   "link_to": "Virtual Machine Replacement",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Disk Resize",
+   "link_count": 0,
+   "link_to": "Virtual Disk Resize",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Virtual Disk Snapshot",
+   "link_count": 0,
+   "link_to": "Virtual Disk Snapshot",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add On Storage Log",
+   "link_count": 0,
+   "link_to": "Add On Storage Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Storage Integration Subscription",
+   "link_count": 0,
+   "link_to": "Storage Integration Subscription",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Storage Integration Bucket",
+   "link_count": 0,
+   "link_to": "Storage Integration Bucket",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Backup Bucket",
+   "link_count": 0,
+   "link_to": "Backup Bucket",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Proxy Server",
+   "link_count": 0,
+   "link_to": "Proxy Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Proxy Server Domain",
+   "link_count": 0,
+   "link_to": "Proxy Server Domain",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NAT Server",
+   "link_count": 0,
+   "link_to": "NAT Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NAT Failover",
+   "link_count": 0,
+   "link_to": "NAT Failover",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NAT Failover Steps",
+   "link_count": 0,
+   "link_to": "NAT Failover Steps",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Wireguard Peer",
+   "link_count": 0,
+   "link_to": "Wireguard Peer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Root Domain",
+   "link_count": 0,
+   "link_to": "Root Domain",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Mount",
+   "link_count": 0,
+   "link_to": "Server Mount",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Firewall",
+   "link_count": 0,
+   "link_to": "Server Firewall",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Firewall Rule",
+   "link_count": 0,
+   "link_to": "Server Firewall Rule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bastion Server",
+   "link_count": 0,
+   "link_to": "Bastion Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NFS Server",
+   "link_count": 0,
+   "link_to": "NFS Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NFS Volume Attachment",
+   "link_count": 0,
+   "link_to": "NFS Volume Attachment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NFS Volume Attachment Step",
+   "link_count": 0,
+   "link_to": "NFS Volume Attachment Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NFS Volume Detachment",
+   "link_count": 0,
+   "link_to": "NFS Volume Detachment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "NFS Volume Detachment Step",
+   "link_count": 0,
+   "link_to": "NFS Volume Detachment Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Registry Server",
+   "link_count": 0,
+   "link_to": "Registry Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Activity",
+   "link_count": 0,
+   "link_to": "Server Activity",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AWS Instance Pricing",
+   "link_count": 0,
+   "link_to": "AWS Instance Pricing",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Cluster",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "AWS Rightsizing Recommendation",
+   "link_count": 0,
+   "link_to": "AWS Rightsizing Recommendation",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Virtual Machine",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Stats",
+   "link_count": 0,
+   "link_to": "Server Stats",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Server",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shared App Server Stats",
+   "link_count": 0,
+   "link_to": "Shared App Server Stats",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Server",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "6. Backup, Restore & Disaster Recovery",
+   "link_count": 14,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Snapshot",
+   "link_count": 0,
+   "link_to": "Server Snapshot",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Snapshot Plan",
+   "link_count": 0,
+   "link_to": "Server Snapshot Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Snapshot Recovery",
+   "link_count": 0,
+   "link_to": "Server Snapshot Recovery",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Snapshot Site Recovery",
+   "link_count": 0,
+   "link_to": "Server Snapshot Site Recovery",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Physical Backup Group",
+   "link_count": 0,
+   "link_to": "Physical Backup Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Physical Backup Group Site",
+   "link_count": 0,
+   "link_to": "Physical Backup Group Site",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Physical Backup Restoration",
+   "link_count": 0,
+   "link_to": "Physical Backup Restoration",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Physical Backup Restoration Step",
+   "link_count": 0,
+   "link_to": "Physical Backup Restoration Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Physical Restoration Test",
+   "link_count": 0,
+   "link_to": "Physical Restoration Test",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Physical Restoration Test Result",
+   "link_count": 0,
+   "link_to": "Physical Restoration Test Result",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Backup Restoration Test",
+   "link_count": 0,
+   "link_to": "Backup Restoration Test",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "On-Prem Failover",
+   "link_count": 0,
+   "link_to": "On-Prem Failover",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Proxy Failover",
+   "link_count": 0,
+   "link_to": "Proxy Failover",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Proxy Failover Steps",
+   "link_count": 0,
+   "link_to": "Proxy Failover Steps",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "7. Database & Data Services",
+   "link_count": 17,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Database Server",
+   "link_count": 0,
+   "link_to": "Database Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Database Server MariaDB Variable",
+   "link_count": 0,
+   "link_to": "Database Server MariaDB Variable",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Variable",
+   "link_count": 0,
+   "link_to": "MariaDB Variable",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Binlog",
+   "link_count": 0,
+   "link_to": "MariaDB Binlog",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Upgrade",
+   "link_count": 0,
+   "link_to": "MariaDB Upgrade",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Upgrade Step",
+   "link_count": 0,
+   "link_to": "MariaDB Upgrade Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Stalk",
+   "link_count": 0,
+   "link_to": "MariaDB Stalk",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Stalk Diagnostic",
+   "link_count": 0,
+   "link_to": "MariaDB Stalk Diagnostic",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logical Replication Server",
+   "link_count": 0,
+   "link_to": "Logical Replication Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logical Replication Step",
+   "link_count": 0,
+   "link_to": "Logical Replication Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logical Replication Backup",
+   "link_count": 0,
+   "link_to": "Logical Replication Backup",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Managed Database Service",
+   "link_count": 0,
+   "link_to": "Managed Database Service",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Binary Log Browser",
+   "link_count": 0,
+   "link_to": "Binary Log Browser",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Site",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Deadlock Browser",
+   "link_count": 0,
+   "link_to": "MariaDB Deadlock Browser",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Site",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Locks List",
+   "link_count": 0,
+   "link_to": "MariaDB Locks List",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Site",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Process List",
+   "link_count": 0,
+   "link_to": "MariaDB Process List",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Site",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "MariaDB Slow Queries",
+   "link_count": 0,
+   "link_to": "MariaDB Slow Queries",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Site",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "8. Automation, Agent & Jobs",
+   "link_count": 25,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Job",
+   "link_count": 0,
+   "link_to": "Agent Job",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Job Step",
+   "link_count": 0,
+   "link_to": "Agent Job Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Job Type",
+   "link_count": 0,
+   "link_to": "Agent Job Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Job Type Step",
+   "link_count": 0,
+   "link_to": "Agent Job Type Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Job Callback",
+   "link_count": 0,
+   "link_to": "Agent Job Callback",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Request Failure",
+   "link_count": 0,
+   "link_to": "Agent Request Failure",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Update",
+   "link_count": 0,
+   "link_to": "Agent Update",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Update Server",
+   "link_count": 0,
+   "link_to": "Agent Update Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Job",
+   "link_count": 0,
+   "link_to": "Press Job",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Job Step",
+   "link_count": 0,
+   "link_to": "Press Job Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Job Type",
+   "link_count": 0,
+   "link_to": "Press Job Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Job Type Step",
+   "link_count": 0,
+   "link_to": "Press Job Type Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ansible Play",
+   "link_count": 0,
+   "link_to": "Ansible Play",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ansible Task",
+   "link_count": 0,
+   "link_to": "Ansible Task",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ansible Console",
+   "link_count": 0,
+   "link_to": "Ansible Console",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ansible Console Log",
+   "link_count": 0,
+   "link_to": "Ansible Console Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ansible Console Output",
+   "link_count": 0,
+   "link_to": "Ansible Console Output",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scale Step",
+   "link_count": 0,
+   "link_to": "Scale Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Workflow",
+   "link_count": 0,
+   "link_to": "Press Workflow",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Workflow KV",
+   "link_count": 0,
+   "link_to": "Press Workflow KV",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Workflow Object",
+   "link_count": 0,
+   "link_to": "Press Workflow Object",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Workflow Step",
+   "link_count": 0,
+   "link_to": "Press Workflow Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Workflow Task",
+   "link_count": 0,
+   "link_to": "Press Workflow Task",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Workflow Test",
+   "link_count": 0,
+   "link_to": "Press Workflow Test",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Agent Versions",
+   "link_count": 0,
+   "link_to": "Agent Versions",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Server",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "9. Monitoring, Logs & Observability",
+   "link_count": 27,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Monitor Server",
+   "link_count": 0,
+   "link_to": "Monitor Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Trace Server",
+   "link_count": 0,
+   "link_to": "Trace Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Inspect Trace ID",
+   "link_count": 0,
+   "link_to": "Inspect Trace ID",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Process Snapshot",
+   "link_count": 0,
+   "link_to": "Process Snapshot",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Disk Performance",
+   "link_count": 0,
+   "link_to": "Disk Performance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Downtime Analysis",
+   "link_count": 0,
+   "link_to": "Downtime Analysis",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Log Server",
+   "link_count": 0,
+   "link_to": "Log Server",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Log Counter",
+   "link_count": 0,
+   "link_to": "Log Counter",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SQL Playground Log",
+   "link_count": 0,
+   "link_to": "SQL Playground Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Remote Operation Log",
+   "link_count": 0,
+   "link_to": "Remote Operation Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Serial Console Log",
+   "link_count": 0,
+   "link_to": "Serial Console Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident",
+   "link_count": 0,
+   "link_to": "Incident",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Alerts",
+   "link_count": 0,
+   "link_to": "Incident Alerts",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Updates",
+   "link_count": 0,
+   "link_to": "Incident Updates",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Suggestion",
+   "link_count": 0,
+   "link_to": "Incident Suggestion",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Settings",
+   "link_count": 0,
+   "link_to": "Incident Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Settings User",
+   "link_count": 0,
+   "link_to": "Incident Settings User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Settings Self Hosted User",
+   "link_count": 0,
+   "link_to": "Incident Settings Self Hosted User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Prometheus Alert Rule",
+   "link_count": 0,
+   "link_to": "Prometheus Alert Rule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Prometheus Alert Rule Cluster",
+   "link_count": 0,
+   "link_to": "Prometheus Alert Rule Cluster",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Alertmanager Webhook Log",
+   "link_count": 0,
+   "link_to": "Alertmanager Webhook Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Alertmanager Webhook Log Reaction Job",
+   "link_count": 0,
+   "link_to": "Alertmanager Webhook Log Reaction Job",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Silenced Alert",
+   "link_count": 0,
+   "link_to": "Silenced Alert",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Investigator",
+   "link_count": 0,
+   "link_to": "Incident Investigator",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Pattern",
+   "link_count": 0,
+   "link_to": "Incident Pattern",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Incident Pattern Investigation",
+   "link_count": 0,
+   "link_to": "Incident Pattern Investigation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Investigation Step",
+   "link_count": 0,
+   "link_to": "Investigation Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "10. Security & Access Control",
+   "link_count": 18,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "User SSH Key",
+   "link_count": 0,
+   "link_to": "User SSH Key",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SSH Key",
+   "link_count": 0,
+   "link_to": "SSH Key",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SSH Certificate",
+   "link_count": 0,
+   "link_to": "SSH Certificate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SSH Certificate Authority",
+   "link_count": 0,
+   "link_to": "SSH Certificate Authority",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "User SSH Certificate",
+   "link_count": 0,
+   "link_to": "User SSH Certificate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Certificate Authority",
+   "link_count": 0,
+   "link_to": "Certificate Authority",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "TLS Certificate",
+   "link_count": 0,
+   "link_to": "TLS Certificate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "User 2FA",
+   "link_count": 0,
+   "link_to": "User 2FA",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "User 2FA Recovery Code",
+   "link_count": 0,
+   "link_to": "User 2FA Recovery Code",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "OAuth Domain Mapping",
+   "link_count": 0,
+   "link_to": "OAuth Domain Mapping",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Blocked Domain",
+   "link_count": 0,
+   "link_to": "Blocked Domain",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Malware Scan",
+   "link_count": 0,
+   "link_to": "Malware Scan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Security Update",
+   "link_count": 0,
+   "link_to": "Security Update",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Security Update Check",
+   "link_count": 0,
+   "link_to": "Security Update Check",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SSH Access Audit",
+   "link_count": 0,
+   "link_to": "SSH Access Audit",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SSH Access Audit Host",
+   "link_count": 0,
+   "link_to": "SSH Access Audit Host",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SSH Access Audit Violation",
+   "link_count": 0,
+   "link_to": "SSH Access Audit Violation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Certificate Link Request",
+   "link_count": 0,
+   "link_to": "Certificate Link Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "11. Users, Teams & Permissions",
+   "link_count": 20,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team",
+   "link_count": 0,
+   "link_to": "Team",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Member",
+   "link_count": 0,
+   "link_to": "Team Member",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Child Team Member",
+   "link_count": 0,
+   "link_to": "Child Team Member",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Change",
+   "link_count": 0,
+   "link_to": "Team Change",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Onboarding",
+   "link_count": 0,
+   "link_to": "Team Onboarding",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Member Deletion Request",
+   "link_count": 0,
+   "link_to": "Team Member Deletion Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Deletion Request",
+   "link_count": 0,
+   "link_to": "Team Deletion Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Member Impersonation",
+   "link_count": 0,
+   "link_to": "Team Member Impersonation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site User",
+   "link_count": 0,
+   "link_to": "Site User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site User Session",
+   "link_count": 0,
+   "link_to": "Site User Session",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Role",
+   "link_count": 0,
+   "link_to": "Press Role",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Role User",
+   "link_count": 0,
+   "link_to": "Press Role User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Role Permission",
+   "link_count": 0,
+   "link_to": "Press Role Permission",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Role Resource",
+   "link_count": 0,
+   "link_to": "Press Role Resource",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Method Permission",
+   "link_count": 0,
+   "link_to": "Press Method Permission",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Account Request",
+   "link_count": 0,
+   "link_to": "Account Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Account Request Press Role",
+   "link_count": 0,
+   "link_to": "Account Request Press Role",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Support Access",
+   "link_count": 0,
+   "link_to": "Support Access",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Support Access Resource",
+   "link_count": 0,
+   "link_to": "Support Access Resource",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Account Request Rules",
+   "link_count": 0,
+   "link_to": "Account Request Rules",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "12. Billing, Subscription & Payments",
+   "link_count": 32,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Subscription",
+   "link_count": 0,
+   "link_to": "Subscription",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Plan Change",
+   "link_count": 0,
+   "link_to": "Plan Change",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Site Plan Change",
+   "link_count": 0,
+   "link_to": "Site Plan Change",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Usage Record",
+   "link_count": 0,
+   "link_to": "Usage Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice",
+   "link_count": 0,
+   "link_to": "Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Item",
+   "link_count": 0,
+   "link_to": "Invoice Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Discount",
+   "link_count": 0,
+   "link_to": "Invoice Discount",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Credit Allocation",
+   "link_count": 0,
+   "link_to": "Invoice Credit Allocation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Transaction Fee",
+   "link_count": 0,
+   "link_to": "Invoice Transaction Fee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stripe Payment Event",
+   "link_count": 0,
+   "link_to": "Stripe Payment Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stripe Payment Method",
+   "link_count": 0,
+   "link_to": "Stripe Payment Method",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stripe Webhook Log",
+   "link_count": 0,
+   "link_to": "Stripe Webhook Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stripe Micro Charge Record",
+   "link_count": 0,
+   "link_to": "Stripe Micro Charge Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Razorpay Payment Record",
+   "link_count": 0,
+   "link_to": "Razorpay Payment Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Razorpay Webhook Log",
+   "link_count": 0,
+   "link_to": "Razorpay Webhook Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Razorpay Mandate",
+   "link_count": 0,
+   "link_to": "Razorpay Mandate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mpesa Setup",
+   "link_count": 0,
+   "link_to": "Mpesa Setup",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mpesa Payment Record",
+   "link_count": 0,
+   "link_to": "Mpesa Payment Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mpesa Request Log",
+   "link_count": 0,
+   "link_to": "Mpesa Request Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Gateway",
+   "link_count": 0,
+   "link_to": "Payment Gateway",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Partner Transaction",
+   "link_count": 0,
+   "link_to": "Payment Partner Transaction",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Due Extension",
+   "link_count": 0,
+   "link_to": "Payment Due Extension",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Dispute",
+   "link_count": 0,
+   "link_to": "Payment Dispute",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Partner Payment Payout",
+   "link_count": 0,
+   "link_to": "Partner Payment Payout",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Partner Payment Payout Item",
+   "link_count": 0,
+   "link_to": "Partner Payment Payout Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payout Order",
+   "link_count": 0,
+   "link_to": "Payout Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payout Order Item",
+   "link_count": 0,
+   "link_to": "Payout Order Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Balance Transaction",
+   "link_count": 0,
+   "link_to": "Balance Transaction",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Balance Transaction Allocation",
+   "link_count": 0,
+   "link_to": "Balance Transaction Allocation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Currency Exchange",
+   "link_count": 0,
+   "link_to": "Currency Exchange",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Referral Bonus",
+   "link_count": 0,
+   "link_to": "Referral Bonus",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Partner",
+   "link_count": 0,
+   "link_to": "Payment Partner",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Payment Partner Transaction",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "13. Marketplace",
+   "link_count": 19,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App",
+   "link_count": 0,
+   "link_to": "Marketplace App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Version",
+   "link_count": 0,
+   "link_to": "Marketplace App Version",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Screenshot",
+   "link_count": 0,
+   "link_to": "Marketplace App Screenshot",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Category",
+   "link_count": 0,
+   "link_to": "Marketplace App Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Categories",
+   "link_count": 0,
+   "link_to": "Marketplace App Categories",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace Localisation App",
+   "link_count": 0,
+   "link_to": "Marketplace Localisation App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace Settings",
+   "link_count": 0,
+   "link_to": "Marketplace Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Audit",
+   "link_count": 0,
+   "link_to": "Marketplace App Audit",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Audit Checks",
+   "link_count": 0,
+   "link_to": "Marketplace App Audit Checks",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Feedback",
+   "link_count": 0,
+   "link_to": "Marketplace App Feedback",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Payment",
+   "link_count": 0,
+   "link_to": "Marketplace App Payment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Plan",
+   "link_count": 0,
+   "link_to": "Marketplace App Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Plans",
+   "link_count": 0,
+   "link_to": "Marketplace App Plans",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Subscription",
+   "link_count": 0,
+   "link_to": "Marketplace App Subscription",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace Promotional Banner",
+   "link_count": 0,
+   "link_to": "Marketplace Promotional Banner",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace Add On",
+   "link_count": 0,
+   "link_to": "Marketplace Add On",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace Publisher Profile",
+   "link_count": 0,
+   "link_to": "Marketplace Publisher Profile",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Featured App",
+   "link_count": 0,
+   "link_to": "Featured App",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marketplace App Repository Visibility",
+   "link_count": 0,
+   "link_to": "Marketplace App Repository Visibility",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Marketplace App",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "14. Communication & Notification",
+   "link_count": 12,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Notification",
+   "link_count": 0,
+   "link_to": "Press Notification",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dashboard Banner",
+   "link_count": 0,
+   "link_to": "Dashboard Banner",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dashboard Banner Team",
+   "link_count": 0,
+   "link_to": "Dashboard Banner Team",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dashboard Banner Dismissal",
+   "link_count": 0,
+   "link_to": "Dashboard Banner Dismissal",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Telegram Group",
+   "link_count": 0,
+   "link_to": "Telegram Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Telegram Group Topic",
+   "link_count": 0,
+   "link_to": "Telegram Group Topic",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Telegram Message",
+   "link_count": 0,
+   "link_to": "Telegram Message",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Drip Email",
+   "link_count": 0,
+   "link_to": "Drip Email",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mail Setup",
+   "link_count": 0,
+   "link_to": "Mail Setup",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mail Log",
+   "link_count": 0,
+   "link_to": "Mail Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Communication Info",
+   "link_count": 0,
+   "link_to": "Communication Info",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lead Followup",
+   "link_count": 0,
+   "link_to": "Lead Followup",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "15. Webhooks & Integrations",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Webhook",
+   "link_count": 0,
+   "link_to": "Press Webhook",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Webhook Event",
+   "link_count": 0,
+   "link_to": "Press Webhook Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Webhook Selected Event",
+   "link_count": 0,
+   "link_to": "Press Webhook Selected Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Webhook Log",
+   "link_count": 0,
+   "link_to": "Press Webhook Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Webhook Attempt",
+   "link_count": 0,
+   "link_to": "Press Webhook Attempt",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "GitHub Webhook Log",
+   "link_count": 0,
+   "link_to": "GitHub Webhook Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "16. Compliance, Audit & Misc",
+   "link_count": 9,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Audit Log",
+   "link_count": 0,
+   "link_to": "Audit Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cookie Preference Log",
+   "link_count": 0,
+   "link_to": "Cookie Preference Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Resource Tag",
+   "link_count": 0,
+   "link_to": "Resource Tag",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Tag",
+   "link_count": 0,
+   "link_to": "Press Tag",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Press Feedback",
+   "link_count": 0,
+   "link_to": "Press Feedback",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Module Setup Guide",
+   "link_count": 0,
+   "link_to": "Module Setup Guide",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "IP Removal Log",
+   "link_count": 0,
+   "link_to": "IP Removal Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "IP Removal Log Steps",
+   "link_count": 0,
+   "link_to": "IP Removal Log Steps",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Action Step",
+   "link_count": 0,
+   "link_to": "Action Step",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-25 12:07:09.435332",
+ "modified_by": "Administrator",
+ "module": "Press",
+ "name": "Press",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 28.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Active Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "Broken Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Broken\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "label": "Pending Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Pending\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Suspended Sites",
+   "link_to": "Site",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Suspended\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Active Benches",
+   "link_to": "Bench",
+   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "Broken Benches",
+   "link_to": "Bench",
+   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Broken\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Application Server",
+   "link_to": "Server",
+   "stats_filter": "[[\"Server\",\"status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Database Server",
+   "link_to": "Database Server",
+   "stats_filter": "[[\"Database Server\",\"status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Proxy Server",
+   "link_to": "Proxy Server",
+   "stats_filter": "[[\"Proxy Server\",\"status\",\"=\",\"Active\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "App Release",
+   "link_to": "App Release",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Deploy Candidate",
+   "link_to": "Deploy Candidate",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Subscription",
+   "link_to": "Subscription",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Invoice",
+   "link_to": "Invoice",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Team",
+   "link_to": "Team",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Press Settings",
+   "link_to": "Press Settings",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Press",
+ "type": "Workspace"
+}
