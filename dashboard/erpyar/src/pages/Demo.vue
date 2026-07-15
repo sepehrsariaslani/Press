@@ -67,7 +67,7 @@ const form = reactive({
   teamSize: draftData.teamSize || '',
   phone: draftData.phone || '',
   email: draftData.email || '',
-  product: hasQuery.value ? calculatedSummary.value : (draftData.product || 'ERPNext'),
+  product: hasQuery.value ? calculatedSummary.value : (draftData.product || 'مشاوره عمومی و دمو'),
   description: hasQuery.value ? calculatedDescription.value : (draftData.description || ''),
   website: draftData.website || '',
 });
@@ -148,7 +148,7 @@ async function submitDemo() {
     form.teamSize = '';
     form.phone = '';
     form.email = '';
-    form.product = hasQuery.value ? calculatedSummary.value : 'ERPNext';
+    form.product = hasQuery.value ? calculatedSummary.value : 'مشاوره عمومی و دمو';
     form.description = hasQuery.value ? calculatedDescription.value : '';
     form.website = '';
     localStorage.removeItem(DRAFT_KEY);
