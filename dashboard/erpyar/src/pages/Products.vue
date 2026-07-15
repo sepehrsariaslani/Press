@@ -1,5 +1,40 @@
 <script setup>
-import { homeSections } from '@/content';
+import { ref, onMounted } from 'vue';
+import { fetchErpyarCatalog } from '@/api';
+import { homeSections as staticHomeSections } from '@/content';
+
+const products = ref(staticHomeSections.products);
+
+onMounted(async () => {
+  try {
+    const apiCatalog = await fetchErpyarCatalog();
+    if (apiCatalog && apiCatalog.length > 0) {
+      const list = [];
+      const baseItem = apiCatalog.find(p => p.product_id === 'base' || !p.is_addon);
+      const addons = apiCatalog.filter(p => p.product_id !== 'base' && p.is_addon);
+      
+      if (baseItem) {
+        list.push({
+          title: baseItem.product_name,
+          description: baseItem.description,
+          price: baseItem.price.toLocaleString('fa-IR') + ' تومان / ماه',
+          to: null
+        });
+      }
+      for (const addon of addons) {
+        list.push({
+          title: addon.product_name,
+          description: addon.description,
+          price: addon.price.toLocaleString('fa-IR') + ' تومان / ماه',
+          to: addon.product_id === 'erpnext' || addon.product_id === 'crm' ? `/products/${addon.product_id}` : null
+        });
+      }
+      products.value = list;
+    }
+  } catch (error) {
+    console.warn('Unable to load dynamic products catalog:', error);
+  }
+});
 </script>
 
 <template>
@@ -10,7 +45,7 @@ import { homeSections } from '@/content';
     </p>
 
     <div class="grid grid-2" style="margin-top: 20px">
-      <template v-for="product in homeSections.products" :key="product.title">
+      <template v-for="product in products" :key="product.title">
         <!-- Clickable products (like ERPNext, CRM) with real detail pages -->
         <RouterLink v-if="product.to" :to="product.to" class="item clickable-product-card">
           <div class="card-title-row">

@@ -1,20 +1,63 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { baseProduct, publicAddons, homeSections } from '@/content';
+import { fetchErpyarCatalog } from '@/api';
+import { baseProduct as staticBaseProduct, publicAddons as staticPublicAddons, homeSections } from '@/content';
 
 const router = useRouter();
+
+// Reactive catalog variables initialized with static fallbacks
+const baseProduct = ref(staticBaseProduct);
+const publicAddons = ref(staticPublicAddons);
 
 // State for pricing calculator
 // Default pre-select 'erpnext' to show interactive calculations right away
 const selectedAddons = ref(['erpnext']);
 
+// Fetch catalog dynamically on mount
+onMounted(async () => {
+  try {
+    const apiCatalog = await fetchErpyarCatalog();
+    if (apiCatalog && apiCatalog.length > 0) {
+      // Extract Base Platform
+      const baseItem = apiCatalog.find(p => p.product_id === 'base' || !p.is_addon);
+      if (baseItem) {
+        baseProduct.value = {
+          id: baseItem.product_id,
+          name: baseItem.product_name,
+          price: baseItem.price,
+          priceFormatted: baseItem.price.toLocaleString('fa-IR'),
+          period: baseItem.period,
+          description: baseItem.description,
+          features: baseItem.features || []
+        };
+      }
+      
+      // Extract Add-ons
+      const addonsList = apiCatalog.filter(p => p.product_id !== 'base' && p.is_addon);
+      if (addonsList.length > 0) {
+        publicAddons.value = addonsList.map(item => ({
+          id: item.product_id,
+          name: item.product_name,
+          price: item.price,
+          priceFormatted: item.price.toLocaleString('fa-IR'),
+          description: item.description,
+          to: item.product_id === 'erpnext' || item.product_id === 'crm' ? `/products/${item.product_id}` : null,
+          features: item.features || []
+        }));
+      }
+    }
+  } catch (error) {
+    console.warn('Unable to load dynamic catalog, falling back to local storage:', error);
+  }
+});
+
 // Calculate total monthly price
 const totalPrice = computed(() => {
-  const addonsCost = publicAddons
+  const addonsCost = publicAddons.value
     .filter(addon => selectedAddons.value.includes(addon.id))
     .reduce((sum, addon) => sum + addon.price, 0);
-  return baseProduct.price + addonsCost;
+  return baseProduct.value.price + addonsCost;
 });
 
 const isSelected = (id) => selectedAddons.value.includes(id);

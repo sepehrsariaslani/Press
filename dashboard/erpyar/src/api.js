@@ -35,3 +35,19 @@ export async function submitErpyarLead(payload) {
 
   return data;
 }
+
+export async function fetchErpyarCatalog() {
+  const response = await fetch('/api/method/press.api.erpyar.get_catalog', {
+    method: 'GET',
+    credentials: 'same-origin',
+  });
+
+  const json = await response.json().catch(() => ({}));
+  const data = json?.message || json;
+
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.message || 'دریافت اطلاعات کاتالوگ انجام نشد.');
+  }
+
+  return data.catalog;
+}

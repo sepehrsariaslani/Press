@@ -1,5 +1,42 @@
 <script setup>
-import { pricingPlans } from '@/content';
+import { ref, onMounted } from 'vue';
+import { fetchErpyarCatalog } from '@/api';
+import { pricingPlans as staticPricingPlans } from '@/content';
+
+const pricingPlans = ref(staticPricingPlans);
+
+onMounted(async () => {
+  try {
+    const apiCatalog = await fetchErpyarCatalog();
+    if (apiCatalog && apiCatalog.length > 0) {
+      const baseItem = apiCatalog.find(p => p.product_id === 'base' || !p.is_addon);
+      const addons = apiCatalog.filter(p => p.product_id !== 'base' && p.is_addon);
+      
+      const plans = [];
+      if (baseItem) {
+        plans.push({
+          name: baseItem.product_name,
+          price: baseItem.price.toLocaleString('fa-IR') + ' تومان',
+          period: baseItem.period,
+          items: baseItem.features || [],
+          featured: true
+        });
+      }
+      for (const addon of addons) {
+        plans.push({
+          name: addon.product_name,
+          price: addon.price.toLocaleString('fa-IR') + ' تومان',
+          period: addon.period,
+          items: addon.features || [],
+          featured: false
+        });
+      }
+      pricingPlans.value = plans;
+    }
+  } catch (error) {
+    console.warn('Unable to load dynamic pricing catalog:', error);
+  }
+});
 </script>
 
 <template>

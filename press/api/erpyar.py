@@ -174,3 +174,114 @@ def submit_lead(
 	except Exception:
 		frappe.log_error(frappe.get_traceback(), "Erpyar Lead Submission")
 		return _error_response("Unable to submit lead right now", 500)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def get_catalog():
+	"""
+	API endpoint to fetch the curated public sellable catalog for Erpyar.
+	Separates low-level installed app discovery from public marketing metadata.
+	"""
+	try:
+		# Query dynamic Erpyar Product catalog from DB
+		products = frappe.get_all(
+			"Erpyar Product",
+			fields=["product_id", "product_name", "price", "period", "is_addon", "linked_app", "description", "features"]
+		)
+		if products:
+			# Format features JSON if stored as string
+			import json
+			for p in products:
+				if p.get("features"):
+					try:
+						p["features"] = json.loads(p["features"])
+					except Exception:
+						# Fallback if stored as comma-separated or plain text
+						p["features"] = [f.strip() for f in p["features"].split("\n") if f.strip()]
+			return {"ok": True, "catalog": products}
+	except Exception:
+		# If table is not yet migrated or empty, proceed to fallback
+		pass
+
+	# Pre-populated Phase 1 fallback public inventory (preserving the 4 public products)
+	fallback_catalog = [
+		{
+			"product_id": "base",
+			"product_name": "پلتفرم پایه ارپ‌یار",
+			"price": 5000000,
+			"period": "ماهانه",
+			"is_addon": 0,
+			"linked_app": None,
+			"description": "بستر ابری مدیریت‌شده ارپ‌یار با قابلیت پایداری بالا، پشتیبانی ۲۴/۷، بکاپ خودکار روزانه و ابزارهای مانیتورینگ پیشرفته.",
+			"features": [
+				"زیرساخت ابری پایدار روی لایه Press",
+				"پشتیبانی فنی و مانیتورینگ ۲۴/۷",
+				"پشتیبان‌گیری (بکاپ) خودکار روزانه و هفتگی",
+				"دامنه اختصاصی با SSL رایگان",
+				"۱۴ روز دوره تست کاملاً رایگان",
+				"۷ روز مهلت پرداخت (Grace Period) پس از پایان تست"
+			]
+		},
+		{
+			"product_id": "erpnext",
+			"product_name": "ERPNext",
+			"price": 15000000,
+			"period": "ماهانه",
+			"is_addon": 1,
+			"linked_app": "erpnext",
+			"description": "ماژول حسابداری و مالی، مدیریت انبار، خرید و فروش، تولید و زنجیره تامین.",
+			"features": [
+				"یکپارچگی کامل مالی و خزانه‌داری",
+				"مدیریت انبارداری چندسطحی",
+				"کنترل زنجیره تامین و فروش",
+				"گزارش‌دهی مالی و سود و زیان"
+			]
+		},
+		{
+			"product_id": "crm",
+			"product_name": "CRM",
+			"price": 10000000,
+			"period": "ماهانه",
+			"is_addon": 1,
+			"linked_app": "crm",
+			"description": "مدیریت ارتباط با مشتریان، سرنخ‌ها، فرصت‌های فروش و گزارش‌های تحلیلی تیم فروش.",
+			"features": [
+				"رهگیری سرنخ و قیف فروش",
+				"مدیریت جلسات و وظایف تیم",
+				"گزارش‌های تحلیلی نرخ تبدیل",
+				"اتصال به ابزارهای ارتباطی"
+			]
+		},
+		{
+			"product_id": "restaurant",
+			"product_name": "رستوران (Restaurant)",
+			"price": 5000000,
+			"period": "ماهانه",
+			"is_addon": 1,
+			"linked_app": "restaurant",
+			"description": "مدیریت منو، ثبت سفارش سالن، صندوق فروشگاهی، فاکتوردهی سریع و تحلیل فروش رستوران.",
+			"features": [
+				"منوی دیجیتال و سفارش‌گیری سریع",
+				"مدیریت میزها و سالن",
+				"اتصال آسان به فیش پرینتر",
+				"گزارش صندوق و صندوق‌دارها"
+			]
+		},
+		{
+			"product_id": "coffeeyar",
+			"product_name": "کافی‌یار (Coffeeyar)",
+			"price": 5000000,
+			"period": "ماهانه",
+			"is_addon": 1,
+			"linked_app": "coffeeyar",
+			"description": "سیستم هوشمند مدیریت کافه، سفارش‌گیری سریع، منوی اختصاصی و وفاداری مشتریان.",
+			"features": [
+				"پنل سفارش‌گیری لمسی و سریع",
+				"باشگاه مشتریان و تخفیف‌ها",
+				"مدیریت انبار مواد اولیه و بارکد",
+				"تحلیل اقلام پرفروش کافه"
+			]
+		}
+	]
+	return {"ok": True, "catalog": fallback_catalog}
+
