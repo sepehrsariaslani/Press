@@ -67,7 +67,7 @@ const form = reactive({
   teamSize: draftData.teamSize || '',
   phone: draftData.phone || '',
   email: draftData.email || '',
-  product: hasQuery.value ? calculatedSummary.value : (draftData.product || 'مشاوره عمومی و دمو'),
+  product: hasQuery.value ? calculatedSummary.value : (draftData.product && draftData.product !== 'ERPNext' ? draftData.product : 'پلتفرم پایه ارپ‌یار'),
   description: hasQuery.value ? calculatedDescription.value : (draftData.description || ''),
   website: draftData.website || '',
 });
@@ -148,7 +148,7 @@ async function submitDemo() {
     form.teamSize = '';
     form.phone = '';
     form.email = '';
-    form.product = hasQuery.value ? calculatedSummary.value : 'مشاوره عمومی و دمو';
+    form.product = hasQuery.value ? calculatedSummary.value : 'پلتفرم پایه ارپ‌یار';
     form.description = hasQuery.value ? calculatedDescription.value : '';
     form.website = '';
     localStorage.removeItem(DRAFT_KEY);
@@ -185,7 +185,15 @@ async function submitDemo() {
           </div>
           <div class="field">
             <label for="product">محصول و افزونه‌های موردنظر *</label>
-            <input id="product" v-model.trim="form.product" type="text" placeholder="مثال: ERPNext" required />
+            <input v-if="hasQuery" id="product" v-model.trim="form.product" type="text" readonly class="read-only-input" required />
+            <select v-else id="product" v-model="form.product" class="select-product-input" required>
+              <option value="پلتفرم پایه ارپ‌یار">پلتفرم پایه ارپ‌یار (شروع تست ۱۴ روزه)</option>
+              <option value="پلتفرم پایه + ERPNext">پلتفرم پایه + ERPNext</option>
+              <option value="پلتفرم پایه + CRM">پلتفرم پایه + CRM</option>
+              <option value="پلتفرم پایه + رستوران">پلتفرم پایه + رستوران (Restaurant)</option>
+              <option value="پلتفرم پایه + کافی‌یار">پلتفرم پایه + کافی‌یار (Coffeeyar)</option>
+              <option value="مشاوره عمومی و دمو">فقط مشاوره عمومی و دمو</option>
+            </select>
           </div>
           <div class="field">
             <label for="phone">شماره تماس (ترجیحاً دارای واتساپ/تلگرام) *</label>
@@ -289,6 +297,19 @@ async function submitDemo() {
 
 .demo-form-section {
   background: #ffffff;
+}
+
+.read-only-input {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  font-weight: 700;
+  color: var(--erpyar-primary-dark);
+  border-color: rgba(18, 184, 134, 0.3);
+}
+
+.select-product-input {
+  cursor: pointer;
+  font-weight: 600;
 }
 
 /* Receipt styles */
