@@ -1,7 +1,10 @@
 <script setup>
-import { reactive, ref, watch } from 'vue';
+import { reactive, ref, watch, onMounted, computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { submitErpyarLead } from '@/api';
+import { baseProduct, publicAddons } from '@/content';
 
+const route = useRoute();
 const DRAFT_KEY = 'erpyar_demo_draft';
 
 const form = reactive({
@@ -19,6 +22,45 @@ const state = ref('idle');
 const notice = ref('');
 const isSubmitting = ref(false);
 
+// Add-ons selected from URL
+const selectedAddons = ref([]);
+
+// Parse query params on mount
+onMounted(() => {
+  if (route.query.addons) {
+    const addonsStr = route.query.addons.toString();
+    selectedAddons.value = addonsStr.split(',').filter(Boolean);
+    
+    // Compute names of selected addons
+    const names = selectedAddons.value.map(id => {
+      const addon = publicAddons.find(a => a.id === id);
+      return addon ? addon.name : id;
+    });
+    
+    // Set form.product as a clean summary
+    const summary = `${baseProduct.name} + ${names.join(' + ')}`;
+    form.product = summary;
+    
+    // Pre-populate description
+    if (!form.description) {
+      form.description = `درخواست تست رایگان ۱۴ روزه پلتفرم پایه ارپ‌یار به همراه افزونه‌های: ${names.join('، ')}.`;
+    }
+  }
+});
+
+// Calculate total monthly price for display
+const totalPrice = computed(() => {
+  const addonsCost = publicAddons
+    .filter(addon => selectedAddons.value.includes(addon.id))
+    .reduce((sum, addon) => sum + addon.price, 0);
+  return baseProduct.price + addonsCost;
+});
+
+const formatPrice = (value) => {
+  return value.toLocaleString('fa-IR') + ' تومان';
+};
+
+// Handle localStorage drafts
 const savedDraft = localStorage.getItem(DRAFT_KEY);
 if (savedDraft) {
   try {
@@ -28,11 +70,14 @@ if (savedDraft) {
     form.teamSize = parsed.teamSize || '';
     form.phone = parsed.phone || '';
     form.email = parsed.email || '';
-    form.product = parsed.product || 'ERPNext';
+    // Only pre-fill product if NOT overridden by query params
+    if (!route.query.addons) {
+      form.product = parsed.product || 'ERPNext';
+    }
     form.description = parsed.description || '';
     form.website = parsed.website || '';
   } catch (error) {
-    // Ignore malformed drafts and continue with empty form.
+    // Ignore malformed drafts
   }
 }
 
@@ -80,7 +125,7 @@ async function submitDemo() {
     });
 
     state.value = 'success';
-    notice.value = 'درخواست دمو ثبت شد. زمان پیشنهادی جلسه برای شما ارسال خواهد شد.';
+    notice.value = 'سفارش سایت آزمایشی شما ثبت شد. تیم پشتیبانی ارپ‌یار طی چند ساعت آینده برای راه‌اندازی نهایی و ارائه دسترسی با شما تماس خواهند گرفت.';
 
     form.fullName = '';
     form.company = '';
@@ -90,6 +135,7 @@ async function submitDemo() {
     form.product = 'ERPNext';
     form.description = '';
     form.website = '';
+    selectedAddons.value = [];
     localStorage.removeItem(DRAFT_KEY);
   } catch (error) {
     state.value = 'error';
@@ -101,70 +147,249 @@ async function submitDemo() {
 </script>
 
 <template>
-  <section class="page-card">
-    <h1 class="section-title">درخواست دمو</h1>
-    <p>
-      برای هماهنگی جلسه دمو، اطلاعات زیر را ثبت کنید تا تیم ارپ یار مسیر مناسب استقرار و اجرای پروژه شما را
-      پیشنهاد دهد.
-    </p>
+  <div class="demo-page-layout">
+    <section class="page-card demo-form-section">
+      <h1 class="section-title">راه‌اندازی سایت آزمایشی و درخواست دمو</h1>
+      <p>
+        برای فعال‌سازی دوره تست رایگان ۱۴ روزه یا هماهنگی جلسه دمو، اطلاعات زیر را وارد کنید. تیم ارپ‌یار در کوتاه‌ترین زمان ممکن فرآیند را برای شما نهایی خواهد کرد.
+      </p>
 
-    <form class="grid" style="margin-top: 12px" @submit.prevent="submitDemo">
-      <div class="form-grid">
-        <div class="field">
-          <label for="fullName">نام و نام خانوادگی *</label>
-          <input id="fullName" v-model.trim="form.fullName" type="text" placeholder="مثال: سارا محمدی" />
+      <form class="grid" style="margin-top: 20px" @submit.prevent="submitDemo">
+        <div class="form-grid">
+          <div class="field">
+            <label for="fullName">نام و نام خانوادگی *</label>
+            <input id="fullName" v-model.trim="form.fullName" type="text" placeholder="مثال: سارا محمدی" required />
+          </div>
+          <div class="field">
+            <label for="company">نام شرکت یا سازمان</label>
+            <input id="company" v-model.trim="form.company" type="text" placeholder="مثال: فناوران تجارت" />
+          </div>
+          <div class="field">
+            <label for="teamSize">اندازه تیم / پرسنل</label>
+            <input id="teamSize" v-model.trim="form.teamSize" type="text" placeholder="مثال: ۲۰ تا ۵۰ نفر" />
+          </div>
+          <div class="field">
+            <label for="product">محصول و افزونه‌های موردنظر *</label>
+            <input id="product" v-model.trim="form.product" type="text" placeholder="مثال: ERPNext" required />
+          </div>
+          <div class="field">
+            <label for="phone">شماره تماس (ترجیحاً دارای واتساپ/تلگرام) *</label>
+            <input id="phone" v-model.trim="form.phone" type="tel" dir="ltr" placeholder="0912xxxxxxx" required />
+          </div>
+          <div class="field">
+            <label for="email">ایمیل سازمانی</label>
+            <input id="email" v-model.trim="form.email" type="email" dir="ltr" placeholder="name@company.com" />
+          </div>
         </div>
-        <div class="field">
-          <label for="company">نام شرکت</label>
-          <input id="company" v-model.trim="form.company" type="text" placeholder="مثال: فناوران تجارت" />
+
+        <div class="field honeypot-field" aria-hidden="true">
+          <label for="website">وبسایت</label>
+          <input id="website" v-model.trim="form.website" type="text" tabindex="-1" autocomplete="off" />
         </div>
+
         <div class="field">
-          <label for="teamSize">اندازه تیم</label>
-          <input id="teamSize" v-model.trim="form.teamSize" type="text" placeholder="مثال: ۲۰ تا ۵۰ نفر" />
+          <label for="description">توضیحات یا نیازمندی‌های خاص</label>
+          <textarea
+            id="description"
+            v-model.trim="form.description"
+            placeholder="محدودیت‌های زمانی، فرآیندهای حیاتی و هر توضیحی که به راه‌اندازی بهتر سایت آزمایشی شما کمک می‌کند بنویسید."
+          ></textarea>
         </div>
-        <div class="field">
-          <label for="product">محصول موردنظر *</label>
-          <select id="product" v-model="form.product">
-            <option value="ERPNext">ERPNext</option>
-            <option value="CRM">CRM</option>
-            <option value="منابع انسانی">منابع انسانی</option>
-            <option value="میزبانی روی Press">میزبانی روی Press</option>
-          </select>
+
+        <div v-if="notice" class="alert" :class="state === 'success' ? 'alert-success' : 'alert-error'">
+          {{ notice }}
         </div>
-        <div class="field">
-          <label for="phone">شماره تماس *</label>
-          <input id="phone" v-model.trim="form.phone" type="tel" dir="ltr" placeholder="0912xxxxxxx" />
+
+        <div class="hero-actions">
+          <button class="btn btn-primary" type="submit" :disabled="isSubmitting">
+            {{ isSubmitting ? 'در حال ارسال...' : 'تایید و ارسال درخواست' }}
+          </button>
+          <RouterLink class="btn btn-outline" to="/">بازگشت به صفحه اصلی</RouterLink>
         </div>
-        <div class="field">
-          <label for="email">ایمیل</label>
-          <input id="email" v-model.trim="form.email" type="email" dir="ltr" placeholder="name@company.com" />
+      </form>
+    </section>
+
+    <!-- Sidebar / Receipt view if query param is set -->
+    <aside v-if="selectedAddons.length > 0" class="demo-receipt-sidebar">
+      <div class="receipt-card glass-card">
+        <h3 class="receipt-title">مشخصات پکیج انتخابی شما</h3>
+        
+        <div class="receipt-items">
+          <div class="receipt-row">
+            <span class="item-name">{{ baseProduct.name }}</span>
+            <span class="item-value">{{ formatPrice(baseProduct.price) }}</span>
+          </div>
+          
+          <div class="receipt-addons-divider">افزونه‌های انتخابی</div>
+          
+          <div v-for="addonId in selectedAddons" :key="addonId" class="receipt-row addon-row">
+            <span class="item-name">
+              <span class="plus">+</span> {{ publicAddons.find(a => a.id === addonId)?.name || addonId }}
+            </span>
+            <span class="item-value">
+              {{ formatPrice(publicAddons.find(a => a.id === addonId)?.price || 0) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="receipt-total-block">
+          <div class="receipt-row total-row">
+            <span class="total-label">اشتراک ماهانه پس از اتمام تست</span>
+            <span class="total-amount">{{ formatPrice(totalPrice) }}</span>
+          </div>
+        </div>
+
+        <div class="trial-explainer">
+          <div class="explainer-item">
+            <span class="explainer-bullet">✓</span>
+            <p><strong>۱۴ روز دوره تست رایگان:</strong> از لحظه راه‌اندازی سایت تا دو هفته دسترسی کامل بدون هزینه خواهید داشت.</p>
+          </div>
+          <div class="explainer-item">
+            <span class="explainer-bullet">✓</span>
+            <p><strong>آدرس اختصاصی:</strong> سایت شما روی زیردامنه <code>your-slug.erpyar.ir</code> ساخته می‌شود.</p>
+          </div>
+          <div class="explainer-item">
+            <span class="explainer-bullet">✓</span>
+            <p><strong>قانون تعلیق و تنفس:</strong> پس از اتمام دوره تست، در صورت عدم تمدید سایت تعلیق شده و ۷ روز مهلت پرداخت خواهید داشت.</p>
+          </div>
         </div>
       </div>
-
-      <div class="field honeypot-field" aria-hidden="true">
-        <label for="website">وبسایت</label>
-        <input id="website" v-model.trim="form.website" type="text" tabindex="-1" autocomplete="off" />
-      </div>
-
-      <div class="field">
-        <label for="description">شرح نیازمندی</label>
-        <textarea
-          id="description"
-          v-model.trim="form.description"
-          placeholder="ماژول های موردنیاز، محدودیت زمانی و یکپارچگی های لازم را بنویسید."
-        ></textarea>
-      </div>
-
-      <div v-if="notice" class="alert" :class="state === 'success' ? 'alert-success' : 'alert-error'">
-        {{ notice }}
-      </div>
-
-      <div class="hero-actions">
-        <button class="btn btn-primary" type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? 'در حال ارسال...' : 'ثبت درخواست دمو' }}
-        </button>
-        <RouterLink class="btn btn-outline" to="/contact">تماس مستقیم با تیم</RouterLink>
-      </div>
-    </form>
-  </section>
+    </aside>
+  </div>
 </template>
+
+<style scoped>
+.demo-page-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .demo-page-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.demo-form-section {
+  background: #ffffff;
+}
+
+/* Receipt styles */
+.demo-receipt-sidebar {
+  position: sticky;
+  top: 90px;
+}
+
+.receipt-card {
+  padding: 24px;
+  border-radius: var(--erpyar-radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.receipt-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  padding-bottom: 12px;
+  border-bottom: 2px dashed var(--erpyar-border);
+  color: var(--erpyar-text);
+  text-align: center;
+}
+
+.receipt-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--erpyar-text);
+}
+
+.receipt-row .item-name {
+  font-weight: 600;
+}
+
+.receipt-row .item-value {
+  font-weight: 700;
+}
+
+.receipt-addons-divider {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--erpyar-muted);
+  margin-top: 8px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.addon-row {
+  font-size: 12.5px;
+  color: var(--erpyar-muted);
+}
+
+.addon-row .plus {
+  color: var(--erpyar-secondary);
+  font-weight: 800;
+  margin-left: 2px;
+}
+
+.receipt-total-block {
+  padding-top: 12px;
+  border-top: 1px solid var(--erpyar-border);
+}
+
+.total-row {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--erpyar-text);
+}
+
+.total-row .total-amount {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--erpyar-primary-dark);
+}
+
+.trial-explainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--erpyar-border);
+}
+
+.explainer-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.explainer-bullet {
+  color: var(--erpyar-primary-dark);
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.explainer-item p {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--erpyar-muted);
+  line-height: 1.6;
+}
+
+.explainer-item code {
+  font-family: monospace;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+</style>

@@ -144,8 +144,8 @@ const routes = [
 ];
 
 function extractAssets(html) {
-  const jsMatch = html.match(/<script type="module" crossorigin src="([^"]+)"/);
-  const cssMatch = html.match(/<link rel="stylesheet" href="([^"]+)"/);
+  const jsMatch = html.match(/<script[^>]+src="([^"]+)"/);
+  const cssMatch = html.match(/<link[^>]+href="([^"]+)"/);
   if (!jsMatch || !cssMatch) {
     throw new Error('Unable to extract built asset paths from erpyar-app.html');
   }
