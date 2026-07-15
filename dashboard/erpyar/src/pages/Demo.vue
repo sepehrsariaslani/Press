@@ -4,6 +4,9 @@ import { useRoute } from 'vue-router';
 import { submitErpyarLead, provisionTrialSite } from '@/api';
 import { baseProduct, publicAddons } from '@/content';
 
+// Import modular reusable components
+import PricingReceipt from '@/components/PricingReceipt.vue';
+
 const route = useRoute();
 const DRAFT_KEY = 'erpyar_demo_draft';
 
@@ -195,11 +198,11 @@ async function submitDemo() {
   <div class="demo-page-layout">
     <section class="page-card demo-form-section">
       <h1 class="section-title">راه‌اندازی سایت آزمایشی اختصاصی</h1>
-      <p>
+      <p style="color: var(--erpyar-text-secondary); font-size: 14px; margin-top: 6px;">
         آدرس انگلیسی مورد علاقه خود را انتخاب کنید تا سایت اختصاصی شما بر روی دامنه <strong>erpyar.ir</strong> فوراً رزرو و راه‌اندازی آزمایشی شود.
       </p>
 
-      <form class="grid" style="margin-top: 20px" @submit.prevent="submitDemo">
+      <form class="grid" style="margin-top: 24px" @submit.prevent="submitDemo">
         <div class="form-grid">
           <div class="field">
             <label for="fullName">نام و نام خانوادگی *</label>
@@ -272,7 +275,7 @@ async function submitDemo() {
           {{ notice }}
         </div>
 
-        <div class="hero-actions">
+        <div class="hero-actions" style="display: flex; gap: 12px; margin-top: 10px;">
           <button class="btn btn-primary" type="submit" :disabled="isSubmitting">
             {{ isSubmitting ? 'در حال راه‌اندازی...' : 'تایید و راه‌اندازی سایت آزمایشی' }}
           </button>
@@ -283,49 +286,13 @@ async function submitDemo() {
 
     <!-- Sidebar / Receipt view if calculator query parameter is active -->
     <aside v-if="hasQuery" class="demo-receipt-sidebar">
-      <div class="receipt-card glass-card">
-        <h3 class="receipt-title">مشخصات پکیج انتخابی شما</h3>
-        
-        <div class="receipt-items">
-          <div class="receipt-row">
-            <span class="item-name">{{ baseProduct.name }}</span>
-            <span class="item-value">{{ formatPrice(baseProduct.price) }}</span>
-          </div>
-          
-          <div v-if="selectedAddons.length > 0" class="receipt-addons-divider">افزونه‌های انتخابی</div>
-          
-          <div v-for="addonId in selectedAddons" :key="addonId" class="receipt-row addon-row">
-            <span class="item-name">
-              <span class="plus">+</span> {{ publicAddons.find(a => a.id === addonId)?.name || addonId }}
-            </span>
-            <span class="item-value">
-              {{ formatPrice(publicAddons.find(a => a.id === addonId)?.price || 0) }}
-            </span>
-          </div>
-        </div>
-
-        <div class="receipt-total-block">
-          <div class="receipt-row total-row">
-            <span class="total-label">اشتراک ماهانه پس از اتمام تست</span>
-            <span class="total-amount">{{ formatPrice(totalPrice) }}</span>
-          </div>
-        </div>
-
-        <div class="trial-explainer">
-          <div class="explainer-item">
-            <span class="explainer-bullet">✓</span>
-            <p><strong>۱۴ روز دوره تست رایگان:</strong> از لحظه راه‌اندازی سایت تا دو هفته دسترسی کامل بدون هزینه خواهید داشت.</p>
-          </div>
-          <div class="explainer-item">
-            <span class="explainer-bullet">✓</span>
-            <p><strong>آدرس اختصاصی:</strong> سایت شما روی زیردامنه <code>your-slug.erpyar.ir</code> ساخته می‌شود.</p>
-          </div>
-          <div class="explainer-item">
-            <span class="explainer-bullet">✓</span>
-            <p><strong>قانون تعلیق و تنفس:</strong> پس از اتمام دوره تست، در صورت عدم تمدید سایت تعلیق شده و ۷ روز مهلت پرداخت خواهید داشت.</p>
-          </div>
-        </div>
-      </div>
+      <PricingReceipt 
+        :base-product="baseProduct"
+        :public-addons="publicAddons"
+        :selected-addons="selectedAddons"
+        cta-text="در صف تایید راه‌اندازی سایت"
+        @checkout-click="submitDemo"
+      />
     </aside>
   </div>
 </template>
@@ -333,7 +300,7 @@ async function submitDemo() {
 <style scoped>
 .demo-page-layout {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1.25fr 0.75fr;
   gap: 20px;
   align-items: start;
 }
@@ -345,7 +312,8 @@ async function submitDemo() {
 }
 
 .demo-form-section {
-  background: #ffffff;
+  background: var(--erpyar-bg-surface);
+  border-color: var(--erpyar-border-light);
 }
 
 .col-span-2 {
@@ -362,28 +330,29 @@ async function submitDemo() {
 .slug-input-container {
   display: flex;
   align-items: center;
-  border: 1px solid var(--erpyar-border);
+  border: 1px solid var(--erpyar-border-light);
   border-radius: 12px;
   overflow: hidden;
-  background: #ffffff;
-  min-height: 44px;
+  background: rgba(0, 0, 0, 0.2);
+  min-height: 46px;
 }
 
 .slug-input-container input {
   border: none !important;
   border-radius: 0 !important;
   flex: 1;
-  padding: 10px 12px;
+  padding: 10px 16px;
   font-weight: 700;
-  color: var(--erpyar-text);
+  color: var(--erpyar-text-primary);
   font-family: monospace;
+  background: transparent;
 }
 
 .slug-domain-suffix {
-  padding: 10px 14px;
-  background: #f1f5f9;
-  border-right: 1px solid var(--erpyar-border);
-  color: var(--erpyar-muted);
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-right: 1px solid var(--erpyar-border-light);
+  color: var(--erpyar-primary);
   font-family: monospace;
   font-weight: 700;
   user-select: none;
@@ -391,137 +360,27 @@ async function submitDemo() {
 
 .field-help {
   font-size: 11.5px;
-  color: var(--erpyar-muted);
-  margin-top: 2px;
+  color: var(--erpyar-text-muted);
+  margin-top: 4px;
+  display: block;
 }
 
 .read-only-input {
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
   cursor: not-allowed;
   font-weight: 700;
-  color: var(--erpyar-primary-dark);
-  border-color: rgba(18, 184, 134, 0.3);
+  color: var(--erpyar-primary-light);
+  border-color: var(--erpyar-border);
 }
 
 .select-product-input {
   cursor: pointer;
   font-weight: 600;
+  background-color: var(--erpyar-bg-surface);
 }
 
-/* Receipt styles */
 .demo-receipt-sidebar {
   position: sticky;
   top: 90px;
-}
-
-.receipt-card {
-  padding: 24px;
-  border-radius: var(--erpyar-radius-lg);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.receipt-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-  padding-bottom: 12px;
-  border-bottom: 2px dashed var(--erpyar-border);
-  color: var(--erpyar-text);
-  text-align: center;
-}
-
-.receipt-items {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.receipt-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--erpyar-text);
-}
-
-.receipt-row .item-name {
-  font-weight: 600;
-}
-
-.receipt-row .item-value {
-  font-weight: 700;
-}
-
-.receipt-addons-divider {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--erpyar-muted);
-  margin-top: 8px;
-  margin-bottom: 2px;
-  text-transform: uppercase;
-}
-
-.addon-row {
-  font-size: 12.5px;
-  color: var(--erpyar-muted);
-}
-
-.addon-row .plus {
-  color: var(--erpyar-secondary);
-  font-weight: 800;
-  margin-left: 2px;
-}
-
-.receipt-total-block {
-  padding-top: 12px;
-  border-top: 1px solid var(--erpyar-border);
-}
-
-.total-row {
-  font-size: 13.5px;
-  font-weight: 800;
-  color: var(--erpyar-text);
-}
-
-.total-row .total-amount {
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--erpyar-primary-dark);
-}
-
-.trial-explainer {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--erpyar-border);
-}
-
-.explainer-item {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.explainer-bullet {
-  color: var(--erpyar-primary-dark);
-  font-weight: 900;
-  font-size: 14px;
-}
-
-.explainer-item p {
-  margin: 0;
-  font-size: 11.5px;
-  color: var(--erpyar-muted);
-  line-height: 1.6;
-}
-
-.explainer-item code {
-  font-family: monospace;
-  background: #f1f5f9;
-  padding: 1px 4px;
-  border-radius: 4px;
 }
 </style>

@@ -8,7 +8,17 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AmbientGlow: typeof import('./src/components/AmbientGlow.vue')['default']
+    CTACluster: typeof import('./src/components/CTACluster.vue')['default']
+    FooterGrid: typeof import('./src/components/FooterGrid.vue')['default']
+    HeroFrame: typeof import('./src/components/HeroFrame.vue')['default']
+    NavDock: typeof import('./src/components/NavDock.vue')['default']
+    PricingComposer: typeof import('./src/components/PricingComposer.vue')['default']
+    PricingReceipt: typeof import('./src/components/PricingReceipt.vue')['default']
+    ProductModuleCard: typeof import('./src/components/ProductModuleCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SectionHeader: typeof import('./src/components/SectionHeader.vue')['default']
+    TrialFlowStrip: typeof import('./src/components/TrialFlowStrip.vue')['default']
   }
 }

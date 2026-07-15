@@ -3,6 +3,10 @@ import { ref, onMounted } from 'vue';
 import { fetchErpyarCatalog } from '@/api';
 import { homeSections as staticHomeSections } from '@/content';
 
+// Import modular reusable components
+import SectionHeader from '@/components/SectionHeader.vue';
+import ProductModuleCard from '@/components/ProductModuleCard.vue';
+
 const products = ref(staticHomeSections.products);
 
 onMounted(async () => {
@@ -15,17 +19,25 @@ onMounted(async () => {
       
       if (baseItem) {
         list.push({
-          title: baseItem.product_name,
+          id: 'base',
+          name: baseItem.product_name,
           description: baseItem.description,
-          price: baseItem.price.toLocaleString('fa-IR') + ' تومان / ماه',
+          price: baseItem.price,
+          priceFormatted: baseItem.price.toLocaleString('fa-IR'),
+          features: baseItem.features || [],
+          is_addon: false,
           to: null
         });
       }
       for (const addon of addons) {
         list.push({
-          title: addon.product_name,
+          id: addon.product_id,
+          name: addon.product_name,
           description: addon.description,
-          price: addon.price.toLocaleString('fa-IR') + ' تومان / ماه',
+          price: addon.price,
+          priceFormatted: addon.price.toLocaleString('fa-IR'),
+          features: addon.features || [],
+          is_addon: true,
           to: addon.product_id === 'erpnext' || addon.product_id === 'crm' ? `/products/${addon.product_id}` : null
         });
       }
@@ -38,89 +50,89 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="page-card">
-    <h1 class="section-title">محصولات و ماژول‌های ابری ارپ‌یار</h1>
-    <p>
-      راهکارهای ارپ‌یار برای سازمان‌هایی طراحی شده که به دنبال یک هسته مالی یکپارچه، فرآیندهای قابل اندازه‌گیری و زیرساخت پایدار برای رشد ابری هستند.
-    </p>
+  <section class="page-card products-page-container">
+    <SectionHeader 
+      badge="محصولات و ماژول‌ها"
+      title="سبد کامل راهکارهای سازمانی ارپ‌یار"
+      subtitle="هسته مرکزی ابری خود را تهیه کنید و از میان ماژول‌های حسابداری، زنجیره تامین، ارتباط با مشتری و صندوق‌های اختصاصی، مناسب‌ترین ستاپ را برای رشد سازمان خود برگزینید."
+    />
 
-    <div class="grid grid-2" style="margin-top: 20px">
-      <template v-for="product in products" :key="product.title">
-        <!-- Clickable products (like ERPNext, CRM) with real detail pages -->
-        <RouterLink v-if="product.to" :to="product.to" class="item clickable-product-card">
-          <div class="card-title-row">
-            <h3>{{ product.title }}</h3>
-            <span class="badge-price">{{ product.price }}</span>
-          </div>
-          <p>{{ product.description }}</p>
-          <span class="btn-link-action">بررسی جزئیات ماژول ←</span>
-        </RouterLink>
-
-        <!-- Non-clickable products (like Base Platform, Restaurant, Coffeeyar) with inline pricing/details -->
-        <div v-else class="item static-product-card">
-          <div class="card-title-row">
-            <h3>{{ product.title }}</h3>
-            <span class="badge-price static-price">{{ product.price }}</span>
-          </div>
-          <p>{{ product.description }}</p>
-          <span class="btn-static-info">مستقر بر پلتفرم پایه ابری</span>
+    <div class="products-grid" style="margin-top: 24px">
+      <!-- Rendering each product/module as a premium ProductModuleCard -->
+      <div v-for="product in products" :key="product.name" class="product-item-wrapper">
+        <ProductModuleCard 
+          :addon="product"
+          :active="!product.is_addon"
+          :is-selectable="false"
+        />
+        
+        <!-- Hover details footer link if clickable details page exists -->
+        <div v-if="product.to" class="details-link-overlay">
+          <RouterLink :to="product.to" class="btn btn-outline btn-sm">
+            <span>مشاهده معرفی تخصصی ماژول</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icon-arrow"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </RouterLink>
         </div>
-      </template>
+        <div v-else class="details-static-badge">
+          <span>مستقر به صورت کاملاً مدیریت‌شده روی پلتفرم پایه</span>
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <style scoped>
-.card-title-row {
+.products-page-container {
+  background: radial-gradient(circle at 100% 100%, rgba(195, 155, 98, 0.05), transparent 50%), var(--erpyar-bg-surface);
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 980px) {
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.product-item-wrapper {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
 }
 
-.badge-price {
-  font-size: 12px;
+.details-link-overlay {
+  display: flex;
+  justify-content: flex-end;
+  padding-left: 10px;
+}
+
+.details-link-overlay span {
   font-weight: 700;
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--erpyar-secondary);
-  padding: 4px 10px;
-  border-radius: 999px;
-  white-space: nowrap;
 }
 
-.static-price {
-  background: rgba(18, 184, 134, 0.1);
-  color: var(--erpyar-primary-dark);
-}
-
-.clickable-product-card {
-  transition: all 0.25s ease;
-  cursor: pointer;
-  border-color: var(--erpyar-border);
-}
-
-.clickable-product-card:hover {
-  border-color: var(--erpyar-secondary);
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.05);
-  transform: translateY(-2px);
-}
-
-.static-product-card {
-  border-color: var(--erpyar-border);
-  background: #f8fafc;
-}
-
-.btn-link-action {
-  color: var(--erpyar-secondary);
-  font-size: 13px;
-  font-weight: 700;
-  margin-top: 10px;
-}
-
-.btn-static-info {
-  color: var(--erpyar-muted);
-  font-size: 12px;
+.details-static-badge {
+  font-size: 11.5px;
+  color: var(--erpyar-text-muted);
+  padding-right: 12px;
   font-weight: 600;
-  margin-top: 10px;
+}
+
+.icon-arrow {
+  margin-right: 4px;
+  transition: transform 0.2s ease;
+}
+
+.btn-sm:hover .icon-arrow {
+  transform: translateX(-3px);
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 12.5px;
 }
 </style>
