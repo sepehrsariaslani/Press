@@ -61,7 +61,7 @@ export const publicAddons = [
     price: 5000000,
     priceFormatted: '۵,۰۰۰,۰۰۰',
     description: 'مدیریت منو، ثبت سفارش سالن، صندوق فروشگاهی، فاکتوردهی سریع و تحلیل فروش رستوران.',
-    to: '#',
+    to: null,
     features: [
       'منوی دیجیتال و سفارش‌گیری سریع',
       'مدیریت میزها و سالن',
@@ -75,7 +75,7 @@ export const publicAddons = [
     price: 5000000,
     priceFormatted: '۵,۰۰۰,۰۰۰',
     description: 'سیستم هوشمند مدیریت کافه، سفارش‌گیری سریع، منوی اختصاصی و وفاداری مشتریان.',
-    to: '#',
+    to: null,
     features: [
       'پنل سفارش‌گیری لمسی و سریع',
       'باشگاه مشتریان و تخفیف‌ها',
@@ -96,13 +96,13 @@ export const homeSections = {
       title: 'پلتفرم پایه ارپ‌یار',
       description: 'هسته مرکزی ابری همراه با ابزارهای امنیتی، بکاپ و مانیتورینگ اختصاصی.',
       price: '۵,۰۰۰,۰۰۰ تومان / ماه',
-      to: '/products/hosting',
+      to: null,
     },
     ...publicAddons.map(addon => ({
       title: addon.name,
       description: addon.description,
       price: `${addon.priceFormatted} تومان / ماه`,
-      to: addon.to
+      to: addon.to || null
     }))
   ],
   marketplace: [

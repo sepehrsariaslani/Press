@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch, onMounted, computed } from 'vue';
+import { reactive, ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { submitErpyarLead } from '@/api';
 import { baseProduct, publicAddons } from '@/content';
@@ -7,80 +7,83 @@ import { baseProduct, publicAddons } from '@/content';
 const route = useRoute();
 const DRAFT_KEY = 'erpyar_demo_draft';
 
-const form = reactive({
-  fullName: '',
-  company: '',
-  teamSize: '',
-  phone: '',
-  email: '',
-  product: 'ERPNext',
-  description: '',
-  website: '',
-});
-
+// Status tracking
 const state = ref('idle');
 const notice = ref('');
 const isSubmitting = ref(false);
 
-// Add-ons selected from URL
-const selectedAddons = ref([]);
+// Check if we have incoming query params from calculator (even if addons is empty)
+const hasQuery = computed(() => {
+  return route.query.addons !== undefined;
+});
 
-// Parse query params on mount
-onMounted(() => {
-  if (route.query.addons) {
-    const addonsStr = route.query.addons.toString();
-    selectedAddons.value = addonsStr.split(',').filter(Boolean);
-    
-    // Compute names of selected addons
-    const names = selectedAddons.value.map(id => {
-      const addon = publicAddons.find(a => a.id === id);
-      return addon ? addon.name : id;
-    });
-    
-    // Set form.product as a clean summary
-    const summary = `${baseProduct.name} + ${names.join(' + ')}`;
-    form.product = summary;
-    
-    // Pre-populate description
-    if (!form.description) {
-      form.description = `درخواست تست رایگان ۱۴ روزه پلتفرم پایه ارپ‌یار به همراه افزونه‌های: ${names.join('، ')}.`;
-    }
+// Deterministic addons selection derived from route query
+const selectedAddons = computed(() => {
+  if (!hasQuery.value) return [];
+  const queryVal = route.query.addons;
+  if (!queryVal) return []; // base-only has route.query.addons as empty string ""
+  return queryVal.toString().split(',').map(s => s.trim()).filter(Boolean);
+});
+
+// Compute localized addon names
+const selectedAddonNames = computed(() => {
+  return selectedAddons.value.map(id => {
+    const addon = publicAddons.find(a => a.id === id);
+    return addon ? addon.name : id;
+  });
+});
+
+// Calculate current package summary and description deterministically
+const calculatedSummary = computed(() => {
+  if (selectedAddons.value.length === 0) {
+    return baseProduct.name;
   }
+  return `${baseProduct.name} + ${selectedAddonNames.value.join(' + ')}`;
 });
 
-// Calculate total monthly price for display
-const totalPrice = computed(() => {
-  const addonsCost = publicAddons
-    .filter(addon => selectedAddons.value.includes(addon.id))
-    .reduce((sum, addon) => sum + addon.price, 0);
-  return baseProduct.price + addonsCost;
+const calculatedDescription = computed(() => {
+  if (selectedAddons.value.length === 0) {
+    return `درخواست تست رایگان ۱۴ روزه پلتفرم پایه ارپ‌یار.`;
+  }
+  return `درخواست تست رایگان ۱۴ روزه پلتفرم پایه ارپ‌یار به همراه افزونه‌های: ${selectedAddonNames.value.join('، ')}.`;
 });
-
-const formatPrice = (value) => {
-  return value.toLocaleString('fa-IR') + ' تومان';
-};
 
 // Handle localStorage drafts
 const savedDraft = localStorage.getItem(DRAFT_KEY);
+let draftData = {};
 if (savedDraft) {
   try {
-    const parsed = JSON.parse(savedDraft);
-    form.fullName = parsed.fullName || '';
-    form.company = parsed.company || '';
-    form.teamSize = parsed.teamSize || '';
-    form.phone = parsed.phone || '';
-    form.email = parsed.email || '';
-    // Only pre-fill product if NOT overridden by query params
-    if (!route.query.addons) {
-      form.product = parsed.product || 'ERPNext';
-    }
-    form.description = parsed.description || '';
-    form.website = parsed.website || '';
+    draftData = JSON.parse(savedDraft) || {};
   } catch (error) {
     // Ignore malformed drafts
   }
 }
 
+// Initialize form reactively.
+// Stale localStorage drafts CANNOT override incoming query selections.
+const form = reactive({
+  fullName: draftData.fullName || '',
+  company: draftData.company || '',
+  teamSize: draftData.teamSize || '',
+  phone: draftData.phone || '',
+  email: draftData.email || '',
+  product: hasQuery.value ? calculatedSummary.value : (draftData.product || 'ERPNext'),
+  description: hasQuery.value ? calculatedDescription.value : (draftData.description || ''),
+  website: draftData.website || '',
+});
+
+// Watch query parameters reactively in case of back-and-forth transitions
+watch(
+  () => route.query.addons,
+  (newVal) => {
+    if (newVal !== undefined) {
+      form.product = calculatedSummary.value;
+      form.description = calculatedDescription.value;
+    }
+  }
+);
+
+// Watch for form changes to save draft
 watch(
   () => ({
     fullName: form.fullName,
@@ -98,6 +101,18 @@ watch(
   { deep: true }
 );
 
+// Calculate total monthly price for display
+const totalPrice = computed(() => {
+  const addonsCost = publicAddons
+    .filter(addon => selectedAddons.value.includes(addon.id))
+    .reduce((sum, addon) => sum + addon.price, 0);
+  return baseProduct.price + addonsCost;
+});
+
+const formatPrice = (value) => {
+  return value.toLocaleString('fa-IR') + ' تومان';
+};
+
 async function submitDemo() {
   state.value = 'idle';
   notice.value = '';
@@ -111,6 +126,7 @@ async function submitDemo() {
   isSubmitting.value = true;
 
   try {
+    // Lead data matches the current selected package exactly
     await submitErpyarLead({
       lead_type: 'demo',
       full_name: form.fullName,
@@ -132,10 +148,9 @@ async function submitDemo() {
     form.teamSize = '';
     form.phone = '';
     form.email = '';
-    form.product = 'ERPNext';
-    form.description = '';
+    form.product = hasQuery.value ? calculatedSummary.value : 'ERPNext';
+    form.description = hasQuery.value ? calculatedDescription.value : '';
     form.website = '';
-    selectedAddons.value = [];
     localStorage.removeItem(DRAFT_KEY);
   } catch (error) {
     state.value = 'error';
@@ -209,8 +224,8 @@ async function submitDemo() {
       </form>
     </section>
 
-    <!-- Sidebar / Receipt view if query param is set -->
-    <aside v-if="selectedAddons.length > 0" class="demo-receipt-sidebar">
+    <!-- Sidebar / Receipt view if calculator query parameter is active -->
+    <aside v-if="hasQuery" class="demo-receipt-sidebar">
       <div class="receipt-card glass-card">
         <h3 class="receipt-title">مشخصات پکیج انتخابی شما</h3>
         
@@ -220,7 +235,7 @@ async function submitDemo() {
             <span class="item-value">{{ formatPrice(baseProduct.price) }}</span>
           </div>
           
-          <div class="receipt-addons-divider">افزونه‌های انتخابی</div>
+          <div v-if="selectedAddons.length > 0" class="receipt-addons-divider">افزونه‌های انتخابی</div>
           
           <div v-for="addonId in selectedAddons" :key="addonId" class="receipt-row addon-row">
             <span class="item-name">
