@@ -1,0 +1,187 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-25 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "saas_app_subscription",
+  "section_break_info",
+  "team",
+  "site",
+  "column_break_info",
+  "app",
+  "saas_app_plan",
+  "section_break_payment",
+  "amount",
+  "currency",
+  "column_break_payment",
+  "billing_cycle",
+  "cycles",
+  "paid_at",
+  "reference_no",
+  "section_break_meta",
+  "processed_until",
+  "notes",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "saas_app_subscription",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "SaaS App Subscription",
+   "options": "Saas App Subscription",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_info",
+   "fieldtype": "Section Break",
+   "label": "Subscription"
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Team",
+   "options": "Team",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "site",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Site",
+   "options": "Site",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "app",
+   "fieldtype": "Link",
+   "label": "App",
+   "options": "Saas App",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "saas_app_plan",
+   "fieldtype": "Link",
+   "label": "SaaS App Plan",
+   "options": "Saas App Plan",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_payment",
+   "fieldtype": "Section Break",
+   "label": "Payment"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "reqd": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_payment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Monthly",
+   "fieldname": "billing_cycle",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Billing Cycle",
+   "options": "Monthly\nAnnual",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "cycles",
+   "fieldtype": "Int",
+   "label": "Cycles",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "paid_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Paid At",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reference_no",
+   "fieldtype": "Data",
+   "label": "Payment Reference",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_meta",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "processed_until",
+   "fieldtype": "Date",
+   "label": "Processed Until",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Manual Payment Record",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-25 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SaaS",
+ "name": "Manual Payment Record",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "reference_no"
+}
