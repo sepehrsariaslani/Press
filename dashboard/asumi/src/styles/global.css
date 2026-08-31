@@ -1,0 +1,20 @@
+:root {
+	background: #080a0b;
+	color: #f4f0e8;
+	font-family: Georgia, 'Times New Roman', serif;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	min-width: 320px;
+}
+
+.asumi-app {
+	display: grid;
+	min-height: 100svh;
+	place-items: center;
+}

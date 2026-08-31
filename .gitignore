@@ -138,6 +138,7 @@ tags
 node_modules
 press/docs/current
 press/public/dashboard
+press/public/asumi_site
 press/www/dashboard.html
 press/www/dashboard-old.html
 press/public/css/email.css
