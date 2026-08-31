@@ -1,0 +1,43 @@
+:root {
+	--asumi-bg: #080a0b;
+	--asumi-elevated: #0e1112;
+	--asumi-surface: #141718;
+	--asumi-hover: #1b1e1f;
+	--asumi-text: #f4f0e8;
+	--asumi-text-muted: #a9a49a;
+	--asumi-gold: #c8a66a;
+	--asumi-gold-bright: #e2bd76;
+	--asumi-gold-deep: #84683d;
+	--asumi-graphite: #51564f;
+	--asumi-line: rgb(200 166 106 / 18%);
+	--asumi-glow: rgb(226 189 118 / 28%);
+	--asumi-radius-sm: 0.75rem;
+	--asumi-radius-md: 1rem;
+	--asumi-radius-pill: 999px;
+	--asumi-space-1: 0.5rem;
+	--asumi-space-2: 1rem;
+	--asumi-space-3: 1.5rem;
+	--asumi-space-4: 2rem;
+	--asumi-space-6: 3rem;
+	--asumi-space-8: 4rem;
+	--asumi-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--asumi-transition-fast: 240ms;
+	--asumi-transition-scene: 1000ms;
+	color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+	--asumi-bg: #f4f0e8;
+	--asumi-elevated: #ece7dd;
+	--asumi-surface: #faf8f3;
+	--asumi-hover: #ffffff;
+	--asumi-text: #171918;
+	--asumi-text-muted: #67665f;
+	--asumi-gold: #a98248;
+	--asumi-gold-bright: #c8a66a;
+	--asumi-gold-deep: #84683d;
+	--asumi-graphite: #77746d;
+	--asumi-line: rgb(132 104 61 / 18%);
+	--asumi-glow: rgb(200 166 106 / 30%);
+	color-scheme: light;
+}

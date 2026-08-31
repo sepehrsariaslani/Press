@@ -1,7 +1,11 @@
+@import './tokens.css';
+
 :root {
-	background: #080a0b;
-	color: #f4f0e8;
-	font-family: Georgia, 'Times New Roman', serif;
+	background: var(--asumi-bg);
+	color: var(--asumi-text);
+	font-family: Tahoma, 'Segoe UI', sans-serif;
+	transition: background-color var(--asumi-transition-scene) var(--asumi-ease),
+		color var(--asumi-transition-scene) var(--asumi-ease);
 }
 
 * {
@@ -11,10 +15,40 @@
 body {
 	margin: 0;
 	min-width: 320px;
+	background: var(--asumi-bg);
 }
 
 .asumi-app {
 	display: grid;
 	min-height: 100svh;
 	place-items: center;
+}
+
+.asumi-button {
+	border: 1px solid var(--asumi-line);
+	border-radius: var(--asumi-radius-pill);
+	background: color-mix(in srgb, var(--asumi-elevated) 84%, transparent);
+	color: var(--asumi-text);
+	cursor: pointer;
+	transition: border-color var(--asumi-transition-fast) var(--asumi-ease),
+		background-color var(--asumi-transition-fast) var(--asumi-ease),
+		transform var(--asumi-transition-fast) var(--asumi-ease);
+}
+
+.asumi-button:hover {
+	border-color: var(--asumi-gold);
+	background: var(--asumi-hover);
+}
+
+.asumi-button:focus-visible {
+	outline: 2px solid var(--asumi-gold-bright);
+	outline-offset: 3px;
+}
+
+.theme-toggle {
+	display: grid;
+	width: 2.75rem;
+	height: 2.75rem;
+	place-items: center;
+	font-size: 1.2rem;
 }
