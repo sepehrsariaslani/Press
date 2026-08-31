@@ -29,7 +29,6 @@ uniform float uOpacity;
 uniform float uScale;
 uniform float uSaturation;
 out vec4 fragColor;
-const float PI = 3.14159265;
 
 vec3 palette(float t) {
   float scaled = fract(t) * float(uColorCount);
@@ -42,27 +41,41 @@ vec3 palette(float t) {
 void main() {
   vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / uResolution.y;
   uv /= max(uScale, 0.0001);
+  uv.x += 0.34;
+  float progress = clamp((uv.x + 0.25) / 1.15, 0.0, 1.0);
+  float origin = smoothstep(0.0, 0.14, progress);
+  float exitFade = 1.0 - smoothstep(0.82, 1.15, progress);
+  float envelope = origin * exitFade;
   float energy = 0.08 + uIntensity * 0.76;
-  float envelope = pow(max(cos(uv.x * PI * 1.15), 0.0), uTaper);
   vec3 color = vec3(0.0);
 
   for (int i = 0; i < ${MAX_STRANDS}; i++) {
     if (i >= uStrandCount) break;
     float fi = float(i);
-    float phase = fi * 1.28 * uSpread;
-    float frequency = (1.1 + fi * 0.18) * uWaviness;
-    float time = uTime * uSpeed;
-    float wave = sin(uv.x * frequency + time * (0.42 + fi * 0.12) + phase) * 0.68
-      + sin(uv.x * frequency * 0.73 - time * 0.25 + phase * 1.4) * 0.32;
-    float y = wave * (0.075 + 0.018 * energy) * envelope * uAmplitude;
+    float phase = fi * 1.47 * uSpread;
+    float speedScale = mix(0.64, 1.16, fract(fi * 0.71));
+    float time = uTime * uSpeed * speedScale;
+    float low = sin(uv.x * (1.45 + fi * 0.17) * uWaviness - time * 0.34 + phase);
+    float fold = sin(uv.x * (3.2 + fi * 0.23) * uWaviness + time * 0.21 + phase * 1.7);
+    float detail = sin(uv.x * 6.4 - time * 0.13 + phase * 2.2);
+    float rise = pow(progress, 1.18) * (0.12 + fi * 0.012) - 0.07;
+    float spreadOffset = (fi - float(uStrandCount - 1) * 0.5) * 0.058 * uSpread * pow(progress, 0.82);
+    float y = rise + spreadOffset + (low * 0.072 + fold * 0.034 + detail * 0.012) * uAmplitude * (0.28 + progress);
     float distanceToStrand = abs(uv.y - y);
-    float width = (0.0007 + 0.034 * energy) * (0.2 + envelope) * uThickness;
-    float glow = width / (distanceToStrand + width * 0.52);
-    glow *= glow;
-    color += palette(fi / float(uStrandCount) + uv.x * 0.08) * glow * envelope;
+    float bodyWidth = (0.024 + fi * 0.004) * (0.48 + progress * 0.72) * uThickness;
+    float softness = bodyWidth * 0.5;
+    float body = 1.0 - smoothstep(bodyWidth - softness, bodyWidth + softness, distanceToStrand);
+    float signedDistance = uv.y - y;
+    float rimWidth = max(bodyWidth * 0.12, 0.0009);
+    float upperRim = exp(-abs(signedDistance - bodyWidth * 0.72) / rimWidth);
+    float lowerRim = exp(-abs(signedDistance + bodyWidth * 0.68) / (rimWidth * 1.8)) * 0.16;
+    float innerFold = pow(0.5 + 0.5 * sin((signedDistance / bodyWidth) * 2.3 + phase + time * 0.06), 7.0) * body;
+    vec3 strand = palette(fi / float(uStrandCount) + progress * 0.12);
+    vec3 champagne = mix(vec3(0.032, 0.029, 0.024), strand * 0.12, 0.38 + innerFold * 0.62);
+    color += (champagne * body + strand * upperRim * 0.22 + strand * lowerRim + strand * innerFold * 0.055) * envelope;
   }
 
-  color = 1.0 - exp(-color * uGlow * (0.42 + energy));
+  color = 1.0 - exp(-color * uGlow * (0.22 + energy * 0.38));
   float gray = dot(color, vec3(0.2126, 0.7152, 0.0722));
   color = max(mix(vec3(gray), color, uSaturation), 0.0);
   float alpha = clamp(max(max(color.r, color.g), color.b), 0.0, 1.0) * uOpacity;
@@ -84,6 +97,7 @@ export type StrandsProps = {
 	saturation?: number;
 	opacity?: number;
 	scale?: number;
+	disableAnimation?: boolean;
 	className?: string;
 	style?: CSSProperties;
 };
@@ -110,12 +124,13 @@ export function Strands({
 	saturation = 0.52,
 	opacity = 0.9,
 	scale = 1.25,
+	disableAnimation = false,
 	className = '',
 	style,
 }: StrandsProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
-	const valuesRef = useRef({ colors, count, speed, amplitude, waviness, thickness, glow, taper, spread, intensity, saturation, opacity, scale });
-	valuesRef.current = { colors, count, speed, amplitude, waviness, thickness, glow, taper, spread, intensity, saturation, opacity, scale };
+	const valuesRef = useRef({ colors, count, speed, amplitude, waviness, thickness, glow, taper, spread, intensity, saturation, opacity, scale, disableAnimation });
+	valuesRef.current = { colors, count, speed, amplitude, waviness, thickness, glow, taper, spread, intensity, saturation, opacity, scale, disableAnimation };
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -161,7 +176,7 @@ export function Strands({
 			frame = requestAnimationFrame(render);
 			if (document.hidden) return;
 			const current = valuesRef.current;
-			program.uniforms.uTime.value = time * 0.001;
+			if (!current.disableAnimation) program.uniforms.uTime.value = time * 0.001;
 			program.uniforms.uColors.value = buildPalette(current.colors);
 			program.uniforms.uColorCount.value = Math.min(current.colors.length, MAX_COLORS);
 			program.uniforms.uStrandCount.value = Math.min(Math.max(Math.round(current.count), 1), MAX_STRANDS);

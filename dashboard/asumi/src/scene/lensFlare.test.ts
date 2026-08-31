@@ -10,8 +10,9 @@ describe('Asumi lens flare composition', () => {
 
 	test('keeps every ghost subtle enough to remain behind the brand', () => {
 		for (const ghost of LENS_FLARE_GHOSTS) {
-			expect(ghost.opacity).toBeLessThanOrEqual(0.12);
+			expect(ghost.opacity).toBeLessThanOrEqual(0.05);
 			expect(ghost.opacity).toBeGreaterThan(0);
+			expect(ghost.size).toBeLessThanOrEqual(1);
 		}
 	});
 });

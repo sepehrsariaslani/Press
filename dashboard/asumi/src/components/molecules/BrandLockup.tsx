@@ -5,8 +5,8 @@ export function BrandLockup() {
 		<div className="brand-lockup">
 			<h1 data-wordmark><BrandMark className="brand-lockup__wordmark" /></h1>
 			<p className="brand-lockup__kanji" data-kanji>明日美</p>
-			<p className="brand-lockup__english" data-copy>A Beautiful Tomorrow</p>
-			<p className="brand-lockup__persian" data-copy>آینده‌ای روشن</p>
+			<p className="brand-lockup__english" data-english>A Beautiful Tomorrow</p>
+			<p className="brand-lockup__persian" data-persian>آینده‌ای <span data-bright-word>روشن</span></p>
 		</div>
 	);
 }

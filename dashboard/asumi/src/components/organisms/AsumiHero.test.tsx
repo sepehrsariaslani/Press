@@ -17,19 +17,26 @@ beforeEach(() => {
 });
 
 test('renders every line of the approved brand lockup', () => {
-	render(<AsumiHero />);
+	const { container } = render(<AsumiHero />);
 
+	expect(screen.getByTestId('galaxy-background')).toBeInTheDocument();
 	expect(screen.getByTestId('hybrid-horizon')).toBeInTheDocument();
 	expect(screen.getByRole('heading', { name: 'ASUMI' })).toBeInTheDocument();
 	expect(screen.getByText('明日美')).toBeInTheDocument();
 	expect(screen.getByText('A Beautiful Tomorrow')).toBeInTheDocument();
-	expect(screen.getByText('آینده‌ای روشن')).toBeInTheDocument();
+	expect(screen.getByText('آینده‌ای', { exact: false })).toHaveTextContent('آینده‌ای روشن');
+	expect(container.querySelectorAll('.asumi-particle')).toHaveLength(24);
 });
 
-test('keeps the brand frame free of a pill CTA', () => {
+test('renders the cinematic layers in the approved order', () => {
 	render(<AsumiHero />);
 
-	expect(screen.queryByRole('link', { name: 'Explore Work' })).not.toBeInTheDocument();
+	const layers = screen.getByTestId('asumi-hero').querySelectorAll(':scope > [data-layer]');
+	expect(Array.from(layers, (layer) => layer.getAttribute('data-layer'))).toEqual([
+		'galaxy', 'haze', 'sunrise', 'ribbons', 'particles', 'orbits', 'typography', 'cta',
+	]);
+	expect(screen.getByRole('link', { name: 'Explore Work' })).toBeInTheDocument();
+	expect(screen.getAllByTestId('orbit')).toHaveLength(3);
 });
 
 test('does not bind pointer parallax when reduced motion is requested', () => {

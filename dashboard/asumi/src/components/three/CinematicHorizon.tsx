@@ -3,8 +3,6 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { LENS_FLARE_GHOSTS } from '../../scene/lensFlare';
 
-const gold = new THREE.Color('#c8a66a');
-const paleGold = new THREE.Color('#f6dfb0');
 
 const horizonVertex = `
 varying vec2 vUv;
@@ -74,52 +72,6 @@ void main() {
   gl_FragColor = vec4(color * strength, clamp(strength, 0.0, 1.0));
 }`;
 
-const fabricVertex = `
-uniform float uTime;
-uniform float uReveal;
-uniform float uPhase;
-varying vec2 vUv;
-varying float vFold;
-varying float vDepth;
-void main() {
-  vUv = uv;
-  vec3 p = position;
-  float fan = smoothstep(0.0, 1.0, uv.x);
-  p.y *= mix(0.035, 1.0, pow(fan, 0.72));
-  float slow = uTime * 0.11;
-  p.y += (sin(p.x * 0.72 + slow + uPhase) * 0.32
-    + sin(p.x * 1.48 + uv.y * 4.6 - slow * 0.7 + uPhase * 1.7) * 0.11
-    + sin(p.x * 2.7 - uv.y * 7.0 + uPhase) * 0.035) * fan;
-  p.z += sin(p.x * 0.92 + uv.y * 5.4 + slow + uPhase) * 0.52 * fan;
-  p.z += cos(p.x * 1.7 - uv.y * 3.2 + uPhase) * 0.12 * fan;
-  p.x = mix(position.x - 0.1, p.x, smoothstep(0.0, 0.82, uReveal));
-  vFold = 0.5 + 0.5 * sin(p.x * 2.2 + p.z * 4.0 + uv.y * 8.0 + uPhase);
-  vDepth = p.z;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-}`;
-
-const fabricFragment = `
-precision highp float;
-uniform float uReveal;
-uniform float uOpacity;
-uniform vec3 uGold;
-varying vec2 vUv;
-varying float vFold;
-varying float vDepth;
-void main() {
-  float rim = max(exp(-(1.0 - vUv.y) * 24.0), exp(-vUv.y * 24.0));
-  float softEdge = smoothstep(0.0, 0.12, vUv.y) * smoothstep(0.0, 0.12, 1.0 - vUv.y);
-  float ends = smoothstep(0.0, 0.1, vUv.x) * smoothstep(0.0, 0.08, 1.0 - vUv.x);
-  float growth = 1.0 - smoothstep(uReveal - 0.12, uReveal, vUv.x);
-  float foldLight = pow(vFold, 7.0) * 0.34;
-  float depthLight = smoothstep(-0.35, 0.65, vDepth) * 0.15;
-  vec3 graphite = vec3(0.055, 0.06, 0.058);
-  vec3 body = mix(graphite, uGold * 0.56, clamp(foldLight + depthLight, 0.0, 0.58));
-  vec3 color = body + uGold * rim * 1.2 + uGold * foldLight * 1.15;
-  float alpha = (0.14 + foldLight * 0.62 + rim * 0.68) * softEdge * ends * growth * uOpacity;
-  gl_FragColor = vec4(color, alpha);
-}`;
-
 function HorizonLight() {
 	const material = useRef<THREE.ShaderMaterial>(null);
 	const uniforms = useMemo(() => ({ uReveal: { value: 0 }, uTime: { value: 0 } }), []);
@@ -179,68 +131,6 @@ function LensFlare() {
 	);
 }
 
-type FabricLayerProps = {
-	phase: number;
-	position: [number, number, number];
-	rotation: number;
-	scale: number;
-	opacity: number;
-};
-
-function FabricLayer({ phase, position, rotation, scale, opacity }: FabricLayerProps) {
-	const material = useRef<THREE.ShaderMaterial>(null);
-	const uniforms = useMemo(() => ({
-		uTime: { value: 0 }, uReveal: { value: 0 }, uPhase: { value: phase },
-		uOpacity: { value: opacity }, uGold: { value: gold },
-	}), [opacity, phase]);
-	useFrame(({ clock }) => {
-		if (!material.current) return;
-		material.current.uniforms.uTime.value = clock.elapsedTime;
-		material.current.uniforms.uReveal.value = THREE.MathUtils.smoothstep(clock.elapsedTime, 2.05, 3.25);
-	});
-	return (
-		<mesh position={position} rotation={[0.08, -0.1, rotation]} scale={scale}>
-			<planeGeometry args={[7.4, 3.1, 160, 64]} />
-			<shaderMaterial depthWrite={false} fragmentShader={fabricFragment} ref={material} side={THREE.DoubleSide} toneMapped={false} transparent uniforms={uniforms} vertexShader={fabricVertex} />
-		</mesh>
-	);
-}
-
-function FabricWaves() {
-	return (
-		<group>
-			<FabricLayer opacity={0.82} phase={0.2} position={[3.42, -1.12, -0.75]} rotation={0.01} scale={1} />
-			<FabricLayer opacity={0.56} phase={1.8} position={[3.18, -1.4, -1.28]} rotation={-0.035} scale={0.92} />
-			<FabricLayer opacity={0.38} phase={3.1} position={[3.7, -1.65, -1.75]} rotation={0.05} scale={1.08} />
-		</group>
-	);
-}
-
-function GoldenParticles() {
-	const points = useRef<THREE.Points>(null);
-	const positions = useMemo(() => {
-		const data = new Float32Array(96 * 3);
-		for (let index = 0; index < 96; index += 1) {
-			const seed = index + 1;
-			data[index * 3] = Math.sin(seed * 47.13) * 4.8;
-			data[index * 3 + 1] = -1.25 + (Math.sin(seed * 19.71) * 0.5 + 0.5) * 2.15;
-			data[index * 3 + 2] = -2.6 + (Math.sin(seed * 8.37) * 0.5 + 0.5) * 2.1;
-		}
-		return data;
-	}, []);
-	useFrame(({ clock }) => {
-		if (!points.current || !(points.current.material instanceof THREE.PointsMaterial)) return;
-		points.current.rotation.z = Math.sin(clock.elapsedTime * 0.08) * 0.012;
-		points.current.material.opacity = 0.38 * THREE.MathUtils.smoothstep(clock.elapsedTime, 2.45, 3.25);
-	});
-	return (
-		<points ref={points}>
-			<bufferGeometry><bufferAttribute args={[positions, 3]} attach="attributes-position" /></bufferGeometry>
-			<pointsMaterial blending={THREE.AdditiveBlending} color={paleGold} depthWrite={false} opacity={0} size={0.014} sizeAttenuation transparent />
-		</points>
-	);
-}
-
 export function CinematicHorizon() {
 	const scene = useRef<THREE.Group>(null);
 	const { camera, pointer } = useThree();
@@ -254,8 +144,6 @@ export function CinematicHorizon() {
 	return (
 		<group ref={scene}>
 			<LensFlare />
-			<GoldenParticles />
-			<FabricWaves />
 			<HorizonLight />
 		</group>
 	);
