@@ -8,8 +8,8 @@ export function useReducedMotion() {
 	useEffect(() => {
 		const mediaQuery = window.matchMedia(query);
 		const updatePreference = () => setReducedMotion(mediaQuery.matches);
-		mediaQuery.addEventListener('change', updatePreference);
-		return () => mediaQuery.removeEventListener('change', updatePreference);
+		mediaQuery.addEventListener?.('change', updatePreference);
+		return () => mediaQuery.removeEventListener?.('change', updatePreference);
 	}, []);
 
 	return reducedMotion;

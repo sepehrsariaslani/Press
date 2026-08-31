@@ -3,5 +3,5 @@ type ParticleProps = {
 };
 
 export function Particle({ index }: ParticleProps) {
-	return <span aria-hidden="true" className="asumi-particle" data-index={index} />;
+	return <span aria-hidden="true" className="asumi-particle" data-index={index} data-particle />;
 }

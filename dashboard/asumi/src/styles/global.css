@@ -52,3 +52,210 @@ body {
 	place-items: center;
 	font-size: 1.2rem;
 }
+
+.asumi-app {
+	min-height: 100svh;
+}
+
+.asumi-hero {
+	--pointer-x: 0;
+	--pointer-y: 0;
+	position: relative;
+	min-height: 100svh;
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 50% 82%, var(--asumi-glow), transparent 18rem),
+		var(--asumi-bg);
+	isolation: isolate;
+}
+
+.asumi-header {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 4;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1.5rem clamp(1.25rem, 4vw, 4.5rem);
+	border-bottom: 1px solid transparent;
+	transition: background-color var(--asumi-transition-fast) var(--asumi-ease),
+		backdrop-filter var(--asumi-transition-fast) var(--asumi-ease),
+		border-color var(--asumi-transition-fast) var(--asumi-ease);
+}
+
+.asumi-header--compact {
+	border-color: rgb(200 166 106 / 8%);
+	background: color-mix(in srgb, var(--asumi-bg) 72%, transparent);
+	backdrop-filter: blur(18px);
+}
+
+.asumi-header__brand {
+	direction: ltr;
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 0.87rem;
+	letter-spacing: 0.35em;
+	color: var(--asumi-gold-bright);
+}
+
+.asumi-hero__scene,
+.horizon-scene,
+.horizon-scene__svg {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.horizon-scene {
+	transform: translate(calc(var(--pointer-x) * 4px), calc(var(--pointer-y) * 4px));
+	transition: transform 800ms var(--asumi-ease);
+}
+
+.horizon-scene__svg {
+	overflow: visible;
+}
+
+.horizon-scene__sun-glow {
+	transform-box: fill-box;
+	transform-origin: center;
+}
+
+.horizon-scene__reflection {
+	opacity: 0.55;
+}
+
+.horizon-scene__orbits {
+	opacity: 0.24;
+	stroke-dasharray: 1700;
+}
+
+.horizon-scene__horizon {
+	opacity: 0.72;
+}
+
+.horizon-scene__waves {
+	filter: drop-shadow(0 0 8px rgb(200 166 106 / 26%));
+}
+
+.horizon-scene__particles {
+	position: absolute;
+	inset: 22% 9% 16%;
+}
+
+.asumi-particle {
+	position: absolute;
+	width: 2px;
+	height: 2px;
+	border-radius: 50%;
+	background: var(--asumi-gold-bright);
+	box-shadow: 0 0 10px var(--asumi-gold);
+	opacity: 0;
+}
+
+.asumi-particle:nth-child(3n) { left: 18%; top: 76%; }
+.asumi-particle:nth-child(3n + 1) { left: 73%; top: 43%; }
+.asumi-particle:nth-child(3n + 2) { left: 91%; top: 68%; }
+.asumi-particle:nth-child(4n) { transform: scale(0.7); opacity: 0.42; }
+.asumi-particle:nth-child(5n) { transform: scale(1.5); }
+
+.asumi-hero__content {
+	position: relative;
+	z-index: 2;
+	display: grid;
+	min-height: 100svh;
+	place-items: center;
+	align-content: center;
+	padding: 7rem 1.5rem 3rem;
+	text-align: center;
+}
+
+.brand-lockup {
+	display: grid;
+	justify-items: center;
+	gap: 0.8rem;
+	margin-top: -4rem;
+}
+
+.brand-lockup h1,
+.brand-lockup p {
+	margin: 0;
+}
+
+.brand-lockup__wordmark {
+	display: inline-block;
+	direction: ltr;
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: clamp(3rem, 8vw, 7rem);
+	font-weight: 400;
+	letter-spacing: 0.28em;
+	color: var(--asumi-gold-bright);
+	text-shadow: 0 0 30px rgb(226 189 118 / 18%);
+}
+
+.brand-lockup__kanji {
+	direction: ltr;
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: clamp(1.25rem, 2.5vw, 2rem);
+	letter-spacing: 0.32em;
+	color: var(--asumi-gold);
+}
+
+.brand-lockup__kanji::before,
+.brand-lockup__kanji::after {
+	display: inline-block;
+	width: 2.6rem;
+	margin: 0 0.8rem;
+	border-top: 1px solid var(--asumi-gold);
+	content: '';
+	vertical-align: middle;
+}
+
+.brand-lockup__english {
+	direction: ltr;
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: clamp(1rem, 1.7vw, 1.3rem);
+	letter-spacing: 0.08em;
+	color: var(--asumi-text);
+}
+
+.brand-lockup__persian {
+	font-size: clamp(1rem, 2vw, 1.35rem);
+	color: var(--asumi-gold-bright);
+}
+
+.asumi-hero__cta {
+	position: absolute;
+	bottom: clamp(1.5rem, 4vw, 3.5rem);
+	display: inline-flex;
+	gap: 0.85rem;
+	align-items: center;
+	padding: 0.75rem 1.1rem 0.75rem 1.35rem;
+	font-family: Georgia, 'Times New Roman', serif;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.asumi-hero__cta:hover span:last-child {
+	transform: translateX(-4px) rotate(-8deg);
+}
+
+@media (max-width: 700px) {
+	.asumi-header { padding: 1.1rem 1.25rem; }
+	.brand-lockup { margin-top: -2rem; }
+	.horizon-scene__particles .asumi-particle:nth-child(n + 13) { display: none; }
+	.horizon-scene__orbits { opacity: 0.16; }
+	.horizon-scene { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root { scroll-behavior: auto; }
+	*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 300ms !important; }
+	.asumi-hero { animation: asumi-fade-in 300ms ease-out both; }
+}
+
+@keyframes asumi-fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
