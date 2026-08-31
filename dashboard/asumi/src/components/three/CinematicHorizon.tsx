@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { LENS_FLARE_GHOSTS } from '../../scene/lensFlare';
 
 const gold = new THREE.Color('#c8a66a');
 const paleGold = new THREE.Color('#f6dfb0');
@@ -28,6 +29,49 @@ void main() {
   float strength = core * 1.35 + line * 0.54 + haze * 0.22 + reflection * 0.2;
   vec3 color = mix(vec3(0.42, 0.26, 0.11), vec3(1.0, 0.91, 0.72), clamp(core + line, 0.0, 1.0));
   gl_FragColor = vec4(color * strength * uReveal, clamp(strength * uReveal, 0.0, 1.0));
+}`;
+
+const ghostFragment = `
+precision highp float;
+varying vec2 vUv;
+uniform float uReveal;
+uniform float uOpacity;
+uniform float uPhase;
+uniform float uWarmth;
+uniform float uTime;
+void main() {
+  vec2 p = (vUv - 0.5) * 2.0;
+  float radius = length(p);
+  float angle = atan(p.y, p.x);
+  float shell = exp(-abs(radius - 0.82) * 42.0);
+  float outerHaze = exp(-radius * radius * 2.15) * 0.075;
+  float innerRing = exp(-abs(radius - 0.48) * 18.0) * 0.12;
+  float caustic = innerRing * (0.34 + 0.66 * pow(0.5 + 0.5 * cos(angle * 2.0 + uPhase + uTime * 0.04), 3.0));
+  float aperture = smoothstep(1.0, 0.91, radius);
+  vec3 neutral = vec3(0.62, 0.65, 0.62);
+  vec3 amber = vec3(0.88, 0.61, 0.29);
+  vec3 color = mix(neutral, amber, uWarmth);
+	float strength = (shell * 0.78 + outerHaze * 1.25 + caustic * 1.18) * aperture * uOpacity * uReveal;
+  gl_FragColor = vec4(color * strength, strength);
+}`;
+
+const starFragment = `
+precision highp float;
+varying vec2 vUv;
+uniform float uReveal;
+uniform float uTime;
+void main() {
+  vec2 p = (vUv - 0.5) * 2.0;
+  float c = 0.70710678;
+  vec2 diagonal = vec2(p.x * c - p.y * c, p.x * c + p.y * c);
+  float core = exp(-length(p) * 34.0);
+  float rayA = exp(-abs(diagonal.y) * 115.0) * exp(-abs(diagonal.x) * 4.2);
+  float rayB = exp(-abs(diagonal.x) * 150.0) * exp(-abs(diagonal.y) * 6.0) * 0.56;
+  float needle = exp(-abs(p.y) * 190.0) * exp(-abs(p.x) * 7.0) * 0.42;
+  float pulse = 0.94 + sin(uTime * 0.7) * 0.06;
+  float strength = (core * 1.8 + rayA * 0.48 + rayB * 0.3 + needle * 0.22) * uReveal * pulse;
+  vec3 color = mix(vec3(1.0, 0.83, 0.52), vec3(1.0, 0.98, 0.9), core);
+  gl_FragColor = vec4(color * strength, clamp(strength, 0.0, 1.0));
 }`;
 
 const fabricVertex = `
@@ -92,33 +136,47 @@ function HorizonLight() {
 	);
 }
 
-function OrbitRings() {
+function LensFlare() {
 	const group = useRef<THREE.Group>(null);
-	const rings = useMemo(() => [
-		{ center: [-0.18, 0.25, -1.7], radius: [1.88, 2.15], opacity: 0.075, delay: 0 },
-		{ center: [0.34, 0.1, -2.15], radius: [2.34, 2.02], opacity: 0.048, delay: 0.18 },
-		{ center: [-0.44, 0.34, -2.7], radius: [2.78, 2.35], opacity: 0.028, delay: 0.36 },
-	].map((spec) => {
-		const points = Array.from({ length: 192 }, (_, index) => {
-			const angle = index / 192 * Math.PI * 2;
-			return new THREE.Vector3(Math.cos(angle) * spec.radius[0], Math.sin(angle) * spec.radius[1], 0);
+	const ghostMaterials = useRef<Array<THREE.ShaderMaterial | null>>([]);
+	const starMaterial = useRef<THREE.ShaderMaterial>(null);
+	const ghostUniforms = useMemo(() => LENS_FLARE_GHOSTS.map((ghost) => ({
+		uReveal: { value: 0 }, uOpacity: { value: ghost.opacity }, uPhase: { value: ghost.phase },
+		uWarmth: { value: ghost.warmth }, uTime: { value: 0 },
+	})), []);
+	const starUniforms = useMemo(() => ({ uReveal: { value: 0 }, uTime: { value: 0 } }), []);
+
+	useFrame(({ clock, pointer }, delta) => {
+		const reveal = THREE.MathUtils.smoothstep(clock.elapsedTime, 0.68, 1.5);
+		ghostMaterials.current.forEach((material) => {
+			if (!material) return;
+			material.uniforms.uReveal.value = reveal;
+			material.uniforms.uTime.value = clock.elapsedTime;
 		});
-		const line = new THREE.LineLoop(
-			new THREE.BufferGeometry().setFromPoints(points),
-			new THREE.LineBasicMaterial({ color: gold, opacity: 0, transparent: true }),
-		);
-		line.position.set(spec.center[0], spec.center[1], spec.center[2]);
-		line.userData = spec;
-		return line;
-	}), []);
-	useFrame(({ clock }) => {
-		if (group.current) group.current.rotation.z = Math.sin(clock.elapsedTime * 0.08) * 0.012;
-		for (const ring of rings) {
-			const reveal = THREE.MathUtils.smoothstep(clock.elapsedTime, 0.78 + ring.userData.delay, 1.55 + ring.userData.delay);
-			(ring.material as THREE.LineBasicMaterial).opacity = ring.userData.opacity * reveal;
+		if (starMaterial.current) {
+			starMaterial.current.uniforms.uReveal.value = THREE.MathUtils.smoothstep(clock.elapsedTime, 0.28, 0.82);
+			starMaterial.current.uniforms.uTime.value = clock.elapsedTime;
+		}
+		if (group.current) {
+			group.current.position.x = THREE.MathUtils.damp(group.current.position.x, pointer.x * -0.035, 2.4, delta);
+			group.current.position.y = THREE.MathUtils.damp(group.current.position.y, pointer.y * -0.02, 2.4, delta);
 		}
 	});
-	return <group ref={group}>{rings.map((ring, index) => <primitive key={index} object={ring} />)}</group>;
+
+	return (
+		<group ref={group}>
+			{LENS_FLARE_GHOSTS.map((ghost, index) => (
+				<mesh key={index} position={ghost.position} scale={ghost.size}>
+					<planeGeometry args={[1, 1]} />
+					<shaderMaterial blending={THREE.AdditiveBlending} depthWrite={false} fragmentShader={ghostFragment} ref={(material) => { ghostMaterials.current[index] = material; }} toneMapped={false} transparent uniforms={ghostUniforms[index]} vertexShader={horizonVertex} />
+				</mesh>
+			))}
+			<mesh position={[0, -1.13, 0.5]} scale={1.45}>
+				<planeGeometry args={[1.8, 1.8]} />
+				<shaderMaterial blending={THREE.AdditiveBlending} depthWrite={false} fragmentShader={starFragment} ref={starMaterial} toneMapped={false} transparent uniforms={starUniforms} vertexShader={horizonVertex} />
+			</mesh>
+		</group>
+	);
 }
 
 type FabricLayerProps = {
@@ -195,7 +253,7 @@ export function CinematicHorizon() {
 	});
 	return (
 		<group ref={scene}>
-			<OrbitRings />
+			<LensFlare />
 			<GoldenParticles />
 			<FabricWaves />
 			<HorizonLight />

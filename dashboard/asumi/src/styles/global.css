@@ -143,7 +143,6 @@ button, a { font: inherit; }
 .hybrid-horizon[data-cinematic='on'] .hybrid-horizon__fallback { opacity: 0; transition: opacity 500ms var(--asumi-ease); }
 
 .horizon-scene { transform: translate(calc(var(--pointer-x) * 2px), calc(var(--pointer-y) * 2px)); transition: transform 1s var(--asumi-ease); }
-.horizon-scene__orbits { stroke-dasharray: 1700; }
 .horizon-scene__particles { position: absolute; inset: 30% 8% 10%; }
 
 .asumi-particle {
