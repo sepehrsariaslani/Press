@@ -55,14 +55,16 @@ void main() {
     float phase = fi * 1.47 * uSpread;
     float speedScale = mix(0.64, 1.16, fract(fi * 0.71));
     float time = uTime * uSpeed * speedScale;
-    float low = sin(uv.x * (1.45 + fi * 0.17) * uWaviness - time * 0.34 + phase);
-    float fold = sin(uv.x * (3.2 + fi * 0.23) * uWaviness + time * 0.21 + phase * 1.7);
-    float detail = sin(uv.x * 6.4 - time * 0.13 + phase * 2.2);
-    float rise = pow(progress, 1.18) * (0.12 + fi * 0.012) - 0.07;
-    float spreadOffset = (fi - float(uStrandCount - 1) * 0.5) * 0.058 * uSpread * pow(progress, 0.82);
-    float y = rise + spreadOffset + (low * 0.072 + fold * 0.034 + detail * 0.012) * uAmplitude * (0.28 + progress);
+    float low = sin(uv.x * (1.2 + fi * 0.15) * uWaviness - time * 0.34 + phase);
+    float fold = sin(uv.x * (2.8 + fi * 0.21) * uWaviness + time * 0.21 + phase * 1.7);
+    float detail = sin(uv.x * 5.6 - time * 0.13 + phase * 2.2);
+    float fan = smoothstep(0.02, 0.82, progress);
+    float rise = -0.2 + pow(progress, 2.35) * (0.52 + fi * 0.022);
+    float spreadOffset = (fi - float(uStrandCount - 1) * 0.5) * 0.105 * uSpread * pow(progress, 1.3);
+    float organicBend = (low * 0.075 + fold * 0.038 + detail * 0.014) * uAmplitude * (0.08 + fan * 0.92);
+    float y = rise + spreadOffset + organicBend;
     float distanceToStrand = abs(uv.y - y);
-    float bodyWidth = (0.024 + fi * 0.004) * (0.48 + progress * 0.72) * uThickness;
+    float bodyWidth = (0.024 + fi * 0.004) * mix(0.2, 1.18, fan) * uThickness;
     float softness = bodyWidth * 0.5;
     float body = 1.0 - smoothstep(bodyWidth - softness, bodyWidth + softness, distanceToStrand);
     float signedDistance = uv.y - y;
@@ -71,8 +73,8 @@ void main() {
     float lowerRim = exp(-abs(signedDistance + bodyWidth * 0.68) / (rimWidth * 1.8)) * 0.16;
     float innerFold = pow(0.5 + 0.5 * sin((signedDistance / bodyWidth) * 2.3 + phase + time * 0.06), 7.0) * body;
     vec3 strand = palette(fi / float(uStrandCount) + progress * 0.12);
-    vec3 champagne = mix(vec3(0.032, 0.029, 0.024), strand * 0.12, 0.38 + innerFold * 0.62);
-    color += (champagne * body + strand * upperRim * 0.22 + strand * lowerRim + strand * innerFold * 0.055) * envelope;
+    vec3 champagne = mix(vec3(0.032, 0.029, 0.024), strand * 0.24, 0.48 + innerFold * 0.52);
+    color += (champagne * body + strand * upperRim * 0.38 + strand * lowerRim + strand * innerFold * 0.08) * envelope;
   }
 
   color = 1.0 - exp(-color * uGlow * (0.22 + energy * 0.38));

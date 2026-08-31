@@ -15,3 +15,8 @@ test('build emits cache-busted assets and synchronizes the Frappe shell', () => 
 	expect(viteConfig).not.toContain("entryFileNames: 'assets/main.js'");
 	expect(asumiPackage.scripts.build).toContain('sync-frappe-shell.mjs');
 });
+
+test('the Asumi HTML shell bypasses Frappe page caching', () => {
+	const pageController = readFileSync(resolve(process.cwd(), '../../press/www/asumi.py'), 'utf8');
+	expect(pageController).toContain('no_cache = 1');
+});

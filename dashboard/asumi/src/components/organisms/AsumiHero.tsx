@@ -45,15 +45,15 @@ export function AsumiHero({ active = true }: AsumiHeroProps) {
 				},
 			});
 		timeline
-				.fromTo('[data-sunrise]', { opacity: 0, scale: 0.1, transformOrigin: '50% 76%' }, { opacity: 1, scale: 1, duration: 1, ease: 'power3.out' }, 0.2)
-				.fromTo('[data-haze]', { opacity: 0 }, { opacity: 0.9, duration: 1.15, ease: 'power2.out' }, 0.4)
-				.fromTo('[data-orbit-path]', { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.85, stagger: 0.12, ease: 'power2.inOut' }, 0.65)
+				.fromTo('[data-sunrise]', { opacity: 0.18, scale: 0.12, transformOrigin: '50% 76%' }, { opacity: 1, scale: 1, duration: 2.15, ease: 'power2.out' }, 0)
+				.fromTo('[data-haze]', { opacity: 0 }, { opacity: 0.96, duration: 1.8, ease: 'power2.out' }, 0.3)
+				.fromTo('[data-orbit-path]', { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.85, stagger: 0.12, ease: 'power2.inOut' }, 0.8)
 				.fromTo('[data-wordmark]', { opacity: 0, letterSpacing: '0.65em', filter: 'blur(12px)', y: 14 }, { opacity: 1, letterSpacing: '0.42em', filter: 'blur(0px)', y: 0, duration: 1.1, ease: 'power3.out' }, 0.95)
 				.fromTo('[data-kanji]', { opacity: 0, y: 8, filter: 'blur(7px)', '--line-scale': 0 }, { opacity: 1, y: 0, filter: 'blur(0px)', '--line-scale': 1, duration: 0.72, ease: 'power2.out' }, 1.25)
 				.fromTo('[data-english]', { opacity: 0, y: 8, filter: 'blur(7px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power2.out' }, 1.5)
 				.fromTo('[data-persian]', { opacity: 0, y: 8, filter: 'blur(7px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.72, ease: 'power2.out' }, 1.75)
 				.to('[data-sunrise]', { filter: 'brightness(1.15)', duration: 0.32, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 1.8)
-				.fromTo('[data-ribbons]', { opacity: 0, clipPath: 'inset(0 100% 0 0)' }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', duration: 1.15, ease: 'power2.out' }, 1.95)
+				.fromTo('[data-ribbons]', { opacity: 0, clipPath: 'inset(0 100% 0 0)' }, { opacity: 1, clipPath: 'inset(0 0% 0 0)', duration: 1.55, ease: 'power2.out' }, 1.25)
 				.fromTo('[data-particles]', { opacity: 0 }, { opacity: 1, duration: 0.7, ease: 'power2.out' }, 2.2)
 				.fromTo('[data-cta]', { opacity: 0, y: 10, filter: 'blur(5px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.72, ease: 'power3.out' }, 2.45);
 		return () => {
@@ -68,10 +68,10 @@ export function AsumiHero({ active = true }: AsumiHeroProps) {
 			<div className="asumi-hero__galaxy" data-layer="galaxy" data-testid="galaxy-background">
 				<Galaxy disableAnimation={reducedMotion} />
 			</div>
-			<div className="asumi-hero__haze" data-haze data-layer="haze"><LaserFlow disableAnimation={reducedMotion} /></div>
+			<div className="asumi-hero__haze" data-haze data-layer="haze"><LaserFlow disableAnimation={reducedMotion} fogIntensity={0.72} horizontalSizing={0.72} verticalSizing={0.11} wispIntensity={1.6} /></div>
 			<div className="asumi-hero__scene" data-layer="sunrise" data-sunrise><HybridHorizonScene active={active} reducedMotion={reducedMotion} /></div>
 			<div className="asumi-hero__ribbons" data-layer="ribbons" data-ribbons>
-				<Strands amplitude={0.7} colors={['#84683d', '#c8a66a', '#e2bd76', '#f4f0e8']} count={4} disableAnimation={reducedMotion} glow={2.8} intensity={0.42} opacity={0.7} saturation={0.28} scale={1.6} speed={0.28} spread={0.9} taper={4.5} thickness={1.15} waviness={0.72} />
+				<Strands amplitude={0.7} colors={['#84683d', '#c8a66a', '#e2bd76', '#f4f0e8']} count={4} disableAnimation={reducedMotion} glow={3.05} intensity={0.52} opacity={0.82} saturation={0.58} scale={1.6} speed={0.28} spread={0.9} taper={4.5} thickness={1.15} waviness={0.72} />
 			</div>
 			<div className="asumi-hero__particles" data-layer="particles" data-particles><LocalParticles /></div>
 			<div className="asumi-hero__orbits" data-layer="orbits"><OrbitCircles /></div>

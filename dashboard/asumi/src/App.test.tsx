@@ -1,11 +1,18 @@
-import { render, screen } from '@testing-library/react';
-import { expect, test } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import { AsumiApp } from './App';
 
-test('starts directly on the active galaxy hero without a loading veil', () => {
+afterEach(() => vi.useRealTimers());
+
+test('uses the galaxy-backed first-light loader before activating the hero', () => {
+	vi.useFakeTimers();
 	render(<AsumiApp />);
-	expect(screen.queryByRole('status', { name: 'در حال آماده سازی تجربه آسومی' })).not.toBeInTheDocument();
+	expect(screen.getByRole('status', { name: 'در حال آماده سازی تجربه آسومی' })).toBeInTheDocument();
 	expect(screen.getByRole('heading', { name: 'ASUMI' })).toBeInTheDocument();
+	expect(screen.getByTestId('asumi-hero')).toHaveAttribute('data-active', 'false');
+
+	act(() => vi.advanceTimersByTime(1400));
+	expect(screen.queryByRole('status', { name: 'در حال آماده سازی تجربه آسومی' })).not.toBeInTheDocument();
 	expect(screen.getByTestId('asumi-hero')).toHaveAttribute('data-active', 'true');
 });
 
