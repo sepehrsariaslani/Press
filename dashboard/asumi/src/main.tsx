@@ -1,5 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import '@fontsource-variable/manrope';
+import '@fontsource-variable/vazirmatn';
 import { AsumiApp } from './App';
 import './styles/global.css';
 

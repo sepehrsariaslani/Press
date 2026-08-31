@@ -22,10 +22,11 @@ class SceneBoundary extends Component<{ children: ReactNode; onError: () => void
 }
 
 type HybridHorizonSceneProps = {
+	active: boolean;
 	reducedMotion: boolean;
 };
 
-export function HybridHorizonScene({ reducedMotion }: HybridHorizonSceneProps) {
+export function HybridHorizonScene({ active, reducedMotion }: HybridHorizonSceneProps) {
 	const [cinematic, setCinematic] = useState(false);
 	const [ready, setReady] = useState(false);
 	const [visible, setVisible] = useState(true);
@@ -33,7 +34,7 @@ export function HybridHorizonScene({ reducedMotion }: HybridHorizonSceneProps) {
 	useEffect(() => {
 		const media = window.matchMedia('(pointer: fine)');
 		const update = () => {
-			const enabled = canUseCinematicScene({
+			const enabled = active && canUseCinematicScene({
 				finePointer: media.matches,
 				reducedMotion,
 				viewportWidth: window.innerWidth,
@@ -49,7 +50,7 @@ export function HybridHorizonScene({ reducedMotion }: HybridHorizonSceneProps) {
 			window.removeEventListener('resize', update);
 			media.removeEventListener?.('change', update);
 		};
-	}, [reducedMotion]);
+	}, [active, reducedMotion]);
 
 	useEffect(() => {
 		const host = document.querySelector('[data-testid="hybrid-horizon"]');

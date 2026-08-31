@@ -3,10 +3,15 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>ASUMI | آینده ای روشن</title>
+		<title>ASUMI | آینده‌ای روشن</title>
+		<style>
+			#asumi-preload{position:fixed;inset:0;display:grid;place-items:center;overflow:hidden;background:#050708;color:#e2bd76;font-family:Arial,sans-serif}
+			#asumi-preload:before{position:absolute;top:58%;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(200,166,106,.28),#fff0c9,rgba(200,166,106,.28),transparent);box-shadow:0 0 24px rgba(226,189,118,.32);content:""}
+			#asumi-preload span{margin-top:-8rem;font-size:clamp(20px,2vw,30px);font-weight:300;letter-spacing:.62em;text-indent:.62em}
+		</style>
 	</head>
 	<body>
-		<div id="root"></div>
+		<div id="root"><div id="asumi-preload"><span>ASUMI</span></div></div>
 		<script type="module" src="/src/main.tsx"></script>
 	</body>
 </html>

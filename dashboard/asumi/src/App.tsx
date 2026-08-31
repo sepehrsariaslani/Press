@@ -1,21 +1,14 @@
+import { useState } from 'react';
 import { AsumiHero } from './components/organisms/AsumiHero';
+import { AsumiLoader } from './components/organisms/AsumiLoader';
 
 export function AsumiApp() {
+	const [ready, setReady] = useState(false);
+
 	return (
 		<main className="asumi-app">
-			<AsumiHero />
-			<section className="build-preview" id="what-we-build">
-				<div className="build-preview__eyebrow">WHAT WE BUILD</div>
-				<h2>آنچه می سازیم</h2>
-				<p>راهکارهای دیجیتال برای ساختن فردایی روشن تر</p>
-				<div className="build-preview__grid" aria-label="خدمات آسومی">
-					{['سایت سفارشی', 'سیستم جامع ERP', 'مدیریت منابع انسانی', 'مدیریت رستوران'].map((title, index) => (
-						<article className="build-preview__card" key={title}>
-							<span>0{index + 1}</span><h3>{title}</h3>
-						</article>
-					))}
-				</div>
-			</section>
+			{ready ? null : <AsumiLoader onComplete={() => setReady(true)} />}
+			<AsumiHero active={ready} />
 		</main>
 	);
 }
