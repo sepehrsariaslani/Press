@@ -8,6 +8,7 @@ test('uses the galaxy-backed first-light loader before activating the hero', () 
 	vi.useFakeTimers();
 	render(<AsumiApp />);
 	expect(screen.getByRole('status', { name: 'در حال آماده سازی تجربه آسومی' })).toBeInTheDocument();
+	expect(screen.getByTestId('loader-strands')).toBeInTheDocument();
 	expect(screen.getByRole('heading', { name: 'ASUMI' })).toBeInTheDocument();
 	expect(screen.getByTestId('asumi-hero')).toHaveAttribute('data-active', 'false');
 

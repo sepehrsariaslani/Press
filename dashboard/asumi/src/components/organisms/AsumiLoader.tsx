@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { LoaderStrands } from '../effects/LoaderStrands';
 
 type AsumiLoaderProps = {
 	onComplete: () => void;
@@ -18,7 +19,9 @@ export function AsumiLoader({ onComplete, onReveal }: AsumiLoaderProps) {
 
 	return (
 		<div className="asumi-loader" role="status" aria-label="در حال آماده سازی تجربه آسومی">
-			<div className="asumi-loader__first-light" aria-hidden="true" />
+			<div className="asumi-loader__strands">
+				<LoaderStrands />
+			</div>
 		</div>
 	);
 }
