@@ -1,7 +1,7 @@
 import frappe
 from frappe.website.path_resolver import resolve_path as default_resolve_path
 
-ASUMI_HOSTS = {"asumi.ir", "www.asumi.ir"}
+ASUMI_HOSTS = {"asumi", "asumi.ir", "www.asumi.ir"}
 
 
 def get_request_host() -> str:

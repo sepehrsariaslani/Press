@@ -10,12 +10,15 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Tuple, TypedDict
 
-
-class CommandOutput(TypedDict):
-	cwd: str
-	image_tag: str
-	returncode: int
-	output: str
+CommandOutput = TypedDict(
+	"CommandOutput",
+	{
+		"cwd": str,
+		"image_tag": str,
+		"returncode": int,
+		"output": str,
+	},
+)
 
 
 def copy_file_from_docker_cache(
