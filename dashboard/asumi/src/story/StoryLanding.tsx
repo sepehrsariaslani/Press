@@ -14,8 +14,8 @@ export function StoryLanding() {
   const systemReduced = useReducedMotion();
   const [motionChoice, setMotionChoice] = useState<boolean | null>(null);
   const reducedMotion = motionChoice ?? systemReduced;
-  const { root, motion, chapter } = useStoryProgress(reducedMotion);
-  return <main className="asumi-story" data-chapter={chapter} data-theme-phase={chapter === chapters.length - 1 ? 'bright' : 'dark'} data-reduced-motion={reducedMotion}>
+  const { root, motion, chapter, showingModules } = useStoryProgress(reducedMotion);
+  return <main className="asumi-story" data-chapter={chapter} data-theme-phase={chapter === chapters.length - 1 ? 'bright' : 'dark'} data-showing-modules={showingModules} data-reduced-motion={reducedMotion}>
     <a className="skip-story" href="#modules">رفتن به معرفی آسومی</a>
     <header className="story-header">
         <a className="story-brand" href="#chaos" aria-label="آسومی؛ ابتدای داستان"><BrandSignal /><span>آسومی<small>از داده تا تصمیم</small></span></a>

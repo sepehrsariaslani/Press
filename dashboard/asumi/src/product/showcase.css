@@ -11,6 +11,7 @@
   color: var(--product-ink);
   background: var(--product-paper);
   border-top: 1px solid #e7e2da;
+  scroll-margin-top: 108px;
   transition: background-color .7s ease, color .7s ease;
 }
 
@@ -243,6 +244,7 @@
 }
 
 @media (max-width: 700px) {
+  .product-showcase { scroll-margin-top: 76px; }
   .product-showcase-inner { width: calc(100% - 40px); padding: 112px 0 30px; }
   .product-intro { display: block; margin-bottom: 25px; }
   .product-eyebrow { margin-bottom: 9px; }

@@ -6,9 +6,10 @@ export type StoryMotion = { progress: number; reducedMotion: boolean; invalidate
 export type MotionRef = RefObject<StoryMotion>;
 
 export function useStoryProgress(reducedMotion: boolean) {
-  const root = useRef<HTMLElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const motion = useRef<StoryMotion>({ progress: 0, reducedMotion });
   const [chapter, setChapter] = useState(0);
+  const [showingModules, setShowingModules] = useState(false);
   useEffect(() => {
     motion.current.reducedMotion = reducedMotion;
     motion.current.invalidate?.();
@@ -24,6 +25,7 @@ export function useStoryProgress(reducedMotion: boolean) {
       motion.current.progress = p;
       motion.current.invalidate?.();
       setChapter(chapterAt(p));
+      setShowingModules(bounds.bottom < window.innerHeight - 1);
       element.style.setProperty('--story-progress', String(p));
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
@@ -39,5 +41,5 @@ export function useStoryProgress(reducedMotion: boolean) {
       window.removeEventListener('resize', schedule);
     };
   }, []);
-  return { root, motion, chapter };
+  return { root, motion, chapter, showingModules };
 }

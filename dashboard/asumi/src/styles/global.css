@@ -142,6 +142,9 @@ html:has(.asumi-story[data-reduced-motion='true']) { scroll-behavior: auto; }
 .story-experience { position: relative; background: var(--case-black); transition: background-color .75s ease; }
 .story-sticky { background: var(--case-black); transition: background-color .75s ease; }
 .story-header { transition: background-color .65s ease, border-color .65s ease, color .65s ease, backdrop-filter .65s ease; }
+.asumi-story[data-showing-modules='true'] .story-sticky,
+.asumi-story[data-showing-modules='true'] .story-copy { visibility: hidden; pointer-events: none; }
+.asumi-story[data-showing-modules='true'] .story-copy .chapter-content { visibility: hidden; opacity: 0; pointer-events: none; }
 
 .asumi-story[data-theme-phase='bright'] {
   --case-black: #f7f5f0;

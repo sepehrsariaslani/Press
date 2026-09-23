@@ -68,6 +68,9 @@ test('restores deep scroll and completes the visible decision route at the desti
   await waitFor(() => expect(container.querySelector('.route-line')).toHaveAttribute('stroke-dashoffset', '0'));
   expect(container.querySelector('.route-destination')).toHaveAttribute('opacity', '1.000');
   expect(screen.getByRole('link', { name: '6. آینده' })).toHaveAttribute('aria-current', 'step');
+  top = -window.innerHeight * 5.25;
+  fireEvent.scroll(window);
+  await waitFor(() => expect(screen.getByRole('main')).toHaveAttribute('data-showing-modules', 'true'));
 });
 
 test('removes its pointer listeners on unmount', () => {
