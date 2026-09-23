@@ -63,6 +63,7 @@ base_template_map = {
 }
 
 update_website_context = ["press.overrides.update_website_context"]
+website_path_resolver = ["press.routing.resolve_path"]
 
 website_route_rules = [
 	{"from_route": "/dashboard/<path:app_path>", "to_route": "dashboard"},
