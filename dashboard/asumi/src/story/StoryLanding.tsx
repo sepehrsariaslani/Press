@@ -1,30 +1,12 @@
-import { Component, Suspense, lazy, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { AsumiButton } from '../components/atoms/AsumiButton';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { chapters } from './chapters';
 import { useStoryProgress } from './useStoryProgress';
+import { CaseBoard } from './board/CaseBoard';
 
-const OfficeCanvas = lazy(() => import('./scene/OfficeCanvas'));
-const poster = new URL('./assets/office-poster.png', import.meta.url).href;
-
-function Sun({ className = '' }: { className?: string }) {
-  return <svg className={className} viewBox="0 0 40 40" fill="none" aria-hidden="true">
-    <path d="M7 27a13 13 0 0 1 26 0M3 31h34M10 36h20M20 3v5M5.2 9.2l3.6 3.6M34.8 9.2l-3.6 3.6M1 22h5M34 22h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-  </svg>;
-}
-
-function Poster({ failed = false }: { failed?: boolean }) {
-  return <div className="story-poster">
-    <img src={poster} alt="شخصیت آسومی با لباس سبز مریم‌گلی، روی صندلی کرم در فضایی آرام" width="1100" height="1000" />
-    {failed && <p className="scene-fallback-note">نمای ساده · داستان با اسکرول ادامه دارد</p>}
-  </div>;
-}
-
-class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  render() { return this.state.failed ? <Poster failed /> : this.props.children; }
+function BrandSignal() {
+  return <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M7 14V7h7M26 7h7v7M33 26v7h-7M14 33H7v-7M12 27l8-13 8 9" stroke="currentColor" strokeWidth="1.6" /><circle cx="20" cy="14" r="3" fill="currentColor" /><circle cx="28" cy="23" r="2" fill="currentColor" /></svg>;
 }
 
 export function StoryLanding() {
@@ -34,46 +16,38 @@ export function StoryLanding() {
   const { root, motion, chapter } = useStoryProgress(reducedMotion);
   return <main ref={root} className="asumi-story" data-chapter={chapter} data-reduced-motion={reducedMotion}>
     <a className="skip-story" href="#calm">رفتن به معرفی آسومی</a>
-    <div className="story-sticky">
-      <div className="morning-glow" aria-hidden="true" />
-      <div className="window-light" aria-hidden="true" />
-      <header className="story-header">
-        <a className="story-brand" href="#chaos" aria-label="آسومی؛ ابتدای داستان"><Sun /><span>آسومی<small>آینده‌ای روشن</small></span></a>
+    <header className="story-header">
+        <a className="story-brand" href="#chaos" aria-label="آسومی؛ ابتدای داستان"><BrandSignal /><span>آسومی<small>از داده تا تصمیم</small></span></a>
         <p className="header-description">حسابداری و مدیریت کسب‌وکار</p>
         <div className="header-actions">
           <AsumiButton className="motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های صحنه" title="کاهش حرکت‌های صحنه">
-            <span aria-hidden="true">{reducedMotion ? 'Ⅱ' : '≈'}</span><span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
+            <span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
           </AsumiButton>
           <a className="login-link" href="/hesab">ورود به آسومی <span aria-hidden="true">↗</span></a>
         </div>
-      </header>
-      <div className="scene-frame">
-        <SceneBoundary><Suspense fallback={<Poster />}><OfficeCanvas motion={motion} poster={<Poster />} /></Suspense></SceneBoundary>
-      </div>
-      <div className="scene-annotation" data-visible={chapter === 3} aria-hidden={chapter !== 3}>
-        <span className="annotation-icon" aria-hidden="true">!</span><div><strong>یک قدم جلوتر</strong><p>۳ فاکتور، فردا سررسید می‌شوند.</p><small>زمان خوبی برای پیگیری دریافت‌هاست.</small></div>
-      </div>
-      <div className="automation-status" data-visible={chapter === 4} aria-hidden={chapter !== 4}>
-        {['فاکتور ثبت شد', 'موجودی به‌روز شد', 'یادآوری آماده شد'].map((label, i) => <div key={label} style={{ '--task-index': i } as React.CSSProperties}><span aria-hidden="true">✓</span>{label}</div>)}
-      </div>
-      <div className="calm-note" data-visible={chapter === 5} aria-hidden={chapter !== 5}><Sun /><span>امروز، با خیال آسوده‌تر.</span></div>
+    </header>
+    <div className="story-sticky">
+      <div className="case-atmosphere" aria-hidden="true" />
+      <div className="scene-frame"><CaseBoard motion={motion} /></div>
+      <div className="scene-label" aria-hidden="true"><span className="record-dot" />{['در جست‌وجوی سرنخ', 'اسناد، کنار هم', 'ارتباط‌ها پیدا شدند', 'تصویر، روشن شد', 'مسیر در حال آشکارشدن', 'مقصد، مشخص است'][chapter]}<span className="scene-label-line" /></div>
       <div className="story-bottom">
-        <nav className="chapter-nav" aria-label="مراحل داستان آسومی">{chapters.map((item, i) => <a key={item.id} href={`#${item.id}`} aria-current={chapter === i ? 'step' : undefined} aria-label={`${i + 1}. ${item.label}`}><span className="chapter-dot" /><span className="chapter-name">{item.label}</span></a>)}</nav>
-        <span className="scene-caption">روایتی از تجربه‌ی آسومی · داده‌های نمایشی</span>
+        <nav className="chapter-nav" aria-label="مراحل داستان آسومی">{chapters.map((item, index) => <a key={item.id} href={`#${item.id}`} aria-current={chapter === index ? 'step' : undefined} aria-label={`${index + 1}. ${item.label}`}><span className="chapter-dot" /><span className="chapter-name">{item.label}</span></a>)}</nav>
+        <span className="scene-caption">نمونه‌ی روایی · داده‌ها و مسیر پیشنهادی، نمایشی‌اند</span>
       </div>
       <div className="story-progress" aria-hidden="true" />
     </div>
     <div className="story-copy">
-      {chapters.map((item, i) => {
-        const Heading = i === 0 ? 'h1' : 'h2';
-        return <section key={item.id} id={item.id} className="story-chapter" aria-labelledby={`${item.id}-title`} data-active={chapter === i}>
+      {chapters.map((item, index) => {
+        const Heading = index === 0 ? 'h1' : 'h2';
+        return <section key={item.id} id={item.id} className="story-chapter" aria-labelledby={`${item.id}-title`} data-active={chapter === index}>
           <div className="chapter-content">
-            <p className="chapter-eyebrow"><span>{String(i + 1).replace(/\d/g, n => '۰۱۲۳۴۵۶۷۸۹'[+n])} / ۰۶</span>{item.eyebrow}</p>
+            <p className="chapter-eyebrow"><span>{String(index + 1).replace(/\d/g, number => '۰۱۲۳۴۵۶۷۸۹'[+number])} / ۰۶</span>{item.eyebrow}</p>
             <Heading id={`${item.id}-title`}>{item.title.split('\n').map(line => <span key={line}>{line}</span>)}</Heading>
             <p className="chapter-description">{item.description}</p>
-            <p className="chapter-detail">{item.detail}</p>
-            {i === 0 && <a className="scroll-invitation" href="#order"><span className="scroll-symbol" aria-hidden="true">↓</span>آرام اسکرول کن؛ ببین چه می‌شود.</a>}
-            {i === 5 && <div className="story-cta"><a className="primary-cta" href="/hesab">آسومی را ببین <span aria-hidden="true">↗</span></a><a className="restart-story" href="#chaos">یک بار دیگر، از ابتدا</a></div>}
+            <p className={`chapter-detail ${index === 0 ? 'flashlight-hint' : ''}`}>{item.detail}</p>
+            {index === 0 && <a className="scroll-invitation" href="#order"><span className="scroll-symbol" aria-hidden="true">↓</span>اسکرول کن؛ سرنخ‌ها را به هم برسان.</a>}
+            {index === 5 && <div className="story-cta"><a className="primary-cta" href="/hesab">آسومی را ببین <span aria-hidden="true">↗</span></a><a className="restart-story" href="#chaos">پرونده را از ابتدا ببین</a></div>}
           </div>
         </section>;
       })}
