@@ -132,3 +132,44 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--case-accent); o
 html:has(.asumi-story[data-reduced-motion='true']) { scroll-behavior: auto; }
 @media (hover: none) { .flashlight-hint { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before { animation: none !important; transition: none !important; } }
+
+.asumi-story {
+  min-height: 100vh;
+  min-height: 100svh;
+  background: var(--case-black);
+  transition: background-color .75s ease, color .75s ease;
+}
+.story-experience { position: relative; background: var(--case-black); transition: background-color .75s ease; }
+.story-sticky { background: var(--case-black); transition: background-color .75s ease; }
+.story-header { transition: background-color .65s ease, border-color .65s ease, color .65s ease, backdrop-filter .65s ease; }
+
+.asumi-story[data-theme-phase='bright'] {
+  --case-black: #f7f5f0;
+  --case-surface: #fffefa;
+  --case-red: #a92532;
+  --case-accent: #a92532;
+  --case-ink: #28231f;
+  --case-muted: #716a63;
+  --case-line: #342c2724;
+  color-scheme: light;
+}
+
+.asumi-story[data-theme-phase='bright'] .case-atmosphere {
+  background: radial-gradient(ellipse at 22% 45%, #e8ded31c, transparent 56%), linear-gradient(90deg, transparent 58%, #f7f5f0a8);
+}
+.asumi-story[data-theme-phase='bright'] .case-atmosphere::after { opacity: .012; }
+.asumi-story[data-theme-phase='bright'] .story-header { background: #f7f5f0e8; border-bottom: 1px solid #342c2716; backdrop-filter: blur(12px); }
+.asumi-story[data-theme-phase='bright'] .board-frame { fill: #e8e2d9; stroke: #c8bfb3; }
+.asumi-story[data-theme-phase='bright'] .board-felt { fill: #f7f3eb; stroke: #d7cec3; }
+.asumi-story[data-theme-phase='bright'] .board-screw { fill: #988b7e; }
+.asumi-story[data-theme-phase='bright'] .board-index { fill: #655c54; }
+.asumi-story[data-theme-phase='bright'] .route-track { stroke: #b8aaa0; }
+.asumi-story[data-theme-phase='bright'] .route-node-outer { fill: #fffefa; stroke: #a92532; }
+.asumi-story[data-theme-phase='bright'] .route-node-inner { fill: #a92532; }
+.asumi-story[data-theme-phase='bright'] .route-node-detail,
+.asumi-story[data-theme-phase='bright'] .route-legend { fill: #716a63; }
+.asumi-story[data-theme-phase='bright'] .scroll-symbol { border-color: #c6a9a8; }
+
+@media (prefers-reduced-motion: reduce) {
+  .asumi-story, .story-experience, .story-sticky, .story-header { transition: none; }
+}

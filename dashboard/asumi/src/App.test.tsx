@@ -4,15 +4,25 @@ import { AsumiApp } from './App';
 
 afterEach(() => vi.restoreAllMocks());
 
-test('renders a real SVG evidence board, six Persian chapters and the existing entry route without 3D media', () => {
+test('renders the evidence board, six Persian chapters, product modules and the existing entry route without 3D media', () => {
   const { container } = render(<AsumiApp />);
-  expect(screen.getByRole('img', { name: /پرونده‌ی کسب‌وکار/ })).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: /آسومی؛ ERP یکپارچه/ })).toBeInTheDocument();
   expect(container.querySelectorAll('.evidence-card')).toHaveLength(8);
   expect(container.querySelector('canvas, img, video')).not.toBeInTheDocument();
-  expect(screen.getAllByRole('region')).toHaveLength(6);
+  expect(container.querySelectorAll('.story-chapter')).toHaveLength(6);
   expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   expect(screen.getByRole('link', { name: 'آسومی را ببین' })).toHaveAttribute('href', '/hesab');
   expect(screen.getByRole('link', { name: '1. کشف' })).toHaveAttribute('aria-current', 'step');
+  expect(screen.getByRole('region', { name: /هر بخش از کسب‌وکارت/ })).toBeInTheDocument();
+  expect(container.querySelectorAll('.module-picker-button')).toHaveLength(13);
+});
+
+test('lets visitors inspect each module without leaving the product introduction', () => {
+  render(<AsumiApp />);
+  fireEvent.click(screen.getByRole('button', { name: /فروش و CRM/ }));
+  expect(screen.getByRole('heading', { level: 3, name: 'فروش و ارتباط با مشتری' })).toBeInTheDocument();
+  expect(screen.getByText('قیف فروش و پیگیری فعالیت‌ها')).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: /جریان کار فروش و ارتباط با مشتری/ })).toBeInTheDocument();
 });
 
 test('moves the flashlight with the pointer while keeping scroll and links available', async () => {
@@ -27,7 +37,7 @@ test('moves the flashlight with the pointer while keeping scroll and links avail
   fireEvent(window, touch);
   await waitFor(() => expect(Number(container.querySelector('circle[data-flashlight]')?.getAttribute('cx'))).toBeLessThan(240));
   expect(screen.getByRole('link', { name: '2. نظم' })).toHaveAttribute('href', '#order');
-  expect(screen.getByRole('link', { name: 'ورود به آسومی' })).toHaveAttribute('href', '/hesab');
+  expect(container.querySelector('.story-header .login-link')).toHaveAttribute('href', '/hesab');
 });
 
 test('reduced motion reveals all documents without requiring the visitor to aim a flashlight', async () => {
@@ -54,9 +64,10 @@ test('restores deep scroll and completes the visible decision route at the desti
   fireEvent.click(screen.getByRole('button', { name: 'کاهش حرکت‌های صحنه' }));
   fireEvent.scroll(window);
   await waitFor(() => expect(screen.getByRole('main')).toHaveAttribute('data-chapter', '5'));
+  expect(screen.getByRole('main')).toHaveAttribute('data-theme-phase', 'bright');
   await waitFor(() => expect(container.querySelector('.route-line')).toHaveAttribute('stroke-dashoffset', '0'));
   expect(container.querySelector('.route-destination')).toHaveAttribute('opacity', '1.000');
-  expect(screen.getByRole('link', { name: '6. مقصد' })).toHaveAttribute('aria-current', 'step');
+  expect(screen.getByRole('link', { name: '6. آینده' })).toHaveAttribute('aria-current', 'step');
 });
 
 test('removes its pointer listeners on unmount', () => {
