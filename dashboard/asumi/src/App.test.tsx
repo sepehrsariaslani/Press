@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { AsumiApp } from './App';
+import { productModuleDetails } from './product/moduleDetails';
+import { productModules } from './product/modules';
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  window.history.replaceState(null, '', window.location.pathname);
+});
 
-test('renders the evidence board, six Persian chapters, product modules and the existing entry route without 3D media', () => {
+test('renders the evidence board, six Persian chapters, fifteen product modules and the entry route without 3D media', () => {
   const { container } = render(<AsumiApp />);
   expect(screen.getByRole('img', { name: /آسومی؛ ERP یکپارچه/ })).toBeInTheDocument();
   expect(container.querySelectorAll('.evidence-card')).toHaveLength(8);
@@ -14,15 +19,49 @@ test('renders the evidence board, six Persian chapters, product modules and the 
   expect(screen.getByRole('link', { name: 'آسومی را ببین' })).toHaveAttribute('href', '/hesab');
   expect(screen.getByRole('link', { name: '1. کشف' })).toHaveAttribute('aria-current', 'step');
   expect(screen.getByRole('region', { name: /هر بخش از کسب‌وکارت/ })).toBeInTheDocument();
-  expect(container.querySelectorAll('.module-picker-button')).toHaveLength(13);
+  expect(container.querySelectorAll('.module-card')).toHaveLength(15);
+  expect(container.querySelector('.module-card[href="#module/sales"]')).toBeInTheDocument();
+  expect(container.querySelector('.module-card[href="#module/crm"]')).toBeInTheDocument();
+  expect(container.querySelector('.module-card[href="#module/business"]')).toBeInTheDocument();
 });
 
-test('lets visitors inspect each module without leaving the product introduction', () => {
+test('provides a detail route, at least one document and valid related links for every module', () => {
+  const moduleIds = productModules.map(module => module.id);
+  expect(moduleIds).toHaveLength(15);
+  expect(moduleIds.at(-1)).toBe('business');
+  expect(Object.keys(productModuleDetails).sort()).toEqual([...moduleIds].sort());
+  for (const details of Object.values(productModuleDetails)) {
+    expect(details.entryPath.startsWith('/')).toBe(true);
+    expect(details.records.length).toBeGreaterThan(0);
+    expect(details.relatedIds.every(id => moduleIds.includes(id))).toBe(true);
+  }
+});
+
+test('opens the marketing detail page with real work areas, documents, scope and a direct app entry', async () => {
   render(<AsumiApp />);
-  fireEvent.click(screen.getByRole('button', { name: /فروش و CRM/ }));
-  expect(screen.getByRole('heading', { level: 3, name: 'فروش و ارتباط با مشتری' })).toBeInTheDocument();
-  expect(screen.getByText('قیف فروش و پیگیری فعالیت‌ها')).toBeInTheDocument();
-  expect(screen.getByRole('img', { name: /جریان کار فروش و ارتباط با مشتری/ })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('link', { name: /بازاریابی و رشد/ }));
+  await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'بازاریابی و رشد' })).toBeInTheDocument());
+  expect(screen.getByText('Marketing Campaign Brief')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /ورود به مرکز بازاریابی/ })).toHaveAttribute('href', '/hesab/modules/marketing');
+  expect(screen.getByRole('heading', { level: 2, name: 'مرز این ماژول کجاست؟' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /برنامه‌ریزی کسب‌وکار/ })).toHaveAttribute('href', '#module/business');
+});
+
+test('opens the separate business module and returns to the module directory', async () => {
+  render(<AsumiApp />);
+  fireEvent.click(screen.getByRole('link', { name: /برنامه‌ریزی کسب‌وکار/ }));
+  await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'برنامه‌ریزی کسب‌وکار' })).toBeInTheDocument());
+  expect(screen.getByText('Business Planning Scenario')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /ورود به نمای کلی کسب‌وکار/ })).toHaveAttribute('href', '/hesab/business/overview');
+  fireEvent.click(screen.getByRole('button', { name: /برگشت به همه‌ی ۱۵ ماژول/ }));
+  await waitFor(() => expect(screen.getByRole('navigation', { name: '۱۵ ماژول آسومی' })).toBeInTheDocument());
+});
+
+test('supports opening a module directly from its deep link', () => {
+  window.history.replaceState(null, '', '#module/crm');
+  render(<AsumiApp />);
+  expect(screen.getByRole('heading', { level: 1, name: 'مدیریت ارتباط با مشتری' })).toBeInTheDocument();
+  expect(screen.getByText('CRM Deal')).toBeInTheDocument();
 });
 
 test('moves the flashlight with the pointer while keeping scroll and links available', async () => {
