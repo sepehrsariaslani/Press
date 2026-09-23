@@ -16,9 +16,9 @@ export const evidence: Evidence[] = [
 
 export const connections = [[0, 1], [1, 5], [5, 2], [0, 3], [3, 4], [4, 2], [6, 0], [6, 5], [7, 1], [7, 4]];
 export const routePoints = [
-  { x: 808, y: 433, title: 'وضعیت امروز', subtitle: 'دریافت‌های معوق' },
-  { x: 577, y: 488, title: 'اولویت', subtitle: '۳ فاکتور باز' },
+  { x: 808, y: 433, title: 'وضعیت', subtitle: 'دریافت‌های معوق' },
+  { x: 577, y: 488, title: 'اولویت', subtitle: 'فاکتورهای باز' },
   { x: 365, y: 442, title: 'اقدام', subtitle: 'پیگیری دریافت‌ها' },
-  { x: 190, y: 562, title: 'مقصد', subtitle: 'جریان نقدی روشن‌تر' },
+  { x: 190, y: 562, title: 'هدف', subtitle: 'جریان نقدی روشن‌تر' },
 ];
 export const routePath = 'M808 433 C750 433 675 488 577 488 S430 442 365 442 S190 476 190 562';

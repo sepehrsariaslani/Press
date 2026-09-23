@@ -10,8 +10,8 @@ export function CaseBoard({ motion }: { motion: MotionRef }) {
   const root = useRef<SVGSVGElement>(null);
   useBoardMotion(root, motion);
   return <svg ref={root} className="case-board" viewBox="0 0 1000 800" role="img" aria-labelledby={`${id}-title ${id}-description`} data-testid="case-board">
-    <title id={`${id}-title`}>پرونده‌ی کسب‌وکار؛ از اسناد پراکنده تا مسیر تصمیم</title>
-    <desc id={`${id}-description`}>نور روی اسناد می‌افتد، کاغذها با پین و نخ قرمز روی بورد مرتبط می‌شوند و سه نمودار فروش، دریافت‌ها و جریان نقدی شکل می‌گیرند. مسیر پیشنهادی نمایشی: بررسی دریافت‌های معوق، اولویت‌بندی سه فاکتور، پیگیری و رسیدن به جریان نقدی روشن‌تر.</desc>
+    <title id={`${id}-title`}>آسومی؛ ERP یکپارچه برای مدیریت کسب‌وکار</title>
+    <desc id={`${id}-description`}>اسناد فروش، دریافت، هزینه و موجودی روی یک بورد به هم متصل می‌شوند و نمودارهای کسب‌وکار را می‌سازند. مسیر نمایشی از شناسایی دریافت‌های معوق، اولویت‌بندی پیگیری‌ها و اقدام تا هدف جریان نقدی روشن‌تر پیش می‌رود.</desc>
     <defs>
       <linearGradient id={`${id}-paper`} x2=".15" y2="1"><stop stopColor="#e9e5dc" /><stop offset="1" stopColor="#cfc9be" /></linearGradient>
       <radialGradient id={`${id}-pin`} cx=".3" cy=".25"><stop stopColor="#ff7980" /><stop offset=".45" stopColor="#d93442" /><stop offset="1" stopColor="#6d111b" /></radialGradient>
