@@ -64,6 +64,16 @@ test('supports opening a module directly from its deep link', () => {
   expect(screen.getByText('CRM Deal')).toBeInTheDocument();
 });
 
+test('opens finance as a separate Persian financial story with a direct route into the real center', () => {
+  window.history.replaceState(null, '', '#module/finance');
+  const { container } = render(<AsumiApp />);
+  expect(screen.getByRole('heading', { level: 1, name: 'این پول کجا رفت؟' })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'نمای تصویری: کشف' })).toBeInTheDocument();
+  expect(container.querySelector('.finance-story')).toHaveAttribute('data-chapter', '0');
+  expect(screen.getByText('روایت نمایشی · مبلغ‌ها نمونه‌اند')).toBeInTheDocument();
+  expect(screen.getAllByRole('link', { name: /ورود به مرکز مالی/ })[0]).toHaveAttribute('href', '/hesab/modules/finance');
+});
+
 test('moves the flashlight with the pointer while keeping scroll and links available', async () => {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
     top: 0, left: 0, right: 1000, bottom: 800, width: 1000, height: 800, x: 0, y: 0, toJSON: () => ({}),
