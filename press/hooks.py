@@ -72,8 +72,6 @@ website_path_resolver = ["press.routing.resolve_path"]
 
 website_route_rules = [
 	{"from_route": "/dashboard/<path:app_path>", "to_route": "dashboard"},
-	{"from_route": "/saas-app", "to_route": "saas-dashboard"},
-	{"from_route": "/saas-app/<path:app_path>", "to_route": "saas-dashboard"},
 ]
 
 website_redirects = [
@@ -83,7 +81,6 @@ website_redirects = [
 		"target": "/api/method/press.api.handle_suspended_site_redirection",
 	},
 	{"source": "/f-login", "target": "/dashboard/f-login"},
-	{"source": "/saas", "target": "/saas-app"},
 	{"source": "/signup", "target": "/erpnext/signup"},
 ]
 

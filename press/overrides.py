@@ -137,11 +137,6 @@ def update_website_context(context):
 	if not (frappe.request and frappe.request.path.startswith("/docs")):
 		return
 
-	host = (getattr(frappe.request, "host", "") or "").split(":", 1)[0].lower()
-	# Allow Erpyar marketing docs route even when Press docs publishing is disabled.
-	if host in {"erpyar.ir", "www.erpyar.ir"} and frappe.request.path.rstrip("/") == "/docs":
-		return
-
 	if not frappe.db.get_single_value("Press Settings", "publish_docs"):
 		raise frappe.DoesNotExistError
 
