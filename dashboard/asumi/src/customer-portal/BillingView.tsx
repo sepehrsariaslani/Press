@@ -87,7 +87,7 @@ export function BillingView({ currency, onAskSupport }: Props) {
 							{invoice.status === 'Unpaid' && invoice.amount_due > 0 && !invoice.stripe_invoice_url && <button type="button" onClick={() => onAskSupport(invoice)}>پیگیری با پشتیبانی</button>}
 						</div>
 					</article>)}</div> : <div className="customer-portal-inline-state">هنوز فاکتوری برای این تیم ثبت نشده است.</div>}
-				<p className="customer-portal-footnote">مبالغ این بخش از فاکتورهای رسمی آسومی می‌آیند. برای شیوه‌های پرداخت جایگزین یا مغایرت فاکتور، درخواست پشتیبانی ثبت کن.</p>
+				<p className="customer-portal-footnote">مبلغ‌ها از صورتحساب‌های ثبت‌شده برای حساب خوانده می‌شوند. برای شیوهٔ پرداخت دیگر یا مغایرت فاکتور، درخواست پشتیبانی ثبت کن.</p>
 				{transactions.length > 0 && <><div className="customer-portal-panel-heading customer-portal-invoice-heading"><div><p>تغییرات اعتبار حساب</p><h3>تراکنش‌های کیف پول</h3></div><span>{new Intl.NumberFormat('fa-IR').format(transactions.length)} مورد</span></div><div className="customer-portal-invoice-list">{transactions.map(transaction => <article className="customer-portal-balance-row" key={transaction.name}><div><strong>{balanceSourceLabel(transaction.source, transaction.type)}</strong><small>{formatDateTime(transaction.creation)}{transaction.description ? ` · ${transaction.description}` : ''}</small></div><strong>{transaction.formatted?.amount || formatCurrency(transaction.amount, transaction.currency)}</strong><small>مانده پس از تراکنش: {transaction.formatted?.ending_balance || formatCurrency(transaction.ending_balance, transaction.currency)}</small></article>)}</div></>}
 			</>}
 		</section>

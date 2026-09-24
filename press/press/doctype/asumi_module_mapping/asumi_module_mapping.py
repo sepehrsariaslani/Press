@@ -21,6 +21,24 @@ ASUMI_MODULE_IDS = {
 	"business",
 }
 
+DEFAULT_MODULE_PREREQUISITES = {
+	"finance": [],
+	"sales": [],
+	"crm": [],
+	"procurement": [],
+	"inventory": [],
+	"projects": [],
+	"manufacturing": ["inventory"],
+	"quality": [],
+	"people": [],
+	"assets": ["finance"],
+	"fleet": [],
+	"pricing": [],
+	"growth": [],
+	"restaurant": [],
+	"business": ["growth"],
+}
+
 
 class AsumiModuleMapping(Document):
 	def validate(self):

@@ -1,3 +1,4 @@
+import json
 from math import isfinite
 
 import frappe
@@ -46,31 +47,98 @@ def _require_support_agent():
 
 
 def _catalog_mappings(include_unpublished=False):
-	from press.press.doctype.asumi_module_mapping.asumi_module_mapping import ASUMI_MODULE_IDS
+	from press.press.doctype.asumi_module_mapping.asumi_module_mapping import (
+		ASUMI_MODULE_IDS,
+		DEFAULT_MODULE_PREREQUISITES,
+	)
 
 	stored = {
 		mapping.module_id: mapping
 		for mapping in frappe.get_all(
 			"Asumi Module Mapping",
-			fields=["module_id", "mode", "marketplace_app", "published", "description"],
+			fields=[
+				"module_id",
+				"mode",
+				"marketplace_app",
+				"published",
+				"description",
+				"prerequisites",
+			],
 		)
 	}
 	mappings = []
 	for module_id in sorted(ASUMI_MODULE_IDS):
 		mapping = stored.get(module_id)
-		if mapping and not mapping.published and not include_unpublished:
-			continue
-		mappings.append(
-			mapping
-			or frappe._dict(
-			module_id=module_id,
-			mode="Included" if module_id in DEFAULT_INCLUDED_MODULES else "Purchase request",
-			marketplace_app=None,
-			published=1,
-			description=None,
+		if mapping:
+			mapping.published = cint(mapping.published)
+			if not mapping.published and not include_unpublished:
+				continue
+			mapping.prerequisites = _parse_module_prerequisites(mapping.prerequisites)
+			if mapping.prerequisites is None:
+				mapping.prerequisites = DEFAULT_MODULE_PREREQUISITES.get(module_id, [])
+		else:
+			mapping = frappe._dict(
+				module_id=module_id,
+				mode="Included" if module_id in DEFAULT_INCLUDED_MODULES else "Purchase request",
+				marketplace_app=None,
+				published=1,
+				description=None,
+				prerequisites=DEFAULT_MODULE_PREREQUISITES.get(module_id, []),
 			)
-		)
+		mappings.append(mapping)
 	return mappings
+
+
+def _parse_module_prerequisites(value):
+	if value is None or value == "":
+		return None
+	try:
+		module_ids = json.loads(value) if isinstance(value, str) else value
+	except (TypeError, ValueError):
+		frappe.throw("Module prerequisites must be a JSON list of Asumi module IDs.")
+
+	from press.press.doctype.asumi_module_mapping.asumi_module_mapping import ASUMI_MODULE_IDS
+
+	if not isinstance(module_ids, list) or any(
+		not isinstance(module_id, str) for module_id in module_ids
+	):
+		frappe.throw("Module prerequisites must be a JSON list of Asumi module IDs.")
+	if len(module_ids) != len(set(module_ids)):
+		frappe.throw("Choose each prerequisite module only once.")
+	if not set(module_ids).issubset(ASUMI_MODULE_IDS):
+		frappe.throw("Choose valid Asumi prerequisite modules.")
+	return module_ids
+
+
+def _validate_catalog_prerequisites(module_id, prerequisites, published):
+	mappings = {mapping.module_id: mapping for mapping in _catalog_mappings(include_unpublished=True)}
+	mappings[module_id].prerequisites = prerequisites
+	mappings[module_id].published = cint(published)
+	if module_id in prerequisites:
+		frappe.throw("A module cannot depend on itself.")
+
+	for mapping in mappings.values():
+		if mapping.published and any(
+			not cint(mappings[dependency].published) for dependency in mapping.prerequisites
+		):
+			frappe.throw("A published module cannot require a module hidden from the customer catalog.")
+
+	visiting = set()
+	visited = set()
+
+	def visit(current):
+		if current in visiting:
+			frappe.throw("Module prerequisites cannot contain a dependency cycle.")
+		if current in visited:
+			return
+		visiting.add(current)
+		for dependency in mappings[current].prerequisites:
+			visit(dependency)
+		visiting.remove(current)
+		visited.add(current)
+
+	for current in mappings:
+		visit(current)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -331,7 +399,11 @@ def catalog():
 	from press.api.marketplace import get_marketplace_pricing_catalog
 
 	apps = get_marketplace_pricing_catalog()
-	mappings = _catalog_mappings(include_unpublished=True)
+	all_mappings = _catalog_mappings(include_unpublished=True)
+	mappings = [mapping for mapping in all_mappings if mapping.published]
+	hidden_module_ids = [mapping.module_id for mapping in all_mappings if not mapping.published]
+	visible_marketplace_names = {mapping.marketplace_app for mapping in mappings if mapping.marketplace_app}
+	apps = [app for app in apps if app.name in visible_marketplace_names]
 	app_by_name = {app.name: app for app in apps}
 	public_mappings = []
 	for mapping in mappings:
@@ -344,9 +416,10 @@ def catalog():
 				"marketplace_app_slug": app.app if app else None,
 				"marketplace_app_title": app.title if app else None,
 				"published": cint(mapping.published),
+				"prerequisites": mapping.prerequisites,
 			}
 		)
-	return {"apps": apps, "mappings": public_mappings}
+	return {"apps": apps, "mappings": public_mappings, "hidden_module_ids": hidden_module_ids}
 
 
 @frappe.whitelist(methods=["GET"])
@@ -441,6 +514,7 @@ def save_catalog_mapping(
 	marketplace_app: str | None = None,
 	published: int = 1,
 	description: str | None = None,
+	prerequisites: str | None = None,
 ):
 	_require_catalog_admin()
 	from press.press.doctype.asumi_module_mapping.asumi_module_mapping import ASUMI_MODULE_IDS
@@ -456,6 +530,10 @@ def save_catalog_mapping(
 	description = (description or "").strip()
 	if len(description) > 2000:
 		frappe.throw("Compatibility notes cannot exceed 2000 characters.")
+	prerequisites = _parse_module_prerequisites(prerequisites)
+	if prerequisites is None:
+		prerequisites = []
+	_validate_catalog_prerequisites(module_id, prerequisites, published)
 
 	name = frappe.db.get_value("Asumi Module Mapping", {"module_id": module_id}, "name")
 	doc = frappe.get_doc("Asumi Module Mapping", name) if name else frappe.new_doc("Asumi Module Mapping")
@@ -464,6 +542,7 @@ def save_catalog_mapping(
 	doc.marketplace_app = marketplace_app if mode == "Marketplace app" else None
 	doc.published = cint(published)
 	doc.description = description
+	doc.prerequisites = json.dumps(prerequisites)
 	doc.save(ignore_permissions=True)
 	return {
 		"module_id": doc.module_id,
@@ -471,6 +550,7 @@ def save_catalog_mapping(
 		"marketplace_app": doc.marketplace_app,
 		"published": doc.published,
 		"description": doc.description,
+		"prerequisites": prerequisites,
 	}
 
 

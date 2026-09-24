@@ -185,7 +185,7 @@ export async function getCustomerPortalData(signal?: AbortSignal) {
 }
 
 export async function getMarketplaceCatalog(signal?: AbortSignal) {
-	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; description: string | null; published: number; marketplace_app_slug: string | null; marketplace_app_title: string | null }> }>(
+	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; description: string | null; published: number; prerequisites: string[]; marketplace_app_slug: string | null; marketplace_app_title: string | null }>; hidden_module_ids: string[] }>(
 		'press.api.customer_portal.catalog', { signal },
 	);
 }
@@ -347,13 +347,13 @@ export async function replySupportRequest(name: string, message: string) {
 }
 
 export async function getCatalogAdmin(signal?: AbortSignal) {
-	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; marketplace_app: string | null; published: number; description: string | null }> }>(
+	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; marketplace_app: string | null; published: number; description: string | null; prerequisites: string[] }> }>(
 		'press.api.customer_portal.catalog_admin', { signal },
 	);
 }
 
-export async function saveCatalogMapping(params: { module_id: string; mode: string; marketplace_app?: string; published: boolean; description: string }) {
-	return frappeCall('press.api.customer_portal.save_catalog_mapping', { method: 'POST', params });
+export async function saveCatalogMapping(params: { module_id: string; mode: string; marketplace_app?: string; published: boolean; description: string; prerequisites: string[] }) {
+	return frappeCall('press.api.customer_portal.save_catalog_mapping', { method: 'POST', params: { ...params, prerequisites: JSON.stringify(params.prerequisites) } });
 }
 
 export async function updateMarketplacePlanPrices(params: { plan: string; price_inr: string; price_usd: string }) {

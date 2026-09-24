@@ -10,7 +10,7 @@ import {
 	type SupportRequest,
 } from './portalApi';
 
-type ModuleMapping = { module_id: string; mode: string; marketplace_app: string | null; published: number; description: string | null };
+type ModuleMapping = { module_id: string; mode: string; marketplace_app: string | null; published: number; description: string | null; prerequisites: string[] };
 type AdminCatalog = { apps: MarketplaceApp[]; mappings: ModuleMapping[] };
 
 const modes = [
@@ -34,6 +34,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 	const [app, setApp] = useState('');
 	const [published, setPublished] = useState(true);
 	const [description, setDescription] = useState('');
+	const [prerequisites, setPrerequisites] = useState<string[]>([]);
 	const [priceDrafts, setPriceDrafts] = useState<Record<string, { price_inr: string; price_usd: string }>>({});
 	const [ticketDrafts, setTicketDrafts] = useState<Record<string, { status: string; response: string }>>({});
 	const [loading, setLoading] = useState(true);
@@ -57,6 +58,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 					setApp(firstMapping.marketplace_app || '');
 					setPublished(Boolean(firstMapping.published));
 					setDescription(firstMapping.description || '');
+					setPrerequisites(firstMapping.prerequisites || []);
 				}
 				const prices: typeof priceDrafts = {};
 				for (const entry of nextCatalog.apps) for (const plan of entry.plans) prices[plan.name] = { price_inr: String(plan.price_inr ?? 0), price_usd: String(plan.price_usd ?? 0) };
@@ -84,14 +86,15 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 		setApp(currentMapping.marketplace_app || '');
 		setPublished(Boolean(currentMapping.published));
 		setDescription(currentMapping.description || '');
+		setPrerequisites(currentMapping.prerequisites || []);
 	}, [currentMapping]);
 
 	async function saveMapping(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setBusy('mapping'); setError(''); setNotice('');
 		try {
-			await saveCatalogMapping({ module_id: selectedModuleId, mode, marketplace_app: app || undefined, published, description });
-			setNotice('اتصال ماژول به کاتالوگ آسومی ذخیره شد.');
+			await saveCatalogMapping({ module_id: selectedModuleId, mode, marketplace_app: app || undefined, published, description, prerequisites });
+			setNotice('اتصال، پیش‌نیازها و وضعیت انتشار ماژول ذخیره شد.');
 			await load();
 		} catch (caught) { setError(messageOf(caught)); }
 		finally { setBusy(''); }
@@ -139,6 +142,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 					<label><span>نوع نمایش و خرید</span><select value={mode} onChange={event => setMode(event.target.value)}>{modes.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
 					{mode === 'Marketplace app' && <label><span>افزونهٔ مرجع</span><select value={app} required onChange={event => setApp(event.target.value)}><option value="">انتخاب افزونه</option>{catalog?.apps.map(item => <option key={item.name} value={item.name}>{item.title} · {item.app}</option>)}</select></label>}
 					<label className="customer-portal-admin-description"><span>توضیح تکمیلی سازگاری</span><textarea rows={3} maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} placeholder="نیازمندی‌های ویژهٔ نسخه، پلن یا اتصال‌های جانبی را بنویس" /></label>
+					<fieldset className="customer-portal-admin-prerequisites"><legend>پیش‌نیازهای ماژول</legend><div>{productModules.filter(module => module.id !== selectedModuleId).map(module => <label key={module.id}><input type="checkbox" checked={prerequisites.includes(module.id)} onChange={event => setPrerequisites(current => event.target.checked ? [...current, module.id] : current.filter(item => item !== module.id))} /><span>{module.title}</span></label>)}</div><small>پیش‌نیازها پیش از نصب ماژول انتخاب‌شده بررسی و در صورت نیاز به انتخاب خرید اضافه می‌شوند.</small></fieldset>
 					<label className="customer-portal-checkbox"><input type="checkbox" checked={published} onChange={event => setPublished(event.target.checked)} /><span>در کاتالوگ مشتری نمایش داده شود</span></label>
 					<div className="customer-portal-admin-actions"><button type="submit" className="customer-portal-primary-button" disabled={busy === 'mapping'}>{busy === 'mapping' ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات'}</button><span>سازگاری واقعی نصب نیز بر اساس سایت انتخاب‌شده بررسی می‌شود؛ قیمت از پلن Marketplace می‌آید.</span></div>
 				</form>
