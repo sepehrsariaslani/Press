@@ -21,13 +21,15 @@ function scrollToCurrentSection() {
 export function useModuleNavigation() {
   const [activeModuleId, setActiveModuleId] = useState(readModuleId);
   const [showPricing, setShowPricing] = useState(() => window.location.hash === '#pricing');
-  const [showPortal, setShowPortal] = useState(() => window.location.hash === '#portal' || window.location.pathname !== '/');
+  const [showAdmin, setShowAdmin] = useState(() => window.location.hash === '#admin');
+  const [showPortal, setShowPortal] = useState(() => window.location.hash === '#portal' || (window.location.pathname !== '/' && window.location.hash !== '#admin'));
 
   useEffect(() => {
     const syncRoute = () => {
       setActiveModuleId(readModuleId());
       setShowPricing(window.location.hash === '#pricing');
-      setShowPortal(window.location.hash === '#portal' || window.location.pathname !== '/');
+      setShowAdmin(window.location.hash === '#admin');
+      setShowPortal(window.location.hash === '#portal' || (window.location.pathname !== '/' && window.location.hash !== '#admin'));
       scrollToCurrentSection();
     };
     window.addEventListener('hashchange', syncRoute);
@@ -45,6 +47,7 @@ export function useModuleNavigation() {
     setActiveModuleId(resolvedModuleId);
     setShowPricing(false);
     setShowPortal(false);
+    setShowAdmin(false);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }
@@ -54,6 +57,7 @@ export function useModuleNavigation() {
     setActiveModuleId(null);
     setShowPricing(true);
     setShowPortal(false);
+    setShowAdmin(false);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }
@@ -65,6 +69,27 @@ export function useModuleNavigation() {
     setActiveModuleId(null);
     setShowPricing(false);
     setShowPortal(true);
+    setShowAdmin(false);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+
+  function openPortalAdmin() {
+    window.history.pushState({ asumiAdmin: true }, '', '#admin');
+    setActiveModuleId(null);
+    setShowPricing(false);
+    setShowPortal(false);
+    setShowAdmin(true);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+
+  function openCustomerPortal() {
+    window.history.pushState({ asumiPortal: true }, '', '#portal');
+    setActiveModuleId(null);
+    setShowPricing(false);
+    setShowPortal(true);
+    setShowAdmin(false);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }
@@ -78,6 +103,7 @@ export function useModuleNavigation() {
         setActiveModuleId(null);
         setShowPricing(false);
         setShowPortal(true);
+        setShowAdmin(false);
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
         return;
@@ -87,10 +113,11 @@ export function useModuleNavigation() {
     setActiveModuleId(null);
     setShowPricing(false);
     setShowPortal(false);
+    setShowAdmin(false);
     window.requestAnimationFrame(() => {
       document.getElementById('modules')?.scrollIntoView?.({ block: 'start' });
     });
   }
 
-  return { activeModuleId, openModule, openPricing, openPortalPurchase, returnToModules, showPortal, showPricing };
+  return { activeModuleId, openModule, openPricing, openPortalPurchase, openPortalAdmin, openCustomerPortal, returnToModules, showAdmin, showPortal, showPricing };
 }

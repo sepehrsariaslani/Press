@@ -2,6 +2,7 @@ import { ModuleDetailPage } from './product/ModuleDetailPage';
 import { FinanceStory } from './product/finance/FinanceStory';
 import { ModulePricingPage } from './product/pricing/ModulePricingPage';
 import { CustomerPortal } from './customer-portal/CustomerPortal';
+import { PortalAdminPage } from './customer-portal/PortalAdminPage';
 import { ProcurementStory } from './product/procurement/ProcurementStory';
 import { SalesStory } from './product/sales/SalesStory';
 import { productModules } from './product/modules';
@@ -9,9 +10,12 @@ import { useModuleNavigation } from './product/useModuleNavigation';
 import { StoryLanding } from './story/StoryLanding';
 
 export function AsumiApp() {
-  const { activeModuleId, openModule, openPricing, openPortalPurchase, returnToModules, showPortal, showPricing } = useModuleNavigation();
+  const { activeModuleId, openModule, openPricing, openPortalPurchase, openPortalAdmin, openCustomerPortal, returnToModules, showAdmin, showPortal, showPricing } = useModuleNavigation();
+  if (showAdmin) {
+    return <PortalAdminPage onOpenCustomerPortal={openCustomerPortal} onReturnToModules={returnToModules} />;
+  }
   if (showPortal) {
-    return <CustomerPortal onReturnToModules={returnToModules} />;
+    return <CustomerPortal onOpenAdmin={openPortalAdmin} onReturnToModules={returnToModules} />;
   }
 	if (showPricing) {
 		return <ModulePricingPage onOpenModule={openModule} onReturnToModules={returnToModules} onRequestPurchase={openPortalPurchase} />;

@@ -3,7 +3,6 @@ import { SiteFooter } from '../components/site/SiteFooter';
 import { SiteHeader } from '../components/site/SiteHeader';
 import { BillingView } from './BillingView';
 import { ModuleStore } from './ModuleStore';
-import { PortalAdmin } from './PortalAdmin';
 import { PurchasesView } from './PurchasesView';
 import { SupportView } from './SupportView';
 import { TeamView } from './TeamView';
@@ -12,16 +11,17 @@ import { getCustomerPortalData, getUpcomingInvoice, type CustomerPortalData, typ
 import './customer-portal.css';
 
 type CustomerPortalProps = {
+	onOpenAdmin: () => void;
 	onReturnToModules: () => void;
 };
 
-type PortalView = 'overview' | 'modules' | 'purchases' | 'billing' | 'team' | 'support' | 'admin';
+type PortalView = 'overview' | 'modules' | 'purchases' | 'billing' | 'team' | 'support';
 type PortalIntent = { moduleIds: string[]; context: string; category?: string; subject?: string; site?: string };
 
 const subscriptionStatus: Record<string, string> = { Active: 'فعال', Inactive: 'متوقف', Disabled: 'غیرفعال', Provisioning: 'در حال نصب', 'Cancellation Pending': 'در حال لغو', 'Needs Attention': 'نیازمند پیگیری' };
 const siteStatus: Record<string, string> = { Active: 'فعال', Inactive: 'غیرفعال', Pending: 'در صف آماده‌سازی', Installing: 'در حال نصب', Suspended: 'متوقف', Broken: 'نیازمند پیگیری', Archived: 'بایگانی‌شده' };
 const viewLabels: Record<PortalView, string> = {
-	overview: 'نمای کلی', modules: 'ماژول‌ها', purchases: 'خریدها و اشتراک‌ها', billing: 'فاکتورها و پرداخت‌ها', team: 'اعضا و دسترسی', support: 'پشتیبانی', admin: 'مدیریت آسومی',
+	overview: 'نمای کلی', modules: 'ماژول‌ها', purchases: 'خریدها و اشتراک‌ها', billing: 'فاکتورها و پرداخت‌ها', team: 'اعضا و دسترسی', support: 'پشتیبانی',
 };
 
 function readPortalIntent(): PortalIntent {
@@ -43,7 +43,7 @@ function readSelectedSite() {
 	try { return window.localStorage.getItem('asumi-portal-site') || ''; } catch { return ''; }
 }
 
-export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
+export function CustomerPortal({ onOpenAdmin, onReturnToModules }: CustomerPortalProps) {
 	const [data, setData] = useState<CustomerPortalData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
@@ -180,42 +180,39 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 
 	const selectedSiteData = data?.sites.find(site => site.name === selectedSite) || null;
 	const canSeeAdmin = Boolean(data?.can_manage_catalog || data?.can_manage_support);
-	const isAdminView = view === 'admin' && canSeeAdmin;
 	const loginRequired = error === 'برای ادامه وارد حساب آسومی شو.';
 
-	return <main className={`customer-portal${isAdminView ? ' customer-portal--admin' : ''}`} dir="rtl" aria-labelledby="customer-portal-title">
-		<SiteHeader variant="paper" onReturnToModules={onReturnToModules} showSiteNavigation={false} showEntryLink={false} actions={<span className="customer-portal-header-label">{isAdminView ? 'مدیریت پلتفرم آسومی' : 'پنل مشتری آسومی'}</span>} />
+	return <main className="customer-portal" dir="rtl" aria-labelledby="customer-portal-title">
+		<SiteHeader variant="paper" onReturnToModules={onReturnToModules} showSiteNavigation={false} showEntryLink={false} actions={<span className="customer-portal-header-label">پنل مشتری آسومی</span>} />
 		<div className="customer-portal-inner">
 			<nav className="customer-portal-breadcrumb" aria-label="مسیر صفحه">
-				{isAdminView ? <><button type="button" onClick={() => setView('overview')}>پنل مشتری</button><span aria-hidden="true">/</span><span aria-current="page">مدیریت پلتفرم</span></> : <><button type="button" onClick={onReturnToModules}>معرفی آسومی</button><span aria-hidden="true">/</span><span aria-current="page">پنل مشتری</span></>}
+				<button type="button" onClick={onReturnToModules}>معرفی آسومی</button><span aria-hidden="true">/</span><span aria-current="page">پنل مشتری</span>
 			</nav>
 
 			<header className="customer-portal-heading">
-				<div><p className="customer-portal-eyebrow"><span aria-hidden="true" />{isAdminView ? 'فضای داخلی تیم آسومی' : 'فضای اختصاصی مشتری'}</p><h1 id="customer-portal-title">{isAdminView ? <>مدیریت کاتالوگ، <span>پشتیبانی و دسترسی‌ها.</span></> : <>خدمات آسومی، <span>روشن و در دسترس.</span></>}</h1><p>{isAdminView ? 'ابزارهای مدیریتی و صف درخواست‌های مشتریان را در محیط داخلی خودت اداره کن.' : 'سایت، ماژول، اشتراک، فاکتور و دسترسی تیم را از همین‌جا مدیریت کن.'}</p></div>
-				{isAdminView ? <button className="customer-portal-refresh" type="button" onClick={() => setView('overview')}>بازگشت به پنل مشتری</button> : <button className="customer-portal-refresh" type="button" onClick={() => void refreshPortal()} disabled={loading}>{loading ? 'در حال به‌روزرسانی…' : 'به‌روزرسانی وضعیت'}</button>}
+				<div><p className="customer-portal-eyebrow"><span aria-hidden="true" />فضای اختصاصی مشتری</p><h1 id="customer-portal-title">خدمات آسومی، <span>روشن و در دسترس.</span></h1><p>سایت، ماژول، اشتراک، فاکتور و دسترسی تیم را از همین‌جا مدیریت کن.</p></div>
+				<div className="customer-portal-heading-actions">{canSeeAdmin && <button className="customer-portal-refresh" type="button" onClick={onOpenAdmin}>مدیریت آسومی</button>}<button className="customer-portal-refresh" type="button" onClick={() => void refreshPortal()} disabled={loading}>{loading ? 'در حال به‌روزرسانی…' : 'به‌روزرسانی وضعیت'}</button></div>
 			</header>
 
-			{!error && !isAdminView && <nav className="customer-portal-tabs" aria-label="بخش‌های پنل">
+			{!error && <nav className="customer-portal-tabs" aria-label="بخش‌های پنل">
 				{(['overview', 'modules', 'purchases', ...(data?.can_manage_billing ? ['billing' as const] : []), 'team', 'support'] as PortalView[]).map(item => <button key={item} type="button" aria-current={view === item ? 'page' : undefined} onClick={() => { if (item === 'support' && view !== 'support') setIntent({ moduleIds: [], context: '' }); setView(item); }}>{viewLabels[item]}</button>)}
-				{canSeeAdmin && <button className="customer-portal-admin-tab" type="button" aria-current={view === 'admin' ? 'page' : undefined} onClick={() => setView('admin')}>مدیریت آسومی</button>}
 			</nav>}
 
 			{error ? <section className="customer-portal-state customer-portal-state--error" role="alert"><h2>{loginRequired ? 'برای دیدن خدماتت وارد حساب آسومی شو' : 'اطلاعات پنل دریافت نشد'}</h2><p>{error}</p><div className="customer-portal-state-actions">{loginRequired && <a className="customer-portal-primary" href="/login?redirect-to=%2F%23portal">ورود به حساب آسومی</a>}<button type="button" onClick={() => void refreshPortal()}>تلاش دوباره</button></div></section>
 				: loading && !data ? <section className="customer-portal-state" aria-live="polite">در حال دریافت اطلاعات سرویس‌ها…</section>
 				: data ? <>
-					{!isAdminView && <div className="customer-portal-team-line">
+					<div className="customer-portal-team-line">
 						<div><span>فضای کاری</span><strong>{data.team?.title || 'حساب آسومی'}</strong></div>
 						{data.teams?.length > 1 && <label className="customer-portal-team-switcher"><span>تغییر تیم</span><select value={data.team.name} onChange={event => void selectTeam(event.target.value)} disabled={switchingTeam} aria-label="انتخاب تیم"><option value="" disabled>انتخاب تیم</option>{data.teams.map(team => <option key={team.name} value={team.name}>{team.title}</option>)}</select></label>}
 						<div className="customer-portal-site-switcher"><label htmlFor="portal-current-site">سایت فعال</label><select id="portal-current-site" value={selectedSite} onChange={event => selectSite(event.target.value)}><option value="">انتخاب سایت</option>{data.sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatus[site.status] || site.status}</option>)}</select></div>
 						{updatedAt && <small>آخرین بررسی: {formatDateTime(updatedAt)}</small>}
-					</div>}
+					</div>
 					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} upcomingInvoice={upcomingInvoice} upcomingInvoiceLoaded={upcomingInvoiceLoaded} onOpenView={setView} />}
 					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} initialModuleIds={intent.moduleIds} initialContext={intent.context} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={(moduleIds, context) => { setIntent({ moduleIds, context: context || '', category: 'Purchase', subject: `درخواست خرید ماژول‌های آسومی (${moduleIds.length})`, site: selectedSite }); setView('support'); }} onRequestSupport={(subject, context, site) => openSupportRequest('Technical', subject, context, site)} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onRefresh={refreshPortalFromChild} />}
 					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} currency={data.team.currency} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} canViewHistory={data.can_manage_apps || data.can_manage_billing} onOpenModules={() => setView('modules')} onOpenBilling={() => setView('billing')} onRequestInstallationSupport={(site, siteLabel, app, status, attemptedAt) => openSupportRequest('Technical', `پیگیری نصب ${app}`, `نصب ماژول «${app}» برای سایت ${siteLabel} با وضعیت «${status}» کامل نشده است. زمان ثبت این تلاش: ${formatDateTime(new Date(attemptedAt))}. لطفاً علت را بررسی و راهنمایی کنید.`, site)} onRequestSubscriptionSupport={subscription => openSupportRequest('Technical', `پیگیری فعال‌سازی ${subscription.app_title}`, `فعال‌سازی ماژول «${subscription.app_title}» برای سایت ${subscription.site_label || subscription.site || 'تیم'} با وضعیت نیازمند پیگیری است. لطفاً علت را بررسی و راهنمایی کنید.`, subscription.site || undefined)} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
 					{view === 'billing' && data.can_manage_billing && <BillingView currency={data.team.currency} onAskSupport={askBillingSupport} />}
 					{view === 'team' && <TeamView />}
 					{view === 'support' && <SupportView key={`${intent.moduleIds.join(',')}:${intent.category || ''}:${intent.subject || ''}:${intent.site || ''}:${intent.context}`} sites={data.sites} selectedSite={selectedSite} initialPurchaseModuleIds={intent.moduleIds} initialContext={intent.context} initialCategory={intent.category} initialSubject={intent.subject} initialSite={intent.site} />}
-					{view === 'admin' && canSeeAdmin && <PortalAdmin canManageCatalog={data.can_manage_catalog} canManageSupport={data.can_manage_support} />}
 				</> : null}
 		</div>
 		<SiteFooter customerPortal />

@@ -189,6 +189,14 @@ export async function getCustomerPortalData(signal?: AbortSignal) {
 	return data;
 }
 
+export async function getPortalAdminAccess(signal?: AbortSignal) {
+	const access = await frappeCall<{ csrf_token: string; can_manage_catalog: boolean; can_manage_support: boolean }>(
+		'press.api.customer_portal.admin_access', { signal },
+	);
+	window.csrf_token = access.csrf_token;
+	return access;
+}
+
 export async function getMarketplaceCatalog(signal?: AbortSignal) {
 	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; customer_description: string | null; published: number; prerequisites: string[]; marketplace_app_slug: string | null; marketplace_app_title: string | null }>; hidden_module_ids: string[] }>(
 		'press.api.customer_portal.catalog', { signal },

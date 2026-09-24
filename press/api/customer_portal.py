@@ -3,6 +3,9 @@
 from press.api.asumi_portal.dashboard import (
 	dashboard,
 )
+from press.api.asumi_portal.admin import (
+	admin_access,
+)
 from press.api.asumi_portal.catalog import (
 	catalog,
 	catalog_admin,
