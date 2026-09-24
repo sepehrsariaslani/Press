@@ -77,7 +77,7 @@ export function BillingView({ currency, onAskSupport }: Props) {
 				</div>
 				<div className="customer-portal-panel-heading customer-portal-invoice-heading"><div><p>تاریخچهٔ مالی</p><h3>فاکتورها</h3></div><span>{new Intl.NumberFormat('fa-IR').format(invoices.length)} فاکتور</span></div>
 				{invoices.length ? <div className="customer-portal-invoice-list">{invoices.map(invoice => <article className="customer-portal-invoice" key={invoice.name}>
-						<div className="customer-portal-invoice-main"><strong>{invoice.name}</strong><small>{invoice.type === 'Subscription' ? 'اشتراک' : invoice.type === 'Prepaid Credits' ? 'اعتبار حساب' : invoice.type} · {formatDate(invoice.date || invoice.due_date)}</small></div>
+						<div className="customer-portal-invoice-main"><strong>{invoice.name}</strong><small>{invoice.type === 'Subscription' ? 'اشتراک' : invoice.type === 'Prepaid Credits' ? 'اعتبار حساب' : invoice.type} · {invoiceDateLabel(invoice)}</small></div>
 						<div className="customer-portal-invoice-total"><strong>{formatCurrency(invoice.total, invoice.currency)}</strong>{invoice.amount_due > 0 && <small>مانده: {formatCurrency(invoice.amount_due, invoice.currency)}</small>}</div>
 						<StatusPill status={invoice.status} label={statusLabels[invoice.status] || invoice.status} />
 						<div className="customer-portal-invoice-actions">
@@ -109,6 +109,11 @@ function formatDate(value: string | null) {
 	const date = new Date(`${value.slice(0, 10)}T00:00:00`);
 	if (Number.isNaN(date.getTime())) return value;
 	return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+}
+
+function invoiceDateLabel(invoice: Invoice) {
+	if (invoice.status === 'Paid' && invoice.payment_date) return `پرداخت ${formatDate(invoice.payment_date)}`;
+	return `${invoice.status === 'Unpaid' ? 'سررسید' : 'تاریخ'} ${formatDate(invoice.due_date || invoice.date)}`;
 }
 
 function formatDateTime(value: string) {
