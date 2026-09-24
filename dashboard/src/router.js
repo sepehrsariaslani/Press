@@ -194,6 +194,12 @@ let router = createRouter({
 					meta: { title: 'Overview' },
 				},
 				{
+					name: 'BillingPricing',
+					path: 'pricing',
+					component: () => import('./pages/BillingPricing.vue'),
+					meta: { title: 'Apps & Pricing' },
+				},
+				{
 					name: 'BillingForecast',
 					path: 'forecast',
 					component: () => import('./pages/BillingForecast.vue'),

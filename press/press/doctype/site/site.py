@@ -1048,23 +1048,52 @@ class Site(Document, TagHelpers):
 		if marketplace_app_name and app_subscription:
 			frappe.db.set_value("Subscription", app_subscription, "enabled", 0)
 
-	def check_marketplace_app_installable(self, plan: str | None = None):
-		if not plan:
+	def check_marketplace_app_installable(self, app: str, plan: str | None = None):
+		marketplace_app_name = frappe.db.get_value("Marketplace App", {"app": app}, "name")
+		if not marketplace_app_name:
+			if plan:
+				frappe.throw(_("Choose a plan for a published Marketplace app."))
 			return
-		if (
-			not frappe.db.get_value("Marketplace App Plan", plan, "price_usd") <= 0
-			and not frappe.local.team().can_install_paid_apps()
-		):
-			frappe.throw(
-				"You cannot install a Paid app on Free Credits. Please buy credits before trying to install again."
-			)
 
-			# TODO: check if app is available and can be installed
+		team = frappe.get_cached_doc("Team", self.team)
+		selected_plan = None
+		if plan:
+			selected_plan = frappe.db.get_value(
+				"Marketplace App Plan",
+				{"name": plan, "app": marketplace_app_name, "enabled": 1},
+				["price_inr", "price_usd"],
+				as_dict=True,
+			)
+			if not selected_plan:
+				frappe.throw(_("Choose an enabled plan for this app."))
+		else:
+			plans = frappe.get_all(
+				"Marketplace App Plan",
+				filters={"app": marketplace_app_name, "enabled": 1},
+				fields=["price_inr", "price_usd"],
+			)
+			price_field = "price_inr" if team.currency == "INR" else "price_usd"
+			has_paid_plan = any((plan.get(price_field) or 0) > 0 for plan in plans)
+			has_free_plan = any((plan.get(price_field) or 0) <= 0 for plan in plans)
+			app_team = frappe.db.get_value("Marketplace App", marketplace_app_name, "team")
+			if app_team != team.name and has_paid_plan and not has_free_plan:
+				frappe.throw(_("Choose an app plan before installing this app."))
+			return
+
+		price = (selected_plan.price_inr or 0) if team.currency == "INR" else (selected_plan.price_usd or 0)
+		if price > 0 and not team.can_install_paid_apps():
+			frappe.throw(
+				_("You cannot install a paid app with the available credits. Add credits before trying again.")
+			)
 
 	@dashboard_whitelist()
 	@site_action(["Active"])
 	def install_app(self, app: str, plan: str | None = None) -> str | None:
-		self.check_marketplace_app_installable(plan)
+		bench = frappe.get_cached_doc("Bench", self.bench)
+		if not any(bench_app.app == app for bench_app in bench.apps):
+			frappe.throw(_("This app is not available for the selected site."))
+
+		self.check_marketplace_app_installable(app, plan)
 
 		if find(self.apps, lambda x: x.app == app):
 			return None

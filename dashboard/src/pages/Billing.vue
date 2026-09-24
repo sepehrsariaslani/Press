@@ -40,6 +40,7 @@ export default {
 		tabs() {
 			const baseTabs = [
 				{ label: 'Overview', route: { name: 'BillingOverview' } },
+				{ label: 'Apps & Pricing', route: { name: 'BillingPricing' } },
 				{ label: 'Subscriptions', route: { name: 'BillingSubscriptions' } },
 				{ label: 'Forecast', route: { name: 'BillingForecast' } },
 				{ label: 'Invoices', route: { name: 'BillingInvoices' } },

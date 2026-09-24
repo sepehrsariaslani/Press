@@ -15,6 +15,7 @@ from press.api.site import (
 	is_prepaid_marketplace_app,
 	protected,
 )
+from press.guards import role_guard
 from press.press.doctype.app.app import new_app as new_app_doc
 from press.press.doctype.marketplace_app.marketplace_app import (
 	MarketplaceApp,
@@ -881,6 +882,61 @@ def get_app_plans(app: str, include_disabled: bool = True):
 
 
 @frappe.whitelist()
+def get_marketplace_pricing_catalog() -> list[dict]:
+	apps = frappe.get_all(
+		"Marketplace App",
+		filters={"status": "Published"},
+		fields=["name", "app", "team", "title", "image", "description"],
+		order_by="title asc",
+	)
+	if not apps:
+		return []
+
+	app_names = [app.name for app in apps]
+	category_rows = frappe.get_all(
+		"Marketplace App Categories",
+		filters={"parent": ("in", app_names), "parenttype": "Marketplace App"},
+		fields=["parent", "category"],
+		order_by="idx asc",
+	)
+	categories_by_app: dict[str, list[str]] = {}
+	for row in category_rows:
+		categories_by_app.setdefault(row.parent, []).append(row.category)
+
+	plans = frappe.get_all(
+		"Marketplace App Plan",
+		filters={"app": ("in", app_names), "enabled": 1},
+		fields=["name", "app", "title", "price_inr", "price_usd"],
+		order_by="price_usd asc",
+	)
+	plan_names = [plan.name for plan in plans]
+	features = (
+		frappe.get_all(
+			"Plan Feature",
+			filters={"parent": ("in", plan_names), "parenttype": "Marketplace App Plan"},
+			fields=["parent", "description"],
+			order_by="idx asc",
+		)
+		if plan_names
+		else []
+	)
+	features_by_plan: dict[str, list[str]] = {}
+	for feature in features:
+		if feature.description:
+			features_by_plan.setdefault(feature.parent, []).append(feature.description)
+
+	plans_by_app: dict[str, list[dict]] = {}
+	for plan in plans:
+		plan.features = features_by_plan.get(plan.name, [])
+		plans_by_app.setdefault(plan.app, []).append(plan)
+
+	for app in apps:
+		app.categories = categories_by_app.get(app.name, [])
+		app.plans = plans_by_app.get(app.name, [])
+	return apps
+
+
+@frappe.whitelist()
 def get_app_info(app: str):
 	return frappe.db.get_value("Marketplace App", app, ["name", "title", "image", "team"], as_dict=True)
 
@@ -916,16 +972,30 @@ def get_apps_with_plans(apps: list[str], release_group: str):
 
 
 @frappe.whitelist()
+@role_guard.api("billing")
 def change_app_plan(subscription: str, new_plan: str):
-	is_free = frappe.db.get_value("Marketplace App Plan", new_plan, "price_usd") <= 0
+	team = get_current_team(get_doc=True)
+	subscription_doc = frappe.get_doc("Subscription", subscription)
+	if subscription_doc.team != team.name or subscription_doc.document_type != "Marketplace App":
+		frappe.throw(_("You do not have permission to change this app plan."), frappe.PermissionError)
+
+	plan = frappe.db.get_value(
+		"Marketplace App Plan",
+		{"name": new_plan, "app": subscription_doc.document_name, "enabled": 1},
+		["price_inr", "price_usd"],
+		as_dict=True,
+	)
+	if not plan:
+		frappe.throw(_("Choose an enabled plan for this app."))
+
+	price = (plan.price_inr or 0) if team.currency == "INR" else (plan.price_usd or 0)
+	is_free = price <= 0
 	if not is_free:
-		team = get_current_team(get_doc=True)
 		if not team.can_install_paid_apps():
 			frappe.throw(
 				"You cannot upgrade to paid plan on Free Credits. Please buy credits before trying to upgrade plan."
 			)
 
-	subscription_doc = frappe.get_doc("Subscription", subscription)
 	subscription_doc.enabled = 1
 	subscription_doc.plan = new_plan
 	subscription_doc.save(ignore_permissions=True)
