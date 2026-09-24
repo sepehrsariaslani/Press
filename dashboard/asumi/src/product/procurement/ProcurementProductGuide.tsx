@@ -1,5 +1,6 @@
 import { productModuleDetails } from '../moduleDetails';
 import { productModules } from '../modules';
+import { ProcurementDashboardPreview } from './ProcurementDashboardPreview';
 import { ProcurementFeatureBoards } from './ProcurementFeatureBoards';
 import { procurementFeatureBoards } from './storyData';
 
@@ -17,6 +18,7 @@ export function ProcurementProductGuide({ onOpenModule, onNavigateToSection, onR
 
 	return <section className="procurement-handoff" id="purchase-handoff" aria-labelledby="purchase-handoff-title">
 		<div className="procurement-guide-inner">
+			<ProcurementDashboardPreview entryHref={`/hesab${details.entryPath}`} />
 			<header className="procurement-guide-header">
 				<div className="procurement-guide-heading">
 					<p className="procurement-guide-eyebrow">از روایت تا کار روزانه‌ی خرید</p>
