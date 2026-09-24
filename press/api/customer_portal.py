@@ -3,12 +3,12 @@ from math import isfinite
 import frappe
 from frappe.utils import cint, flt
 
-from press.press.doctype.marketplace_app.marketplace_app import get_plans_for_app
-from press.marketplace.doctype.marketplace_app_plan.marketplace_app_plan import MarketplaceAppPlan
-from press.press.doctype.team.team_members import get_invitations, get_roles
-from press.guards.role_guard import roles_enabled, skip_roles
-from press.utils import get_current_team, is_admin_user, is_team_owner
+from press.api.asumi_billing import can_manage_billing, require_billing_access
 from press.api.site import protected
+from press.marketplace.doctype.marketplace_app_plan.marketplace_app_plan import MarketplaceAppPlan
+from press.press.doctype.marketplace_app.marketplace_app import get_plans_for_app
+from press.press.doctype.team.team_members import get_invitations, get_roles
+from press.utils import get_current_team
 
 
 DEFAULT_INCLUDED_MODULES = {
@@ -42,30 +42,6 @@ def _require_catalog_admin():
 def _require_support_agent():
 	if not _is_support_agent():
 		frappe.throw("Not permitted to manage support requests.", frappe.PermissionError)
-
-
-def _require_billing_access(team):
-	if not _can_manage_billing(team):
-		frappe.throw("Only a team billing manager can register Marketplace purchases.", frappe.PermissionError)
-
-
-def _can_manage_billing(team):
-	if (
-		"System Manager" in frappe.get_roles()
-		or not roles_enabled()
-		or skip_roles()
-		or is_team_owner(team.name)
-		or is_admin_user(team.name)
-	):
-		return True
-	billing_roles = [role["name"] for role in get_roles(team.name) if role.get("allow_billing")]
-	return bool(
-		billing_roles
-		and frappe.db.exists(
-			"Press Role User",
-			{"parent": ("in", billing_roles), "user": frappe.session.user},
-		)
-	)
 
 
 def _catalog_mappings(include_unpublished=False):
@@ -129,14 +105,14 @@ def dashboard():
 		}
 
 	serialized_subscriptions = []
-	latest_install_activity = {}
+	latest_app_activity = {}
 	if sites_by_name:
 		activities = frappe.get_all(
 			"Site Activity",
-			filters={"site": ("in", list(sites_by_name)), "action": "Install App"},
-			fields=["site", "reason", "job", "creation"],
+			filters={"site": ("in", list(sites_by_name)), "action": ("in", ["Install App", "Uninstall App"])},
+			fields=["site", "reason", "job", "action", "creation"],
 			order_by="creation desc",
-			limit=500,
+			limit=1000,
 		)
 		job_names = list({activity.job for activity in activities if activity.job})
 		jobs = (
@@ -153,20 +129,25 @@ def dashboard():
 		)
 		for activity in activities:
 			key = (activity.site, activity.reason)
-			if key not in latest_install_activity:
-				latest_install_activity[key] = jobs.get(activity.job, "Unknown")
+			if key not in latest_app_activity:
+				latest_app_activity[key] = {
+					"action": activity.action,
+					"status": jobs.get(activity.job, "Unknown"),
+				}
 
 	for subscription in subscriptions:
 		app = apps.get(subscription.document_name)
 		site = sites_by_name.get(subscription.site)
 		install_app = app.app if app else subscription.document_name
-		install_status = latest_install_activity.get((subscription.site, install_app)) or latest_install_activity.get(
+		app_activity = latest_app_activity.get((subscription.site, install_app)) or latest_app_activity.get(
 			(subscription.site, subscription.document_name)
 		)
 		status = "Active" if subscription.enabled else "Inactive"
-		if subscription.enabled and install_status in {"Pending", "Running"}:
+		if app_activity and app_activity["action"] == "Uninstall App" and app_activity["status"] in {"Pending", "Running"}:
+			status = "Cancellation Pending"
+		elif subscription.enabled and app_activity and app_activity["status"] in {"Pending", "Running"}:
 			status = "Provisioning"
-		elif subscription.enabled and install_status in {"Failure", "Delivery Failure"}:
+		elif app_activity and app_activity["status"] in {"Failure", "Delivery Failure"}:
 			status = "Needs Attention"
 		app_plan_key = app.name if app else subscription.document_name
 		selected_plan = next(
@@ -195,6 +176,8 @@ def dashboard():
 			if last_annual_usage:
 				cycle_start = last_annual_usage
 			cycle_end = frappe.utils.add_to_date(cycle_start, years=1, as_string=True)
+		elif billing_interval == "Monthly":
+			cycle_end = frappe.utils.get_last_day(frappe.utils.today())
 		serialized_subscriptions.append(
 			{
 				"name": subscription.name,
@@ -222,7 +205,7 @@ def dashboard():
 		},
 		"sites": [serialize_site(site) for site in sites],
 		"subscriptions": serialized_subscriptions,
-		"can_manage_billing": _can_manage_billing(team),
+		"can_manage_billing": can_manage_billing(team),
 		"can_manage_catalog": _is_catalog_admin(),
 		"can_manage_support": _is_support_agent(),
 	}
@@ -284,18 +267,53 @@ def catalog_admin():
 def install_marketplace_app(name: str, app: str, plan: str | None = None):
 	"""Install one native Marketplace app after enforcing the team's billing role."""
 	team = get_current_team(get_doc=True)
-	_require_billing_access(team)
+	require_billing_access(team)
 	site = frappe.get_doc("Site", name)
 	if site.team != team.name:
 		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
 	return site.install_app(app, plan)
 
 
+@frappe.whitelist(methods=["POST"])
+def uninstall_marketplace_app(name: str, app: str):
+	"""Cancel a Marketplace subscription by using Press's native uninstall lifecycle."""
+	team = get_current_team(get_doc=True)
+	require_billing_access(team)
+	site = frappe.get_doc("Site", name)
+	if site.team != team.name:
+		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
+	if app not in {row.app for row in site.apps}:
+		frappe.throw("This module is not installed on the selected site.")
+
+	marketplace_app = frappe.db.get_value("Marketplace App", {"app": app}, "name")
+	if not marketplace_app:
+		frappe.throw("Only Marketplace subscriptions can be cancelled here.")
+	subscriptions = frappe.get_all(
+		"Subscription",
+		filters={"team": team.name, "site": site.name, "document_type": "Marketplace App"},
+		fields=["document_name", "enabled"],
+	)
+	if not any(row.document_name in {app, marketplace_app} and row.enabled for row in subscriptions):
+		latest_uninstall = frappe.get_all(
+			"Site Activity",
+			filters={"site": site.name, "action": "Uninstall App", "reason": app},
+			fields=["job"],
+			order_by="creation desc",
+			limit=1,
+		)
+		if not latest_uninstall or not latest_uninstall[0].job:
+			frappe.throw("No active Marketplace subscription was found for this module.")
+		job_status = frappe.db.get_value("Agent Job", latest_uninstall[0].job, "status")
+		if job_status not in {"Failure", "Delivery Failure"}:
+			frappe.throw("This module has no active subscription to cancel.")
+	return site.uninstall_app(app)
+
+
 @frappe.whitelist(methods=["GET"])
 def credit_topup_constraints():
 	"""Return the minimum credit payment permitted by native Press billing."""
 	team = get_current_team(get_doc=True)
-	_require_billing_access(team)
+	require_billing_access(team)
 	from press.api.billing import total_unpaid_amount
 
 	return {
@@ -512,8 +530,8 @@ def admin_update_support_request(name: str, status: str, response: str | None = 
 def installation_history(name: str):
 	activities = frappe.get_all(
 		"Site Activity",
-		filters={"site": name, "action": "Install App"},
-		fields=["name", "reason", "job", "creation"],
+		filters={"site": name, "action": ("in", ["Install App", "Uninstall App"])},
+		fields=["name", "reason", "job", "action", "creation"],
 		order_by="creation desc",
 		limit=30,
 	)
@@ -530,6 +548,7 @@ def installation_history(name: str):
 		{
 			"name": activity.name,
 			"app": activity.reason,
+			"action": activity.action,
 			"job": activity.job,
 			"status": jobs.get(activity.job, {}).get("status", "Unknown"),
 			"creation": activity.creation,

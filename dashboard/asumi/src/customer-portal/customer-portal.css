@@ -276,3 +276,35 @@
 	.customer-portal-quick-actions > button { flex: 1 1 45%; }
 	.customer-portal-tabs .customer-portal-admin-tab { margin-inline-start: 0; }
 }
+
+.customer-portal-billing-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.customer-portal-billing-setting-card { display: grid; align-content: start; gap: 12px; min-width: 0; padding: 13px; border: 1px solid #e8e2da; background: #fbf9f4; }
+.customer-portal-billing-setting-card .customer-portal-subheading { margin: 0; }
+.customer-portal-billing-setting-card .customer-portal-subheading p { margin: 4px 0 0; color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
+.customer-portal-billing-setting-card .customer-portal-search { max-width: 420px; }
+.customer-portal-payment-method-list { display: grid; gap: 6px; }
+.customer-portal-payment-method { display: flex; align-items: center; gap: 8px; padding: 9px; border: 1px solid #e8e2da; background: white; }
+.customer-portal-payment-method > div { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.customer-portal-payment-method strong { font-size: 10px; }
+.customer-portal-payment-method small { color: var(--portal-muted); font-size: 8px; }
+.customer-portal-address-card { margin-top: 10px; }
+.customer-portal-address-card .customer-portal-panel-heading { margin: 0; }
+.customer-portal-billing-address-summary { margin: 0; color: #504942; font-size: 10px; line-height: 1.9; }
+.customer-portal-balance-row { display: grid; grid-template-columns: minmax(160px, 1fr) auto minmax(180px, .7fr); align-items: center; gap: 10px; padding: 10px; border: 1px solid #e8e2da; background: #fbf9f4; }
+.customer-portal-balance-row > div { display: grid; gap: 3px; }
+.customer-portal-balance-row strong { font-size: 10px; }
+.customer-portal-balance-row small { color: var(--portal-muted); font-size: 8px; }
+.customer-portal-balance-row > strong { color: var(--portal-red); }
+
+@media (max-width: 850px) {
+	.customer-portal-billing-settings-grid { grid-template-columns: 1fr; }
+	.customer-portal-balance-row { grid-template-columns: 1fr auto; }
+	.customer-portal-balance-row > small { grid-column: 1 / -1; }
+}
+
+@media (max-width: 600px) {
+	.customer-portal-payment-method { flex-wrap: wrap; }
+	.customer-portal-payment-method > div { flex-basis: 100%; }
+	.customer-portal-balance-row { grid-template-columns: 1fr; }
+	.customer-portal-balance-row > small { grid-column: auto; }
+}

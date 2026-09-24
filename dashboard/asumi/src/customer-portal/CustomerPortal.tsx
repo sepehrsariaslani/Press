@@ -18,7 +18,7 @@ type CustomerPortalProps = {
 type PortalView = 'overview' | 'modules' | 'purchases' | 'billing' | 'team' | 'support' | 'admin';
 type PortalIntent = { moduleIds: string[]; context: string; category?: string; subject?: string; site?: string };
 
-const subscriptionStatus: Record<string, string> = { Active: 'فعال', Inactive: 'متوقف', Disabled: 'غیرفعال', Provisioning: 'در حال نصب', 'Needs Attention': 'نیازمند پیگیری' };
+const subscriptionStatus: Record<string, string> = { Active: 'فعال', Inactive: 'متوقف', Disabled: 'غیرفعال', Provisioning: 'در حال نصب', 'Cancellation Pending': 'در حال لغو', 'Needs Attention': 'نیازمند پیگیری' };
 const siteStatus: Record<string, string> = { Active: 'فعال', Inactive: 'غیرفعال', Pending: 'در صف آماده‌سازی', Installing: 'در حال نصب', Suspended: 'متوقف', Broken: 'نیازمند پیگیری', Archived: 'بایگانی‌شده' };
 const viewLabels: Record<PortalView, string> = {
 	overview: 'نمای کلی', modules: 'ماژول‌ها', purchases: 'خریدها و اشتراک‌ها', billing: 'فاکتورها', team: 'اعضا و دسترسی', support: 'پشتیبانی', admin: 'مدیریت آسومی',
@@ -52,7 +52,7 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 	const [selectedSite, setSelectedSite] = useState(readSelectedSite);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 	const activeSubscriptionCount = useMemo(() => (data?.subscriptions || []).filter(item => ['Active', 'Provisioning'].includes(item.status)).length, [data]);
-	const inactiveSubscriptionCount = data?.subscriptions.filter(item => ['Inactive', 'Disabled'].includes(item.status)).length || 0;
+	const inactiveSubscriptionCount = data?.subscriptions.filter(item => ['Inactive', 'Disabled', 'Cancellation Pending'].includes(item.status)).length || 0;
 
 	const refreshPortal = useCallback(async (signal?: AbortSignal) => {
 		setLoading(true);
@@ -118,7 +118,7 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 		openSupportRequest(
 			'Purchase',
 			`درخواست لغو اشتراک ${subscription.app_title}`,
-			`درخواست لغو اشتراک ماژول «${subscription.app_title}» برای سایت ${subscription.site_label || subscription.site || 'تیم'} و پلن «${subscription.selected_plan?.title || 'پلن فعلی'}».\n\nلطفاً زمان و شرایط پایان اشتراک را بررسی کنید. تا زمان تأیید درخواست توسط آسومی، سرویس و دسترسی فعال می‌ماند.`,
+			`درخواست لغو و حذف ماژول «${subscription.app_title}» برای سایت ${subscription.site_label || subscription.site || 'تیم'} و پلن «${subscription.selected_plan?.title || 'پلن فعلی'}».\n\nاین سایت اکنون امکان حذف مستقیم ماژول را ندارد. لطفاً وضعیت سایت و زمان توقف اشتراک را بررسی کنید.`,
 			subscription.site || undefined,
 		);
 	}
@@ -170,7 +170,7 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 					</div>
 					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} onOpenView={setView} onOpenPricing={openPricing} />}
 					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onOpenPricing={openPricing} onRefresh={refreshPortalFromChild} />}
-					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} />}
+					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
 					{view === 'billing' && data.can_manage_billing && <BillingView currency={data.team.currency} onAskSupport={askBillingSupport} />}
 					{view === 'team' && <TeamView />}
 					{view === 'support' && <SupportView key={`${intent.moduleIds.join(',')}:${intent.category || ''}:${intent.subject || ''}:${intent.site || ''}:${intent.context}`} sites={data.sites} selectedSite={selectedSite} initialPurchaseModuleIds={intent.moduleIds} initialContext={intent.context} initialCategory={intent.category} initialSubject={intent.subject} initialSite={intent.site} />}

@@ -99,6 +99,44 @@ export type Invoice = {
 	stripe_link_expired?: boolean;
 };
 
+export type BillingAddress = {
+	address: string;
+	city: string;
+	state: string;
+	postal_code: string;
+	country: string;
+	gstin: string;
+};
+
+export type BillingSettings = {
+	billing_name: string;
+	address: BillingAddress;
+	payment_mode: string | null;
+	billing_country_code: string | null;
+};
+
+export type PaymentMethod = {
+	name: string;
+	last_4: string;
+	name_on_card: string;
+	expiry_month: number;
+	expiry_year: number;
+	brand: string;
+	is_default: boolean | number;
+};
+
+export type BalanceTransaction = {
+	name: string;
+	creation: string;
+	amount: number;
+	currency: string;
+	source: string;
+	type: string;
+	ending_balance: number;
+	description: string | null;
+	formatted?: { amount: string; ending_balance: string; invoice_for?: string };
+};
+
 export type TeamMember = {
 	user: string;
 	email: string;
@@ -159,6 +197,12 @@ export async function installMarketplaceApp(site: string, app: string, plan?: st
 	});
 }
 
+export async function uninstallMarketplaceApp(site: string, app: string) {
+	return frappeCall<string>('press.api.customer_portal.uninstall_marketplace_app', {
+		method: 'POST', params: { name: site, app },
+	});
+}
+
 export async function changeMarketplacePlan(subscription: string, newPlan: string) {
 	return frappeCall<void>('press.api.marketplace.change_app_plan', {
 		method: 'POST', params: { subscription, new_plan: newPlan },
@@ -166,7 +210,7 @@ export async function changeMarketplacePlan(subscription: string, newPlan: strin
 }
 
 export async function getInstallHistory(site: string, signal?: AbortSignal) {
-	return frappeCall<Array<{ name: string; app: string; job: string | null; status: string; creation: string }>>(
+	return frappeCall<Array<{ name: string; app: string; action: string; job: string | null; status: string; creation: string }>>(
 		'press.api.customer_portal.installation_history', { params: { name: site }, signal },
 	);
 }
@@ -181,10 +225,61 @@ export async function getInvoices(signal?: AbortSignal) {
 	return frappeCall<Invoice[]>('press.api.billing.invoices_and_payments', { signal });
 }
 
+export async function refreshInvoicePaymentLink(invoice: string) {
+	return frappeCall<string>('press.api.asumi_billing.refresh_invoice_payment_link', { method: 'POST', params: { invoice } });
+}
+
 export async function getUpcomingInvoice(signal?: AbortSignal) {
 	return frappeCall<{ upcoming_invoice: Invoice | null; available_credits: string }>(
 		'press.api.billing.upcoming_invoice', { signal },
 	);
+}
+
+export async function getBillingSettings(signal?: AbortSignal) {
+	return frappeCall<BillingSettings>('press.api.asumi_billing.billing_settings', { signal });
+}
+
+export async function saveBillingDetails(billing_name: string, address: BillingAddress) {
+	const details = address.country === 'India' && !address.gstin.trim() ? { ...address, gstin: 'Not Applicable' } : address;
+	return frappeCall<BillingSettings>('press.api.asumi_billing.save_billing_details', {
+		method: 'POST', params: { billing_details: { ...details, billing_name } },
+	});
+}
+
+export async function getCountries(signal?: AbortSignal) {
+	return frappeCall<Array<{ name: string; code: string }>>('press.api.account.country_list', { signal });
+}
+
+export async function getPaymentMethods(signal?: AbortSignal) {
+	return frappeCall<PaymentMethod[]>('press.api.billing.get_payment_methods', { signal });
+}
+
+export async function getCardSetupIntent() {
+	return frappeCall<{ publishable_key: string; setup_intent: { client_secret: string } }>(
+		'press.api.billing.get_publishable_key_and_setup_intent',
+	);
+}
+
+export async function finishCardSetup(setup_intent: unknown) {
+	return frappeCall<{ payment_method_name: string }>('press.api.billing.setup_intent_success', {
+		method: 'POST', params: { setup_intent },
+	});
+}
+
+export async function setDefaultPaymentMethod(name: string) {
+	return frappeCall<void>('press.api.billing.set_as_default', { method: 'POST', params: { name } });
+}
+
+export async function removePaymentMethod(name: string) {
+	return frappeCall<string | null>('press.api.billing.remove_payment_method', { method: 'POST', params: { name } });
+}
+
+export async function changePaymentMode(mode: string) {
+	return frappeCall<void>('press.api.billing.change_payment_mode', { method: 'POST', params: { mode } });
+}
+
+export async function getBalanceTransactions(signal?: AbortSignal) {
+	return frappeCall<BalanceTransaction[]>('press.api.billing.balances', { signal });
 }
 
 export async function getCreditTopUpConstraints(signal?: AbortSignal) {
