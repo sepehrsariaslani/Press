@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { productModules } from '../product/modules';
 import { modulePrerequisites } from '../product/pricing/catalog';
 import {
@@ -31,6 +31,7 @@ type Props = {
 	sites: PortalSite[];
 	selectedSite: string;
 	siteStatus: string | null;
+	initialModuleIds: string[];
 	canManageApps: boolean;
 	canManageBilling: boolean;
 	onSelectSite: (site: string) => void;
@@ -51,7 +52,7 @@ const pricingFilters: Array<{ value: PricingFilter; label: string }> = [
 	{ value: 'unpriced', label: 'بدون قیمت' },
 ];
 
-export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, canManageApps, canManageBilling, onSelectSite, onRequestPurchase, onRequestSupport, onRequestBillingSupport, onOpenBilling, onRefresh }: Props) {
+export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, initialModuleIds, canManageApps, canManageBilling, onSelectSite, onRequestPurchase, onRequestSupport, onRequestBillingSupport, onOpenBilling, onRefresh }: Props) {
 	const [catalog, setCatalog] = useState<{ apps: MarketplaceApp[]; mappings: ModuleMapping[] } | null>(null);
 	const [siteApps, setSiteApps] = useState<SiteAppState>({ installed: [], available: [] });
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -60,7 +61,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	const [query, setQuery] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState('');
 	const [pricingFilter, setPricingFilter] = useState<PricingFilter>('all');
-	const [selectedApps, setSelectedApps] = useState<Record<string, string>>({});
+	const [selectedApps, setSelectedApps] = useState<Record<string, string>>(() => readSelectedPlans(teamName));
 	const [planChoices, setPlanChoices] = useState<Record<string, string>>({});
 	const [busyApp, setBusyApp] = useState('');
 	const [statusMessage, setStatusMessage] = useState('');
@@ -68,6 +69,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	const [needsCreditTopUp, setNeedsCreditTopUp] = useState(false);
 	const [billingSupportContext, setBillingSupportContext] = useState('');
 	const [pendingJob, setPendingJob] = useState<PendingJob | null>(() => readPendingJob());
+	const appliedInitialSelection = useRef('');
 	const canBrowseCatalog = canManageApps || canManageBilling;
 	const mappingByModule = useMemo(() => new Map((catalog?.mappings || []).map(mapping => [mapping.module_id, mapping])), [catalog]);
 	const mappedSlugs = useMemo(() => new Set((catalog?.mappings || []).map(mapping => mapping.marketplace_app_slug).filter((slug): slug is string => Boolean(slug))), [catalog]);
@@ -77,7 +79,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		for (const [slug, planName] of Object.entries(selectedApps)) {
 			const app = catalog?.apps.find(item => item.app === slug);
 			const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
-			const plan = findPlan(siteApp?.plans || app?.plans || [], planName);
+			const plan = findPlan(plansForApp(siteApp?.plans, app?.plans), planName);
 			const amount = plan ? planPrice(plan, currency) : null;
 			if (amount === null) continue;
 			const period = planPeriodKey(plan?.interval);
@@ -88,7 +90,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	const selectedUnpriced = Object.keys(selectedApps).filter(slug => {
 		const app = catalog?.apps.find(item => item.app === slug);
 		const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
-		const plan = findPlan(siteApp?.plans || app?.plans || [], selectedApps[slug]);
+		const plan = findPlan(plansForApp(siteApp?.plans, app?.plans), selectedApps[slug]);
 		return !plan || planPrice(plan, currency) === null;
 	}).length;
 
@@ -102,6 +104,14 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		});
 		return () => controller.abort();
 	}, []);
+
+	useEffect(() => {
+		const key = `asumi-module-estimate:${teamName}`;
+		try {
+			if (Object.keys(selectedApps).length) window.localStorage.setItem(key, JSON.stringify(selectedApps));
+			else window.localStorage.removeItem(key);
+		} catch { /* The estimate remains available for the current visit. */ }
+	}, [selectedApps, teamName]);
 
 	useEffect(() => {
 		if (!selectedSite) {
@@ -121,6 +131,27 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		});
 		return () => controller.abort();
 	}, [selectedSite, catalog, currency]);
+
+	useEffect(() => {
+		const selectionKey = initialModuleIds.join(',');
+		if (!catalog || !selectionKey || appliedInitialSelection.current === selectionKey) return;
+		const selected: Record<string, string> = {};
+		for (const moduleId of initialModuleIds) {
+			const mapping = mappingByModule.get(moduleId);
+			if (mapping?.mode !== 'Marketplace app' || !mapping.marketplace_app_slug) continue;
+			const app = catalog.apps.find(item => item.app === mapping.marketplace_app_slug);
+			if (!app) continue;
+			const installed = siteApps.installed.find(item => item.app === app.app);
+			const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === app.app);
+			const plans = plansForApp(siteApp?.plans, app.plans);
+			const plan = findPlan(plans, installed?.subscription?.plan || '') || [...plans].sort((left, right) =>
+				(planPrice(left, currency) ?? Number.POSITIVE_INFINITY) - (planPrice(right, currency) ?? Number.POSITIVE_INFINITY),
+			)[0];
+			if (plan) selected[app.app] = plan.name;
+		}
+		if (Object.keys(selected).length) setSelectedApps(current => ({ ...current, ...selected }));
+		appliedInitialSelection.current = selectionKey;
+	}, [catalog, currency, initialModuleIds, mappingByModule, siteApps]);
 
 	useEffect(() => {
 		if (!pendingJob || pendingJob.site !== selectedSite || isTerminalJob(pendingJob.status)) return;
@@ -221,7 +252,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			setStatusMessage('این افزونه روی نسخهٔ فعلی این سایت قابل نصب نیست.');
 			return;
 		}
-		const availablePlans = available.plans || [];
+		const availablePlans = plansForApp(available.plans, app.plans);
 		const hasPaidPlans = isExternalApp && availablePlans.some(plan => (planPrice(plan, currency) ?? 0) > 0);
 		const hasFreePlan = availablePlans.some(plan => {
 			const amount = planPrice(plan, currency);
@@ -271,7 +302,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		if (!canBrowseCatalog && mode !== 'Included' && !installed) return false;
 		const available = app && siteApps.available.find(item => item.app === app.app);
 		const siteApp = available || (app && siteApps.installed.find(item => item.app === app.app));
-		const plans = (siteApp?.plans || app?.plans || []) as PortalPlan[];
+		const plans = plansForApp(siteApp?.plans, app?.plans);
 		const searchable = [module.title, module.description, mapping?.description, app?.title, ...(app?.categories || [])].filter(Boolean).join(' ').toLocaleLowerCase();
 		return searchable.includes(normalizedQuery)
 			&& (!selectedCategory || Boolean(app?.categories?.includes(selectedCategory)))
@@ -290,6 +321,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 				<span>{selectedSite ? `سایت مقصد: ${sites.find(site => site.name === selectedSite)?.label || selectedSite}` : 'سایت مقصد انتخاب نشده'}</span>
 			</div>
 			<p className="customer-portal-help-copy">{canBrowseCatalog ? <>امکانات پایهٔ آسومی جدا از افزونه‌های قابل خرید نشان داده می‌شوند. قیمت افزونه‌ها از پلن‌های فعال حساب می‌آید و هزینهٔ میزبانی جداگانه است.{!canManageBilling ? ' برآورد در دسترس است؛ ثبت خرید را مدیر مالی تیم انجام می‌دهد.' : ''}</> : 'امکانات رایگان و ماژول‌های فعال این تیم را می‌بینی. برای دیدن تعرفه‌ها یا درخواست ماژول جدید، از مدیر تیم بخواه دسترسی ماژول‌ها را برای نقش تو فعال کند.'}</p>
+			{initialModuleIds.length > 0 && <div className="customer-portal-inline-state" role="status">ترکیب انتخابی به کاتالوگ منتقل شد؛ قیمت قابل خرید بر اساس پلن فعال هر افزونه محاسبه می‌شود. ماژول‌های بدون اتصال هنوز نیازمند بررسی تیم آسومی هستند.</div>}
 			<div className="customer-portal-filter-row">
 				<label className="customer-portal-search"><span>جست‌وجو</span><input value={query} onChange={event => setQuery(event.target.value)} type="search" placeholder="نام ماژول یا افزونه" /></label>
 				<label className="customer-portal-search"><span>سایت مقصد</span><select value={selectedSite} onChange={event => onSelectSite(event.target.value)}><option value="">انتخاب سایت</option>{sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatusLabel(site.status)}</option>)}</select></label>
@@ -300,7 +332,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			</div>}
 			{loadingCatalog || loadingSiteApps ? <div className="customer-portal-inline-state" role="status">در حال بارگذاری کاتالوگ و سازگاری سایت…</div> : null}
 			{error && <div className="customer-portal-inline-error" role="alert"><span>{error}</span><div>{needsCreditTopUp && <button type="button" onClick={onOpenBilling}>افزایش اعتبار</button>}{billingSupportContext && <button type="button" onClick={() => onRequestBillingSupport('بررسی دورهٔ پرداخت اشتراک', billingSupportContext)}>درخواست بررسی دوره</button>}<button type="button" onClick={() => { setError(''); setNeedsCreditTopUp(false); setBillingSupportContext(''); void reloadSiteApps(); }}>تلاش دوباره</button></div></div>}
-			{statusMessage && <div className={`customer-portal-inline-status${failedInstall ? ' customer-portal-inline-status--action' : ''}`} role="status"><span>{statusMessage}</span>{failedInstall && <button type="button" onClick={() => onRequestSupport(`پیگیری نصب ${failedInstall.title}`, `نصب ماژول «${failedInstall.title}» برای سایت ${sites.find(site => site.name === failedInstall.site)?.label || failedInstall.site} با وضعیت «${failedInstall.status}» کامل نشده است. لطفاً علت را بررسی و راهنمایی کنید.`, failedInstall.site)}>درخواست پشتیبانی نصب</button>}</div>}
+			{statusMessage && <div className={`customer-portal-inline-status${failedInstall ? ' customer-portal-inline-status--action' : ''}`} role="status"><span>{statusMessage}</span>{failedInstall && <button type="button" onClick={() => onRequestSupport(`پیگیری نصب ${failedInstall.title}`, `نصب ماژول «${failedInstall.title}» برای سایت ${sites.find(site => site.name === failedInstall.site)?.label || failedInstall.site} با وضعیت «${installStatusLabel(failedInstall.status)}» کامل نشده است. لطفاً علت را بررسی و راهنمایی کنید.`, failedInstall.site)}>درخواست پشتیبانی نصب</button>}</div>}
 			{pendingJob?.site === selectedSite && <div className="customer-portal-install-progress" role="status"><span className="customer-portal-spinner" aria-hidden="true" /><div><strong>در حال نصب {pendingJob.title}</strong><p>پس از آماده‌شدن، نتیجه به‌صورت خودکار به‌روز می‌شود.</p></div></div>}
 			<div className="customer-portal-module-grid">
 				{visibleModules.map(module => {
@@ -312,7 +344,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 					const app = appForModule(module.id);
 					const available = app ? siteApps.available.find(item => item.app === app.app) : undefined;
 					const installed = app ? siteApps.installed.find(item => item.app === app.app) : undefined;
-					const plans = (available?.plans || (installed as AppInstallOption | undefined)?.plans || app?.plans || []) as PortalPlan[];
+					const plans = plansForApp(available?.plans, (installed as AppInstallOption | undefined)?.plans, app?.plans);
 					const selectedPlanName = planChoices[app?.app || ''] || selectedApps[app?.app || ''] || installed?.subscription?.plan || plans[0]?.name || '';
 					const plan = findPlan(plans, selectedPlanName);
 					const missingCurrencyPrice = Boolean(canBrowseCatalog && app && app.team !== teamName && plan && planPrice(plan, currency) === null);
@@ -347,7 +379,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			{otherApps.length ? <div className="customer-portal-marketplace-list">{otherApps.map(app => {
 				const available = siteApps.available.find(item => item.app === app.app);
 				const installed = siteApps.installed.find(item => item.app === app.app);
-				const plans = (available?.plans || (installed as AppInstallOption | undefined)?.plans || app.plans || []) as PortalPlan[];
+				const plans = plansForApp(available?.plans, (installed as AppInstallOption | undefined)?.plans, app.plans);
 				const selectedPlan = findPlan(plans, planChoices[app.app] || selectedApps[app.app] || installed?.subscription?.plan || plans[0]?.name || '');
 				const missingCurrencyPrice = Boolean(canBrowseCatalog && app.team !== teamName && selectedPlan && planPrice(selectedPlan, currency) === null);
 				return <article className="customer-portal-marketplace-card" key={app.name}>
@@ -382,6 +414,10 @@ function PlanFeatures({ features }: { features: string[] }) {
 
 function findPlan(plans: PortalPlan[], name: string) {
 	return plans.find(plan => plan.name === name) || null;
+}
+
+function plansForApp(...sources: Array<PortalPlan[] | undefined>) {
+	return sources.find(source => source?.length) || [];
 }
 
 function planPrice(plan: PortalPlan, currency: string) {
@@ -423,7 +459,7 @@ function matchesPricingFilter(mode: string, plans: PortalPlan[], filter: Pricing
 function reconcileSelectedApps(current: Record<string, string>, apps: MarketplaceApp[], state: SiteAppState, currency: string) {
 	const available = new Map([...state.available, ...state.installed].map(item => [item.app, item]));
 	return Object.fromEntries(Object.entries(current).map(([slug, planName]) => {
-		const plans = (available.get(slug)?.plans || apps.find(app => app.app === slug)?.plans || []) as PortalPlan[];
+		const plans = plansForApp(available.get(slug)?.plans, apps.find(app => app.app === slug)?.plans);
 		const plan = findPlan(plans, planName) || [...plans].sort((a, b) => (planPrice(a, currency) ?? Infinity) - (planPrice(b, currency) ?? Infinity))[0];
 		return [slug, plan?.name || ''];
 	}).filter(([, planName]) => Boolean(planName)));
@@ -433,11 +469,22 @@ function isTerminalJob(status: string) {
 	return ['Success', 'Failure', 'Delivery Failure'].includes(status);
 }
 
+function installStatusLabel(status: string) {
+	return { Pending: 'در صف آماده‌سازی', Running: 'در حال آماده‌سازی', Failure: 'کامل نشد', 'Delivery Failure': 'در انتظار تکمیل اتصال' }[status] || 'نیازمند پیگیری';
+}
+
 function readPendingJob(): PendingJob | null {
 	try {
 		const value = JSON.parse(window.localStorage.getItem('asumi-pending-install') || 'null') as PendingJob | null;
 		return value && value.site && value.job ? value : null;
 	} catch { return null; }
+}
+
+function readSelectedPlans(teamName: string) {
+	try {
+		const value = JSON.parse(window.localStorage.getItem(`asumi-module-estimate:${teamName}`) || '{}') as Record<string, unknown>;
+		return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+	} catch { return {}; }
 }
 
 function persistPendingJob(job: PendingJob) {

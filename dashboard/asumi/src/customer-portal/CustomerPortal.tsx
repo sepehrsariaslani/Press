@@ -47,7 +47,7 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 	const [intent, setIntent] = useState(readPortalIntent);
-	const [view, setView] = useState<PortalView>(() => intent.moduleIds.length ? 'support' : 'overview');
+	const [view, setView] = useState<PortalView>(() => intent.moduleIds.length ? 'modules' : 'overview');
 	const [selectedSite, setSelectedSite] = useState(readSelectedSite);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 	const [upcomingInvoice, setUpcomingInvoice] = useState<Invoice | null>(null);
@@ -93,8 +93,9 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 	}, [data?.can_manage_billing, data?.team.name, updatedAt]);
 
 	useEffect(() => {
-		try { window.localStorage.removeItem('asumi-portal-intent'); } catch { /* The route is already open; storage cleanup is optional. */ }
-	}, []);
+		if (!data) return;
+		try { window.localStorage.removeItem('asumi-portal-intent'); } catch { /* The selected modules already live in portal state. */ }
+	}, [data]);
 
 	useEffect(() => {
 		if (!data) return;
@@ -181,7 +182,7 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 						{updatedAt && <small>آخرین بررسی: {formatDateTime(updatedAt)}</small>}
 					</div>
 					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} upcomingInvoice={upcomingInvoice} upcomingInvoiceLoaded={upcomingInvoiceLoaded} onOpenView={setView} />}
-					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestSupport={(subject, context, site) => openSupportRequest('Technical', subject, context, site)} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onRefresh={refreshPortalFromChild} />}
+					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} initialModuleIds={intent.moduleIds} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestSupport={(subject, context, site) => openSupportRequest('Technical', subject, context, site)} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onRefresh={refreshPortalFromChild} />}
 					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onOpenBilling={() => setView('billing')} onRequestInstallationSupport={(site, siteLabel, app, status) => openSupportRequest('Technical', `پیگیری نصب ${app}`, `نصب ماژول «${app}» برای سایت ${siteLabel} با وضعیت «${status}» کامل نشده است. لطفاً علت را بررسی و راهنمایی کنید.`, site)} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
 					{view === 'billing' && data.can_manage_billing && <BillingView currency={data.team.currency} onAskSupport={askBillingSupport} />}
 					{view === 'team' && <TeamView />}

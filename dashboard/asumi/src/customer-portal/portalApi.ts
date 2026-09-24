@@ -208,7 +208,7 @@ export async function uninstallMarketplaceApp(site: string, app: string) {
 }
 
 export async function changeMarketplacePlan(subscription: string, newPlan: string) {
-	return frappeCall<void>('press.api.marketplace.change_app_plan', {
+	return frappeCall<void>('press.api.customer_portal.change_marketplace_plan', {
 		method: 'POST', params: { subscription, new_plan: newPlan },
 	});
 }
@@ -384,13 +384,19 @@ async function frappeCall<T>(method: string, options: RequestOptions = {}): Prom
 			url.searchParams.set(key, typeof value === 'string' ? value : JSON.stringify(value));
 		}
 	}
-	const response = await fetch(url, {
-		method: httpMethod,
-		credentials: 'same-origin',
-		headers,
-		body: httpMethod === 'POST' ? JSON.stringify(options.params || {}) : undefined,
-		signal: options.signal,
-	});
+	let response: Response;
+	try {
+		response = await fetch(url, {
+			method: httpMethod,
+			credentials: 'same-origin',
+			headers,
+			body: httpMethod === 'POST' ? JSON.stringify(options.params || {}) : undefined,
+			signal: options.signal,
+		});
+	} catch (caught) {
+		if (options.signal?.aborted || (caught instanceof DOMException && caught.name === 'AbortError')) throw caught;
+		throw new Error('ارتباط با سرویس برقرار نشد. اتصال را بررسی کن و دوباره تلاش کن.');
+	}
 	let payload: FrappeResponse<T>;
 	try {
 		payload = await response.json() as FrappeResponse<T>;
@@ -404,14 +410,26 @@ async function frappeCall<T>(method: string, options: RequestOptions = {}): Prom
 }
 
 function errorMessage(payload: FrappeResponse<unknown>, status: number) {
+	let message = '';
 	if (payload._server_messages) {
 		try {
 			const messages = JSON.parse(payload._server_messages) as string[];
-			const text = messages.map(message => {
-				try { return JSON.parse(message).message as string; } catch { return message; }
+			message = messages.map(item => {
+				try { return JSON.parse(item).message as string; } catch { return item; }
 			}).filter(Boolean).join(' ');
-			if (text) return text;
 		} catch { /* Use the generic response below. */ }
 	}
-	return payload._error_message || (status === 403 ? 'دسترسی لازم برای این کار را نداری.' : 'انجام درخواست ممکن نشد. دوباره تلاش کن.');
+	message ||= payload._error_message || '';
+	const normalized = message.toLocaleLowerCase();
+	if (status === 401 || /not logged in|login required|session expired/.test(normalized)) return 'برای ادامه وارد حساب آسومی شو.';
+	if (/available credits|add credits|free credits|cannot install a paid app|paid app.*credit/.test(normalized)) return 'برای خرید این پلن، مدیر مالی باید روش پرداخت را تنظیم یا اعتبار حساب را افزایش دهد.';
+	if (/billing currency|currency.*plan|not available.*currency|quote/.test(normalized)) return 'این پلن برای ارز حساب قابل خرید نیست؛ برای دریافت تعرفه با پشتیبانی آسومی تماس بگیر.';
+	if (/billing period|payment period|usage record|billing interval/.test(normalized)) return 'تغییر دورهٔ پرداخت به بررسی تیم پشتیبانی نیاز دارد.';
+	if (/choose an app plan|choose an enabled plan|choose a valid plan/.test(normalized)) return 'یک پلن معتبر برای این افزونه انتخاب کن.';
+	if (/not available for the selected site|not compatible|site.*installable/.test(normalized)) return 'این افزونه با نسخه یا وضعیت سایت انتخاب‌شده سازگار نیست.';
+	if (/does not belong to the current team|does not belong to this team|not permitted|permission/.test(normalized) || status === 403) return 'برای این کار دسترسی لازم را نداری؛ از مدیر تیم کمک بگیر.';
+	if (/only a team billing manager/.test(normalized)) return 'برای این کار باید مدیر مالی تیم اقدام کند.';
+	if (/stripe|payment link|invoice|payment/.test(normalized)) return 'پرداخت یا دریافت فاکتور کامل نشد؛ وضعیت را دوباره بررسی کن یا با پشتیبانی در تماس باش.';
+	if (/[\u0600-\u06ff]/.test(message) && message.length <= 200) return message;
+	return 'انجام درخواست ممکن نشد. دوباره تلاش کن یا از پشتیبانی کمک بگیر.';
 }

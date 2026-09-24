@@ -274,6 +274,37 @@ def serialize_plan(plan):
 	}
 
 
+def _validate_marketplace_plan_currency(team, app_slug: str, plan_name: str):
+	app = frappe.db.get_value(
+		"Marketplace App", {"app": app_slug}, ["name", "team"], as_dict=True
+	)
+	if not app or app.team == team.name:
+		return
+
+	plan = frappe.db.get_value(
+		"Marketplace App Plan",
+		{"name": plan_name, "app": app.name, "enabled": 1},
+		["price_inr", "price_usd"],
+		as_dict=True,
+	)
+	if not plan:
+		return
+
+	if team.currency == "INR":
+		price = plan.price_inr
+	elif team.currency == "USD":
+		price = plan.price_usd
+	elif plan.price_inr == 0 and plan.price_usd == 0:
+		price = 0
+	else:
+		price = None
+
+	if price is None:
+		frappe.throw(
+			"This paid plan is not available in the team's billing currency. Contact Asumi support for a quote."
+		)
+
+
 @frappe.whitelist(methods=["GET"])
 def catalog():
 	"""Return the published Marketplace apps and Asumi-to-Press mappings."""
@@ -315,7 +346,23 @@ def install_marketplace_app(name: str, app: str, plan: str | None = None):
 	site = frappe.get_doc("Site", name)
 	if site.team != team.name:
 		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
+	if plan:
+		_validate_marketplace_plan_currency(team, app, plan)
 	return site.install_app(app, plan)
+
+
+@frappe.whitelist(methods=["POST"])
+def change_marketplace_plan(subscription: str, new_plan: str):
+	team = get_current_team(get_doc=True)
+	require_billing_access(team)
+	doc = frappe.get_doc("Subscription", subscription)
+	if doc.team != team.name or doc.document_type != "Marketplace App":
+		frappe.throw("This subscription does not belong to the current team.", frappe.PermissionError)
+	app_slug = frappe.db.get_value("Marketplace App", doc.document_name, "app") or doc.document_name
+	_validate_marketplace_plan_currency(team, app_slug, new_plan)
+	return frappe.call(
+		"press.api.marketplace.change_app_plan", subscription=subscription, new_plan=new_plan
+	)
 
 
 @frappe.whitelist(methods=["POST"])

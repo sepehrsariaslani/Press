@@ -31,7 +31,7 @@ type PendingRemoval = { site: string; app: string; title: string; job: string };
 const statusLabels: Record<string, string> = {
 	Active: 'فعال', Inactive: 'متوقف', Disabled: 'غیرفعال', Provisioning: 'در حال نصب',
 	'Cancellation Pending': 'در حال لغو', 'Needs Attention': 'نیازمند پیگیری',
-	Pending: 'در صف', Running: 'در حال اجرا', Success: 'موفق', Failure: 'ناموفق', 'Delivery Failure': 'خطای ارتباط',
+	Pending: 'ثبت‌شده', Running: 'در حال آماده‌سازی', Success: 'کامل شد', Failure: 'کامل نشد', 'Delivery Failure': 'در انتظار تکمیل اتصال', Unknown: 'در انتظار بررسی',
 };
 const intervalLabel: Record<string, string> = { Hourly: 'ساعتی', Monthly: 'ماهانه', Annual: 'سالانه', Annually: 'سالانه', Daily: 'روزانه با نرخ ماهانه' };
 

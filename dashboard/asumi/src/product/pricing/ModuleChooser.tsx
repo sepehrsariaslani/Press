@@ -56,7 +56,7 @@ export function ModuleChooser({ tier, selectedIds, total, status, activeId, onAc
 			<div className="pricing-estimate-total"><span>جمع ماهانه‌ی پیشنهادی</span><strong>{formatToman(total)}</strong></div>
 			<p>{selectedCount} ماژول · تا {String(tier.userLimit).replace(/\d/g, n => '۰۱۲۳۴۵۶۷۸۹'[+n])} کاربر</p>
 			<button className="pricing-save-button" type="button" onClick={onSave}>{saved ? 'ترکیب ذخیره شد ✓' : 'ذخیره‌ی ترکیب انتخابی'}</button>
-			<button className="pricing-request-button" type="button" onClick={onRequestPurchase}>درخواست بررسی و خرید این ترکیب</button>
+			<button className="pricing-request-button" type="button" onClick={onRequestPurchase}>ادامه به پنل و دیدن تعرفهٔ قابل خرید</button>
 		</div>
 	</aside>;
 }
