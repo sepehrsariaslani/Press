@@ -82,6 +82,8 @@ test('opens the sales story in the homepage case-board style with a request-to-o
   expect(container.querySelector('.sales-story')).toHaveAttribute('data-chapter', '0');
   expect(container.querySelector('.sales-story')).toHaveAttribute('aria-labelledby', 'sales-request-title');
   expect(container.querySelectorAll('.sales-chapter-nav a')).toHaveLength(6);
+  expect(container.querySelector('[data-request-preview]')).toHaveTextContent('برای ۱۲۰ عدد از کد A');
+  expect(container.querySelector('[data-request-preview] .paper-value')).toHaveAttribute('text-anchor', 'start');
   expect(container.querySelector('[data-sales-item="request"]')).toHaveTextContent('۱۲۰ عدد');
   expect(container.querySelector('[data-sales-item="request"]')).toHaveTextContent('از کد A قیمت می‌خواستم');
   expect(container.querySelector('[data-sales-item="quote"]')).toHaveTextContent('پیش‌فاکتور');

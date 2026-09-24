@@ -19,11 +19,11 @@ function ObligationPaper({ item, paperId }: { item: (typeof obligations)[number]
 	return <g data-obligation={item.id} opacity="0" transform={`translate(${item.x} ${item.y})`}>
 		<rect className="paper-body sales-obligation-paper" x="-112" y="-57" width="224" height="114" rx="1.5" fill={`url(#${paperId})`} />
 		<g className="sales-paper-face document-face">
-			<text className="paper-tag" textAnchor="end" x="96" y="-32">پرونده‌ی سفارش</text>
-			<text className="paper-title" textAnchor="end" x="96" y="-8">{item.title}</text>
+			<text className="paper-tag" textAnchor="start" x="96" y="-32">پرونده‌ی سفارش</text>
+			<text className="paper-title" textAnchor="start" x="96" y="-8">{item.title}</text>
 			<path className="paper-rule" d="M-96 4 H96" />
-			<text className="paper-value" textAnchor="end" x="96" y="29">{item.question}</text>
-			<text className="paper-note" textAnchor="end" x="96" y="45">{item.note}</text>
+			<text className="paper-value" textAnchor="start" x="96" y="29">{item.question}</text>
+			<text className="paper-note" textAnchor="start" x="96" y="45">{item.note}</text>
 		</g>
 		<g className="sales-evidence-pin" transform="translate(0 -50)"><path d="M0 1 l4 9" stroke="#131010" strokeWidth="3" opacity=".55" /><circle r="6.5" fill="url(#sales-board-pin)" /><circle cx="-2" cy="-2" r="1.4" fill="#ffd4d6" opacity=".65" /></g>
 	</g>;
@@ -39,6 +39,7 @@ export function SalesEvidenceBoard({ motion, stage }: { motion: MotionRef; stage
 		const board = svg.querySelector<SVGGElement>('[data-sales-board]');
 		const camera = svg.querySelector<SVGGElement>('[data-sales-camera]');
 		const request = svg.querySelector<SVGGElement>('[data-sales-item="request"]');
+		const requestPreview = svg.querySelector<SVGGElement>('[data-request-preview]');
 		const requestDetails = svg.querySelector<SVGGElement>('[data-request-details]');
 		const quote = svg.querySelector<SVGGElement>('[data-sales-item="quote"]');
 		const quoteFields = svg.querySelector<SVGGElement>('[data-quote-fields]');
@@ -69,29 +70,30 @@ export function SalesEvidenceBoard({ motion, stage }: { motion: MotionRef; stage
 			previousTime = time;
 			progress = Math.abs(target - progress) < .0001 ? target : lerp(progress, target, factor);
 
-			const boardReveal = transition(.08, .27, progress);
-			const requestScale = lerp(.52, 1, transition(.015, .22, progress));
-			const requestY = lerp(350, 196, transition(.16, .34, progress));
+			const boardReveal = transition(.04, .2, progress);
+			const requestScale = lerp(.82, 1, transition(.1, .24, progress));
+			const requestY = lerp(320, 196, transition(.08, .28, progress));
 			request?.setAttribute('transform', `translate(500 ${requestY}) rotate(${lerp(-2, -0.5, transition(.16, .3, progress))}) scale(${requestScale})`);
 			opacity(request, 1);
-			opacity(requestDetails, transition(.095, .25, progress));
+			opacity(requestPreview, 1 - transition(.06, .16, progress));
+			opacity(requestDetails, transition(.08, .22, progress));
 
-			const quoteReveal = transition(.22, .39, progress);
-			const quoteSettle = transition(.34, .52, progress);
+			const quoteReveal = transition(.12, .28, progress);
+			const quoteSettle = transition(.27, .42, progress);
 			quote?.setAttribute('transform', `translate(500 ${lerp(408, 450, quoteSettle)}) rotate(${lerp(1.3, 0, quoteSettle)}) scale(${lerp(.72, 1, quoteReveal)})`);
 			opacity(quote, quoteReveal);
-			opacity(quoteFields, transition(.27, .44, progress));
-			opacity(quoteTotal, transition(.35, .49, progress));
-			opacity(quoteSent, transition(.445, .54, progress) * (1 - transition(.54, .64, progress)));
-			opacity(accepted, transition(.535, .65, progress));
-			opacity(orderNumber, transition(.61, .7, progress));
+			opacity(quoteFields, transition(.16, .31, progress));
+			opacity(quoteTotal, transition(.25, .39, progress));
+			opacity(quoteSent, transition(.32, .41, progress) * (1 - transition(.5, .59, progress)));
+			opacity(accepted, transition(.33, .4, progress));
+			opacity(orderNumber, transition(.35, .42, progress));
 
-			const pullback = transition(.58, .77, progress);
-			const zoom = lerp(1.19, 1, pullback);
+			const pullback = transition(.49, .68, progress);
+			const zoom = lerp(1.08, 1, pullback);
 			camera?.setAttribute('transform', `translate(${500 * (1 - zoom)} ${400 * (1 - zoom)}) scale(${zoom})`);
 			opacity(board, boardReveal);
 			obligations.forEach((item, index) => {
-				const shown = transition(.635 + index * .028, .755 + index * .028, progress);
+				const shown = transition(.52 + index * .025, .67 + index * .025, progress);
 				opacity(item, shown);
 				const original = obligationsData[index];
 				item.setAttribute('transform', `translate(${original.x} ${lerp(original.y + 19, original.y, shown)}) scale(${lerp(.94, 1, shown)})`);
@@ -100,7 +102,7 @@ export function SalesEvidenceBoard({ motion, stage }: { motion: MotionRef; stage
 				const start = index === 0 ? { x: 500, y: 341 } : { x: 500, y: 341 };
 				const end = index === 0 ? { x: 500, y: 127 } : obligationPins[index - 1];
 				path.setAttribute('d', index === 0 ? threadPath(end, start, index) : threadPath(start, end, index));
-				const reveal = index === 0 ? transition(.29, .44, progress) : transition(.69 + index * .024, .82 + index * .024, progress);
+				const reveal = index === 0 ? transition(.16, .3, progress) : transition(.56 + index * .018, .71 + index * .018, progress);
 				path.setAttribute('stroke-dashoffset', String(1 - reveal));
 				opacity(path, index === 0 ? .9 : .8);
 			});
@@ -179,16 +181,20 @@ export function SalesEvidenceBoard({ motion, stage }: { motion: MotionRef; stage
 			<g className="sales-board-threads">
 				{Array.from({ length: 5 }, (_, index) => <path key={index} className="evidence-thread" data-sales-thread={index} pathLength="1" strokeDasharray="1" strokeDashoffset="1" />)}
 			</g>
-			<g data-sales-item="request" transform="translate(500 350) scale(.52)">
+			<g data-sales-item="request" transform="translate(500 320) scale(.82)">
 				<rect className="paper-body sales-request-paper" x="-155" y="-75" width="310" height="150" rx="1.5" fill={`url(#${id}-paper)`} />
 				<g className="sales-paper-face document-face">
-					<text className="paper-tag" textAnchor="end" x="132" y="-48">درخواست تازه</text>
-					<text className="paper-title" textAnchor="end" x="132" y="-22">پیام مشتری</text>
+					<text className="paper-tag" textAnchor="start" x="132" y="-48">درخواست تازه</text>
+					<text className="paper-title" textAnchor="start" x="132" y="-22">پیام مشتری</text>
+					<g data-request-preview>
+						<text className="paper-value" textAnchor="start" x="132" y="19">برای ۱۲۰ عدد از کد A</text>
+						<text className="paper-note" textAnchor="start" x="132" y="42">قیمت می‌خواستم · پیام تازه</text>
+					</g>
 					<g data-request-details opacity="0">
 						<path className="paper-rule" d="M-132 -9 H132" />
-						<text className="paper-value" textAnchor="end" x="132" y="17">سلام، برای ۱۲۰ عدد</text>
-						<text className="paper-value" textAnchor="end" x="132" y="39">از کد A قیمت می‌خواستم.</text>
-						<text className="paper-note" textAnchor="end" x="132" y="61">مشتری نمونه · ۰۹:۴۲</text>
+						<text className="paper-value" textAnchor="start" x="132" y="17">سلام، برای ۱۲۰ عدد</text>
+						<text className="paper-value" textAnchor="start" x="132" y="39">از کد A قیمت می‌خواستم.</text>
+						<text className="paper-note" textAnchor="start" x="132" y="61">مشتری نمونه · ۰۹:۴۲</text>
 					</g>
 					<g className="sales-notification-badge"><circle className="sales-notification-ping" cx="-132" cy="-54" r="5" /></g>
 				</g>
@@ -197,25 +203,25 @@ export function SalesEvidenceBoard({ motion, stage }: { motion: MotionRef; stage
 			<g data-sales-item="quote" opacity="0" transform="translate(500 408) scale(.72)">
 				<rect className="paper-body sales-quote-paper" x="-170" y="-115" width="340" height="230" rx="1.5" fill={`url(#${id}-paper)`} />
 				<g className="sales-paper-face document-face">
-					<text className="paper-tag" textAnchor="end" x="147" y="-88">پیشنهاد قیمت · پیش‌نمایش نمونه</text>
-					<text className="paper-title" textAnchor="end" x="147" y="-64">پیش‌فاکتور</text>
+					<text className="paper-tag" textAnchor="start" x="147" y="-88">پیشنهاد قیمت · پیش‌نمایش نمونه</text>
+					<text className="paper-title" textAnchor="start" x="147" y="-64">پیش‌فاکتور</text>
 					<path className="paper-rule" d="M-147 -52 H147" />
 					<g data-quote-fields opacity="0">
-						<text className="paper-note" textAnchor="end" x="147" y="-31">مشتری نمونه</text>
-						<text className="paper-value" textAnchor="end" x="147" y="-8">کد A × ۱۲۰ عدد</text>
-						<text className="paper-note" textAnchor="end" x="147" y="15">قیمت واحد · {new Intl.NumberFormat('fa-IR').format(salesSample.unitPrice)} تومان</text>
-						<text className="paper-note" textAnchor="end" x="147" y="37">تخفیف · {salesSample.discountPercent}٪</text>
-						<text className="paper-note" textAnchor="end" x="147" y="59">تحویل · {salesSample.deliveryTime}</text>
+						<text className="paper-note" textAnchor="start" x="147" y="-31">مشتری نمونه</text>
+						<text className="paper-value" textAnchor="start" x="147" y="-8">کد A × ۱۲۰ عدد</text>
+						<text className="paper-note" textAnchor="start" x="147" y="15">قیمت واحد · {new Intl.NumberFormat('fa-IR').format(salesSample.unitPrice)} تومان</text>
+						<text className="paper-note" textAnchor="start" x="147" y="37">تخفیف · {salesSample.discountPercent}٪</text>
+						<text className="paper-note" textAnchor="start" x="147" y="59">تحویل · {salesSample.deliveryTime}</text>
 					</g>
 					<g data-quote-total opacity="0">
 						<path className="paper-rule" d="M-147 71 H147" />
-						<text className="paper-tag" textAnchor="end" x="147" y="95">جمع پس از تخفیف</text>
+						<text className="paper-tag" textAnchor="start" x="147" y="95">جمع پس از تخفیف</text>
 						<text className="paper-value sales-quote-total-value" textAnchor="middle" x="-15" y="95">{new Intl.NumberFormat('fa-IR').format(salesQuote.total)} تومان</text>
 					</g>
-					<g data-quote-sent opacity="0" transform="translate(-65 78) rotate(-7)"><rect x="-53" y="-12" width="106" height="24" fill="none" stroke="#a92532" strokeWidth="1.7" /><text className="sales-stamp-text" textAnchor="middle" y="5">پیشنهاد ارسال شد</text></g>
+					<g data-quote-sent opacity="0" transform="translate(-100 -16) rotate(-5)"><rect x="-53" y="-12" width="106" height="24" fill="none" stroke="#a92532" strokeWidth="1.7" /><text className="sales-stamp-text" textAnchor="middle" y="5">پیشنهاد ارسال شد</text></g>
 				</g>
 				<g className="sales-evidence-pin" transform="translate(0 -107)"><path d="M0 1 l4 9" stroke="#131010" strokeWidth="3" opacity=".55" /><circle r="6.5" fill={`url(#${id}-pin)`} /><circle cx="-2" cy="-2" r="1.4" fill="#ffd4d6" opacity=".65" /></g>
-				<g data-accepted-stamp opacity="0" transform="translate(-45 73) rotate(-10)"><rect x="-47" y="-13" width="94" height="26" fill="none" stroke="#a92532" strokeWidth="2" /><text className="sales-stamp-text" textAnchor="middle" y="6">تأیید شد</text></g>
+				<g data-accepted-stamp opacity="0" transform="translate(-100 45) rotate(-7)"><rect x="-47" y="-13" width="94" height="26" fill="none" stroke="#a92532" strokeWidth="2" /><text className="sales-stamp-text" textAnchor="middle" y="6">تأیید شد</text></g>
 				<text className="sales-order-number" data-order-number textAnchor="start" x="-145" y="-87" opacity="0">SO-1405-00291</text>
 			</g>
 			{obligations.map(item => <ObligationPaper key={item.id} item={item} paperId={`${id}-paper`} />)}

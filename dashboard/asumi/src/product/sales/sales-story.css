@@ -29,8 +29,8 @@
 .sales-story .skip-story { z-index: 99; }
 
 .sales-scene-frame { pointer-events: none; }
-.sales-case-board { overflow: visible; }
-.sales-paper-face { fill: var(--case-paper-ink); direction: rtl; text-anchor: end; }
+.sales-case-board { overflow: hidden; }
+.sales-paper-face { fill: var(--case-paper-ink); direction: rtl; text-anchor: start; }
 .sales-paper-face .paper-tag { fill: var(--case-paper-muted); font-size: 11px; }
 .sales-paper-face .paper-title { fill: var(--case-paper-ink); font-size: 17px; font-weight: 650; }
 .sales-paper-face .paper-rule { stroke: #a6a098; stroke-width: .8; }
