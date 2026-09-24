@@ -1,0 +1,297 @@
+export type PortalSite = {
+	name: string;
+	label: string;
+	status: string;
+};
+
+export type PortalPlan = {
+	name: string;
+	title: string;
+	price_inr: number | null;
+	price_usd: number | null;
+	enabled?: boolean | number;
+	features: string[];
+};
+
+export type PortalSubscription = {
+	name: string;
+	app: string;
+	app_title: string;
+	app_image: string | null;
+	site: string | null;
+	site_label: string | null;
+	site_status: string | null;
+	status: string;
+	interval: string | null;
+	start_date: string | null;
+	end_date: string | null;
+	selected_plan: PortalPlan | null;
+};
+
+export type MarketplaceApp = {
+	name: string;
+	app: string;
+	team: string;
+	title: string;
+	image: string | null;
+	description: string | null;
+	categories: string[];
+	plans: PortalPlan[];
+};
+
+export type AppInstallOption = {
+	app: string;
+	title: string;
+	app_title: string;
+	team?: string;
+	has_plans_available?: boolean;
+	plans?: PortalPlan[];
+	[billing_type: string]: unknown;
+};
+
+export type InstalledApp = AppInstallOption & {
+	subscription?: { name?: string; plan?: string };
+};
+
+export type SupportRequest = {
+	name: string;
+	team: string;
+	site: string | null;
+	subject: string;
+	category: string;
+	message: string;
+	status: string;
+	resolution: string | null;
+	creation: string;
+	modified: string;
+	messages?: Array<{ name: string; comment_by: string; content: string; creation: string }>;
+};
+
+export type CustomerPortalData = {
+	team: { name: string; title: string; currency: string };
+	sites: PortalSite[];
+	subscriptions: PortalSubscription[];
+	can_manage_catalog: boolean;
+	can_manage_support: boolean;
+	can_manage_billing: boolean;
+};
+
+export type SiteAppState = { installed: InstalledApp[]; available: AppInstallOption[] };
+export type Invoice = {
+	name: string;
+	total: number;
+	amount_due: number;
+	status: string;
+	type: string;
+	stripe_invoice_url: string | null;
+	period_start: string | null;
+	period_end: string | null;
+	due_date: string | null;
+	payment_date: string | null;
+	currency: string;
+	invoice_pdf: string | null;
+	date: string | null;
+	formatted_total?: string;
+	formatted_amount_due?: string;
+	stripe_link_expired?: boolean;
+};
+
+export type TeamMember = {
+	user: string;
+	email: string;
+	user_name: string;
+	user_image?: string | null;
+	roles: Array<{ name: string; title: string; admin_access: boolean }>;
+	has_admin_access?: boolean;
+	status?: string;
+};
+
+export type TeamAccessData = {
+	team: { name: string; title: string };
+	members: TeamMember[];
+	invitations: Array<{ name: string; email: string; date: string; press_role: string | null; status: string }>;
+	roles: Array<{ name: string; title: string; admin_access: boolean }>;
+	can_manage_members: boolean;
+};
+
+type FrappeResponse<T> = {
+	message?: T;
+	exc?: string;
+	exception?: string;
+	_error_message?: string;
+	_server_messages?: string;
+};
+
+type RequestOptions = { method?: 'GET' | 'POST'; params?: Record<string, unknown>; signal?: AbortSignal };
+
+declare global {
+	interface Window {
+		csrf_token?: string;
+		frappe?: { csrf_token?: string };
+	}
+}
+
+export async function getCustomerPortalData(signal?: AbortSignal) {
+	return frappeCall<CustomerPortalData>('press.api.customer_portal.dashboard', { signal });
+}
+
+export async function getMarketplaceCatalog(signal?: AbortSignal) {
+	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; published: number; marketplace_app_slug: string | null; marketplace_app_title: string | null }> }>(
+		'press.api.customer_portal.catalog', { signal },
+	);
+}
+
+export async function getSiteAppState(site: string, signal?: AbortSignal): Promise<SiteAppState> {
+	const [installed, available] = await Promise.all([
+		frappeCall<InstalledApp[]>('press.api.site.installed_apps', { params: { name: site }, signal }),
+		frappeCall<AppInstallOption[]>('press.api.site.available_apps', { params: { name: site }, signal }),
+	]);
+	return { installed, available };
+}
+
+export async function installMarketplaceApp(site: string, app: string, plan?: string) {
+	return frappeCall<string | null>('press.api.site.install_app', {
+		method: 'POST',
+		params: { name: site, app, plan },
+	});
+}
+
+export async function changeMarketplacePlan(subscription: string, newPlan: string) {
+	return frappeCall<void>('press.api.marketplace.change_app_plan', {
+		method: 'POST', params: { subscription, new_plan: newPlan },
+	});
+}
+
+export async function getInstallHistory(site: string, signal?: AbortSignal) {
+	return frappeCall<Array<{ name: string; app: string; job: string | null; status: string; creation: string }>>(
+		'press.api.customer_portal.installation_history', { params: { name: site }, signal },
+	);
+}
+
+export async function getInstallStatus(site: string, job: string) {
+	return frappeCall<{ name: string; status: string; start: string | null; end: string | null }>(
+		'press.api.customer_portal.installation_status', { params: { name: site, job } },
+	);
+}
+
+export async function getInvoices(signal?: AbortSignal) {
+	return frappeCall<Invoice[]>('press.api.billing.invoices_and_payments', { signal });
+}
+
+export async function getUpcomingInvoice(signal?: AbortSignal) {
+	return frappeCall<{ upcoming_invoice: Invoice | null; available_credits: string }>(
+		'press.api.billing.upcoming_invoice', { signal },
+	);
+}
+
+export async function getTeamAccess(signal?: AbortSignal) {
+	return frappeCall<TeamAccessData>('press.api.customer_portal.team_access', { signal });
+}
+
+export async function inviteTeamMember(email: string, role?: string) {
+	return frappeCall<{ email: string; status: string }>('press.api.customer_portal.invite_team_member', {
+		method: 'POST', params: { email, role },
+	});
+}
+
+export async function cancelTeamInvitation(email: string) {
+	return frappeCall<{ email: string; status: string }>('press.api.customer_portal.cancel_team_invitation', {
+		method: 'POST', params: { email },
+	});
+}
+
+export async function removeTeamMember(email: string) {
+	return frappeCall<{ email: string; status: string }>('press.api.customer_portal.remove_team_member', {
+		method: 'POST', params: { email },
+	});
+}
+
+export async function getSupportRequests(signal?: AbortSignal) {
+	return frappeCall<SupportRequest[]>('press.api.customer_portal.support_requests', { signal });
+}
+
+export async function getSupportRequest(name: string, signal?: AbortSignal) {
+	return frappeCall<SupportRequest>('press.api.customer_portal.support_request_detail', { params: { name }, signal });
+}
+
+export async function createSupportRequest(params: { subject: string; message: string; category: string; site?: string }) {
+	return frappeCall<SupportRequest>('press.api.customer_portal.create_support_request', { method: 'POST', params });
+}
+
+export async function replySupportRequest(name: string, message: string) {
+	return frappeCall<SupportRequest>('press.api.customer_portal.reply_support_request', { method: 'POST', params: { name, message } });
+}
+
+export async function getCatalogAdmin(signal?: AbortSignal) {
+	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; marketplace_app: string | null; published: number; description: string | null }> }>(
+		'press.api.customer_portal.catalog_admin', { signal },
+	);
+}
+
+export async function saveCatalogMapping(params: { module_id: string; mode: string; marketplace_app?: string; published: boolean }) {
+	return frappeCall('press.api.customer_portal.save_catalog_mapping', { method: 'POST', params });
+}
+
+export async function updateMarketplacePlanPrices(params: { plan: string; price_inr: string; price_usd: string }) {
+	return frappeCall('press.api.customer_portal.update_marketplace_plan_prices', { method: 'POST', params });
+}
+
+export async function getAdminSupportRequests(signal?: AbortSignal) {
+	return frappeCall<Array<SupportRequest & { team: string }>>('press.api.customer_portal.admin_support_requests', { signal });
+}
+
+export async function updateAdminSupportRequest(params: { name: string; status: string; response?: string }) {
+	return frappeCall('press.api.customer_portal.admin_update_support_request', { method: 'POST', params });
+}
+
+async function frappeCall<T>(method: string, options: RequestOptions = {}): Promise<T> {
+	const httpMethod = options.method || 'GET';
+	const url = new URL(`/api/method/${method}`, window.location.origin);
+	const headers: Record<string, string> = {
+		Accept: 'application/json',
+		'X-Frappe-Site-Name': window.location.hostname,
+	};
+	const activeTeam = window.localStorage.getItem('current_team');
+	if (activeTeam) headers['X-Press-Team'] = activeTeam;
+	if (httpMethod === 'POST') {
+		headers['Content-Type'] = 'application/json; charset=utf-8';
+		const csrfToken = window.csrf_token || window.frappe?.csrf_token;
+		if (csrfToken && csrfToken !== '{{ csrf_token }}') headers['X-Frappe-CSRF-Token'] = csrfToken;
+	}
+	if (httpMethod === 'GET') {
+		for (const [key, value] of Object.entries(options.params || {})) {
+			if (value === undefined || value === null || value === '') continue;
+			url.searchParams.set(key, typeof value === 'string' ? value : JSON.stringify(value));
+		}
+	}
+	const response = await fetch(url, {
+		method: httpMethod,
+		credentials: 'same-origin',
+		headers,
+		body: httpMethod === 'POST' ? JSON.stringify(options.params || {}) : undefined,
+		signal: options.signal,
+	});
+	let payload: FrappeResponse<T>;
+	try {
+		payload = await response.json() as FrappeResponse<T>;
+	} catch {
+		throw new Error('پاسخ سرویس دریافت نشد. کمی بعد دوباره تلاش کن.');
+	}
+	if (!response.ok || payload.exc || payload.exception || payload.message === undefined) {
+		throw new Error(errorMessage(payload, response.status));
+	}
+	return payload.message;
+}
+
+function errorMessage(payload: FrappeResponse<unknown>, status: number) {
+	if (payload._server_messages) {
+		try {
+			const messages = JSON.parse(payload._server_messages) as string[];
+			const text = messages.map(message => {
+				try { return JSON.parse(message).message as string; } catch { return message; }
+			}).filter(Boolean).join(' ');
+			if (text) return text;
+		} catch { /* Use the generic response below. */ }
+	}
+	return payload._error_message || (status === 403 ? 'دسترسی لازم برای این کار را نداری.' : 'انجام درخواست ممکن نشد. دوباره تلاش کن.');
+}

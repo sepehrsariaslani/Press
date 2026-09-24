@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AsumiButton } from '../../components/atoms/AsumiButton';
+import { SiteFooter } from '../../components/site/SiteFooter';
+import { SiteHeader } from '../../components/site/SiteHeader';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { BrandSignal } from '../../story/BrandSignal';
 import { useStoryProgress } from '../../story/useStoryProgress';
 import { productModuleDetails } from '../moduleDetails';
 import { salesChapters, salesSample } from './storyData';
@@ -12,13 +13,14 @@ import './sales-story.css';
 type SalesStoryProps = {
 	onOpenModule: (moduleId: string) => void;
 	onReturnToModules: () => void;
+	onOpenPricing: () => void;
 };
 
 function toPersianDigits(value: number | string) {
 	return String(value).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
 }
 
-export function SalesStory({ onOpenModule, onReturnToModules }: SalesStoryProps) {
+export function SalesStory({ onOpenModule, onReturnToModules, onOpenPricing }: SalesStoryProps) {
 	const systemReducedMotion = useReducedMotion();
 	const [motionChoice, setMotionChoice] = useState<boolean | null>(null);
 	const reducedMotion = motionChoice ?? systemReducedMotion;
@@ -49,19 +51,10 @@ export function SalesStory({ onOpenModule, onReturnToModules }: SalesStoryProps)
 
 	return <main className="asumi-story sales-story" data-chapter={stage} data-theme-phase={stage === 5 ? 'bright' : 'dark'} data-reduced-motion={reducedMotion} aria-labelledby="sales-request-title">
 		<a className="skip-story" href="#sales-handoff" onClick={event => { event.preventDefault(); scrollTo('sales-handoff'); }}>رفتن مستقیم به معرفی مرکز فروش</a>
-		<header className="story-header sales-story-header">
-			<a className="story-brand" href="#modules" aria-label="بازگشت به ماژول‌های آسومی" onClick={event => { event.preventDefault(); onReturnToModules(); }}>
-				<BrandSignal /><span>آسومی<small>از داده تا تصمیم</small></span>
-			</a>
-			<p className="header-description">روایت ماژول فروش</p>
-			<div className="header-actions">
-				<AsumiButton className="motion-control sales-motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های داستان فروش" title="کاهش حرکت‌های داستان فروش">
-					<svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
-					<span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
-				</AsumiButton>
-				<a className="login-link" href={`/hesab${details.entryPath}`}>ورود به مرکز فروش <span aria-hidden="true">↗</span></a>
-			</div>
-		</header>
+		<SiteHeader variant="story" className="sales-story-header" description="روایت ماژول فروش" onOpenPricing={onOpenPricing} onReturnToModules={onReturnToModules} entryHref={`/hesab${details.entryPath}`} entryLabel="ورود به مرکز فروش" actions={<AsumiButton className="motion-control sales-motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های داستان فروش" title="کاهش حرکت‌های داستان فروش">
+			<svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
+			<span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
+		</AsumiButton>} />
 
 		<div className="story-experience sales-story-experience" ref={root}>
 			<div className="story-sticky sales-story-sticky">
@@ -96,5 +89,6 @@ export function SalesStory({ onOpenModule, onReturnToModules }: SalesStoryProps)
 		</div>
 
 		<SalesProductGuide onOpenModule={onOpenModule} onNavigateToSection={scrollTo} onReturnToModules={onReturnToModules} />
+		<SiteFooter />
 	</main>;
 }

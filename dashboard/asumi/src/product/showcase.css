@@ -64,6 +64,9 @@
 }
 
 .product-login-link span { font-size: 19px; }
+.product-pricing-link { display: inline-flex; min-height: 44px; align-items: center; gap: 12px; margin-top: 11px; border: 0; padding: 0; background: transparent; color: var(--product-red); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.product-pricing-link span { font-size: 16px; transition: transform .2s ease; }
+.product-pricing-link:hover span { transform: translateX(-3px); }
 .module-directory-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 17px; }
 .module-directory-heading h3 { margin: 0; font-size: 19px; font-weight: 650; }
 .module-directory-heading p { margin: 0; color: var(--product-muted); font-size: 12px; line-height: 1.8; }
@@ -179,6 +182,7 @@
 .module-page-back:focus-visible,
 .module-record a:focus-visible,
 .product-login-link:focus-visible,
+.product-pricing-link:focus-visible,
 .product-final-cta:focus-visible {
   outline: 3px solid #a9253259;
   outline-offset: 3px;
@@ -203,6 +207,7 @@
   .product-intro h2 { font-size: clamp(30px, 8vw, 40px); line-height: 1.4; }
   .product-intro-side > p { margin-top: 10px; font-size: 14px; line-height: 1.85; }
   .product-login-link { margin-top: 5px; }
+  .product-pricing-link { margin-top: 5px; }
   .module-directory-heading { display: block; }
   .module-directory-heading p { margin-top: 5px; }
   .module-directory { gap: 8px; }

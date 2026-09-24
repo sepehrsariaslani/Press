@@ -1,30 +1,26 @@
 import { useState } from 'react';
 import { AsumiButton } from '../components/atoms/AsumiButton';
+import { SiteFooter } from '../components/site/SiteFooter';
+import { SiteHeader } from '../components/site/SiteHeader';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { chapters } from './chapters';
 import { useStoryProgress } from './useStoryProgress';
 import { CaseBoard } from './board/CaseBoard';
-import { BrandSignal } from './BrandSignal';
 import { ProductShowcase } from '../product/ProductShowcase';
+import { IndustryShowcase } from '../product/industries/IndustryShowcase';
+import { RoleShowcase } from '../product/roles/RoleShowcase';
 
-export function StoryLanding({ onOpenModule }: { onOpenModule: (moduleId: string) => void }) {
+export function StoryLanding({ onOpenModule, onOpenPricing }: { onOpenModule: (moduleId: string) => void; onOpenPricing: () => void }) {
   const systemReduced = useReducedMotion();
   const [motionChoice, setMotionChoice] = useState<boolean | null>(null);
   const reducedMotion = motionChoice ?? systemReduced;
   const { root, motion, chapter, showingModules } = useStoryProgress(reducedMotion);
   return <main className="asumi-story" data-chapter={chapter} data-theme-phase={chapter === chapters.length - 1 ? 'bright' : 'dark'} data-showing-modules={showingModules} data-reduced-motion={reducedMotion}>
     <a className="skip-story" href="#modules">رفتن به معرفی آسومی</a>
-    <header className="story-header">
-        <a className="story-brand" href="#chaos" aria-label="آسومی؛ ابتدای داستان"><BrandSignal /><span>آسومی<small>از داده تا تصمیم</small></span></a>
-        <p className="header-description">ERP یکپارچه‌ی کسب‌وکار</p>
-        <div className="header-actions">
-          <AsumiButton className="motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های صحنه" title="کاهش حرکت‌های صحنه">
-            <svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
-            <span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
-          </AsumiButton>
-          <a className="login-link" href="/hesab">ورود به آسومی <span aria-hidden="true">↗</span></a>
-        </div>
-    </header>
+    <SiteHeader variant="story" description="ERP یکپارچه‌ی کسب‌وکار" onOpenPricing={onOpenPricing} actions={<AsumiButton className="motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های صحنه" title="کاهش حرکت‌های صحنه">
+      <svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
+      <span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
+    </AsumiButton>} />
     <div className="story-experience" ref={root}>
       <div className="story-sticky">
         <div className="case-atmosphere" aria-hidden="true" />
@@ -52,6 +48,9 @@ export function StoryLanding({ onOpenModule }: { onOpenModule: (moduleId: string
         })}
       </div>
     </div>
-    <ProductShowcase onOpenModule={onOpenModule} />
+    <RoleShowcase />
+    <ProductShowcase onOpenModule={onOpenModule} onOpenPricing={onOpenPricing} />
+    <IndustryShowcase onOpenModule={onOpenModule} onOpenPricing={onOpenPricing} />
+    <SiteFooter />
   </main>;
 }

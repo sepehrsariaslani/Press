@@ -1,0 +1,64 @@
+{
+	"doctype": "DocType",
+	"name": "Asumi Module Mapping",
+	"module": "Press",
+	"autoname": "field:module_id",
+	"title_field": "module_id",
+	"engine": "InnoDB",
+	"track_changes": 1,
+	"field_order": ["module_id", "mode", "marketplace_app", "published", "description"],
+	"fields": [
+		{
+			"fieldname": "module_id",
+			"fieldtype": "Data",
+			"label": "Asumi Module ID",
+			"reqd": 1,
+			"unique": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "mode",
+			"fieldtype": "Select",
+			"label": "Catalog Type",
+			"options": "Included\nMarketplace app\nPurchase request",
+			"default": "Purchase request",
+			"reqd": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "marketplace_app",
+			"fieldtype": "Link",
+			"label": "Marketplace App",
+			"options": "Marketplace App",
+			"depends_on": "eval:doc.mode === 'Marketplace app'"
+		},
+		{
+			"fieldname": "published",
+			"fieldtype": "Check",
+			"label": "Visible to customers",
+			"default": "1",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "description",
+			"fieldtype": "Small Text",
+			"label": "Internal note"
+		}
+	],
+	"permissions": [
+		{
+			"role": "System Manager",
+			"read": 1,
+			"write": 1,
+			"create": 1,
+			"delete": 1
+		},
+		{
+			"role": "Press Marketplace Manager",
+			"read": 1,
+			"write": 1,
+			"create": 1,
+			"delete": 1
+		}
+	]
+}

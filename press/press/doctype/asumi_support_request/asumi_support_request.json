@@ -1,0 +1,107 @@
+{
+	"doctype": "DocType",
+	"name": "Asumi Support Request",
+	"module": "Press",
+	"autoname": "naming_series:",
+	"title_field": "subject",
+	"engine": "InnoDB",
+	"track_changes": 1,
+	"search_fields": "subject,team,site,category,status",
+	"field_order": ["naming_series", "team", "site", "category", "subject", "message", "status", "requested_by", "resolved_on", "resolution"],
+	"fields": [
+		{
+			"fieldname": "naming_series",
+			"fieldtype": "Select",
+			"label": "Series",
+			"options": "ASUMI-SUP-.#####",
+			"default": "ASUMI-SUP-.#####",
+			"reqd": 1,
+			"hidden": 1
+		},
+		{
+			"fieldname": "team",
+			"fieldtype": "Link",
+			"label": "Team",
+			"options": "Team",
+			"reqd": 1,
+			"read_only": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "site",
+			"fieldtype": "Link",
+			"label": "Site",
+			"options": "Site",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "category",
+			"fieldtype": "Select",
+			"label": "Category",
+			"options": "Technical\nBilling\nPurchase\nOther",
+			"default": "Technical",
+			"reqd": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "subject",
+			"fieldtype": "Data",
+			"label": "Subject",
+			"reqd": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "message",
+			"fieldtype": "Long Text",
+			"label": "Message",
+			"reqd": 1
+		},
+		{
+			"fieldname": "status",
+			"fieldtype": "Select",
+			"label": "Status",
+			"options": "Open\nIn Progress\nWaiting on Customer\nResolved\nClosed",
+			"default": "Open",
+			"reqd": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "requested_by",
+			"fieldtype": "Link",
+			"label": "Requested By",
+			"options": "User",
+			"read_only": 1
+		},
+		{
+			"fieldname": "resolved_on",
+			"fieldtype": "Datetime",
+			"label": "Resolved On",
+			"read_only": 1
+		},
+		{
+			"fieldname": "resolution",
+			"fieldtype": "Small Text",
+			"label": "Resolution",
+			"description": "Visible to the customer when the request is reviewed."
+		}
+	],
+	"permissions": [
+		{
+			"role": "System Manager",
+			"read": 1,
+			"write": 1,
+			"create": 1,
+			"delete": 1
+		},
+		{
+			"role": "Press Support Agent",
+			"read": 1,
+			"write": 1,
+			"create": 1
+		},
+		{
+			"role": "Press User",
+			"create": 1
+		}
+	]
+}

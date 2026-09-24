@@ -6,7 +6,7 @@ function toPersianNumber(value: number) {
   return String(value).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
 }
 
-export function ProductShowcase({ onOpenModule }: { onOpenModule: (moduleId: string) => void }) {
+export function ProductShowcase({ onOpenModule, onOpenPricing }: { onOpenModule: (moduleId: string) => void; onOpenPricing: () => void }) {
   return <section id="modules" className="product-showcase" aria-labelledby="modules-title" dir="rtl">
     <div className="product-showcase-inner">
       <header className="product-intro">
@@ -14,6 +14,7 @@ export function ProductShowcase({ onOpenModule }: { onOpenModule: (moduleId: str
         <h2 id="modules-title">هر بخش از کسب‌وکارت،<br /><span>در جای خودش.</span></h2>
         <div className="product-intro-side">
           <p>از ثبت‌های روزانه تا برنامه‌ریزی آینده؛ ۱۵ ماژول آسومی به هم متصل‌اند تا هر تصمیم، تصویر کامل‌تری داشته باشد.</p>
+          <button className="product-pricing-link" type="button" onClick={onOpenPricing}>ساخت ترکیب و دیدن تعرفه‌ها <span aria-hidden="true">←</span></button>
           <a className="product-login-link" href="/hesab">ورود به آسومی <span aria-hidden="true">↗</span></a>
         </div>
       </header>

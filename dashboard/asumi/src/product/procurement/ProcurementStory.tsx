@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AsumiButton } from '../../components/atoms/AsumiButton';
+import { SiteFooter } from '../../components/site/SiteFooter';
+import { SiteHeader } from '../../components/site/SiteHeader';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { BrandSignal } from '../../story/BrandSignal';
 import { useStoryProgress } from '../../story/useStoryProgress';
 import { productModuleDetails } from '../moduleDetails';
 import { ProcurementEvidenceScene } from './ProcurementEvidenceScene';
@@ -12,13 +13,14 @@ import './procurement-story.css';
 type ProcurementStoryProps = {
 	onOpenModule: (moduleId: string) => void;
 	onReturnToModules: () => void;
+	onOpenPricing: () => void;
 };
 
 function toPersianDigits(value: number | string) {
 	return String(value).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
 }
 
-export function ProcurementStory({ onOpenModule, onReturnToModules }: ProcurementStoryProps) {
+export function ProcurementStory({ onOpenModule, onReturnToModules, onOpenPricing }: ProcurementStoryProps) {
 	const systemReducedMotion = useReducedMotion();
 	const [motionChoice, setMotionChoice] = useState<boolean | null>(null);
 	const reducedMotion = motionChoice ?? systemReducedMotion;
@@ -49,17 +51,10 @@ export function ProcurementStory({ onOpenModule, onReturnToModules }: Procuremen
 
 	return <main className="asumi-story procurement-story" data-stage={stage} data-theme-phase={stage === 5 ? 'bright' : 'dark'} data-reduced-motion={reducedMotion} aria-labelledby="purchase-need-title">
 		<a className="skip-story" href="#purchase-handoff" onClick={event => { event.preventDefault(); scrollTo('purchase-handoff'); }}>رفتن مستقیم به امکانات خرید</a>
-		<header className="story-header procurement-story-header">
-			<a className="story-brand" href="#modules" aria-label="بازگشت به ماژول‌های آسومی" onClick={event => { event.preventDefault(); onReturnToModules(); }}><BrandSignal /><span>آسومی<small>از داده تا تصمیم</small></span></a>
-			<p className="header-description">روایت ماژول خرید و تدارکات</p>
-			<div className="header-actions">
-				<AsumiButton className="motion-control procurement-motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های داستان خرید" title="کاهش حرکت‌های داستان خرید">
-					<svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
-					<span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
-				</AsumiButton>
-				<a className="login-link" href={`/hesab${details.entryPath}`}>ورود به مرکز خرید <span aria-hidden="true">↗</span></a>
-			</div>
-		</header>
+		<SiteHeader variant="story" className="procurement-story-header" description="روایت ماژول خرید و تدارکات" onOpenPricing={onOpenPricing} onReturnToModules={onReturnToModules} entryHref={`/hesab${details.entryPath}`} entryLabel="ورود به مرکز خرید" actions={<AsumiButton className="motion-control procurement-motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های داستان خرید" title="کاهش حرکت‌های داستان خرید">
+			<svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
+			<span className="motion-label">{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
+		</AsumiButton>} />
 
 		<div className="story-experience procurement-story-experience" ref={root}>
 			<div className="story-sticky procurement-story-sticky">
@@ -92,5 +87,6 @@ export function ProcurementStory({ onOpenModule, onReturnToModules }: Procuremen
 		</div>
 
 		<ProcurementProductGuide onOpenModule={onOpenModule} onNavigateToSection={scrollTo} onReturnToModules={onReturnToModules} />
+		<SiteFooter />
 	</main>;
 }

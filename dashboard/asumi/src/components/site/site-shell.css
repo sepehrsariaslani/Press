@@ -1,0 +1,76 @@
+.asumi-site-header { gap: clamp(10px, 1.8vw, 25px); }
+.asumi-site-header--story { width: 100%; }
+.asumi-site-description { flex: 0 0 auto; }
+.asumi-site-navigation { display: flex; align-items: center; gap: clamp(8px, 1.3vw, 18px); margin-inline: auto; }
+.asumi-site-navigation a,
+.asumi-site-navigation button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border: 0; padding: 0 5px; background: transparent; color: var(--case-muted, #716a63); font: inherit; font-size: 11px; white-space: nowrap; cursor: pointer; transition: color .18s ease; }
+.asumi-site-navigation a:hover,
+.asumi-site-navigation button:hover { color: var(--case-accent, #a92532); }
+.asumi-site-navigation a:focus-visible,
+.asumi-site-navigation button:focus-visible { outline: 2px solid var(--case-accent, #a92532); outline-offset: 2px; }
+.asumi-site-actions { flex: 0 0 auto; gap: 13px; }
+.asumi-site-menu-toggle { display: none; min-height: 44px; align-items: center; gap: 7px; border: 1px solid var(--case-line, #ded9d1); padding: 0 10px; background: transparent; color: inherit; font: inherit; font-size: 11px; cursor: pointer; }
+.asumi-site-footer { position: relative; z-index: 2; padding: 34px max(5vw, calc((100vw - 1240px) / 2)) 15px; border-top: 1px solid #ded9d1; background: #f3f0e9; color: #28231f; }
+.asumi-site-footer-main { display: grid; grid-template-columns: minmax(190px, .9fr) minmax(220px, 1.2fr) minmax(250px, 1.4fr) auto; align-items: center; gap: 22px; padding-bottom: 25px; }
+.asumi-footer-brand { display: flex; align-items: center; gap: 10px; }
+.asumi-footer-brand .brand-signal { height: 28px; }
+.asumi-footer-brand .brand-signal i { height: 22px; }
+.asumi-footer-brand > div { display: grid; gap: 2px; }
+.asumi-footer-brand strong { font-size: 18px; }
+.asumi-footer-brand small { color: #716a63; font-size: 9px; }
+.asumi-site-footer-main > p { max-width: 310px; margin: 0; color: #716a63; font-size: 11px; line-height: 1.9; }
+.asumi-site-footer-main nav { display: flex; flex-wrap: wrap; gap: 5px 14px; }
+.asumi-site-footer-main nav a,
+.asumi-site-footer-bottom a { display: inline-flex; min-height: 40px; align-items: center; color: #625a52; font-size: 10px; }
+.asumi-site-footer-main nav a:hover,
+.asumi-site-footer-bottom a:hover { color: #a92532; }
+.asumi-footer-entry { display: inline-flex; min-height: 44px; align-items: center; gap: 10px; padding: 0 13px; border: 1px solid #a92532; color: #a92532; font-size: 10px; font-weight: 650; }
+.asumi-footer-entry span { font-size: 15px; }
+.asumi-site-footer-bottom { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid #ded9d1; color: #857c72; font-size: 10px; }
+.asumi-site-footer-bottom a { color: #857c72; }
+.asumi-site-footer a:focus-visible { outline: 3px solid #a9253259; outline-offset: 3px; }
+
+@media (max-width: 1100px) {
+	.asumi-site-header { gap: 10px; }
+	.asumi-site-description { display: none; }
+	.asumi-site-navigation { gap: 8px; }
+	.asumi-site-navigation a,
+	.asumi-site-navigation button { font-size: 10px; }
+	.asumi-site-footer-main { grid-template-columns: 1fr 1.3fr; }
+	.asumi-site-footer-main > p { grid-column: 1; }
+	.asumi-site-footer-main nav { grid-column: 2; grid-row: 1 / span 2; }
+	.asumi-footer-entry { justify-self: start; }
+}
+
+@media (max-width: 700px) {
+	.asumi-site-header { min-height: 66px; gap: 9px; }
+	.asumi-site-header .story-brand,
+	.asumi-site-header .module-page-brand { flex: 0 0 auto; }
+	.asumi-site-header .story-brand > span,
+	.asumi-site-header .module-page-brand > span:last-child { font-size: 19px; }
+	.asumi-site-header .story-brand small,
+	.asumi-site-header .module-page-brand small { font-size: 8px; }
+	.asumi-site-menu-toggle { display: inline-flex; margin-inline-start: auto; }
+	.asumi-site-navigation { position: absolute; top: calc(100% - 1px); right: 12px; left: 12px; z-index: 25; display: none; align-items: stretch; flex-direction: column; gap: 0; margin: 0; padding: 6px; border: 1px solid #d8cec4; background: #fffefa; box-shadow: 0 12px 26px #30271c16; }
+	.asumi-site-navigation[data-open='true'] { display: flex; }
+	.asumi-site-navigation a,
+	.asumi-site-navigation button { min-height: 46px; justify-content: flex-start; border-bottom: 1px solid #eee9e2; padding-inline: 12px; color: #3b342e; text-align: right; }
+	.asumi-site-navigation > :last-child { border-bottom: 0; }
+	.asumi-site-actions { gap: 4px; margin-right: 0; }
+	.asumi-site-actions .motion-control,
+	.asumi-site-actions .finance-motion-control { display: none; }
+	.asumi-site-actions .login-link,
+	.asumi-site-actions .module-page-login { min-height: 40px; gap: 5px; border-bottom: 0; font-size: 9px; white-space: nowrap; }
+	.asumi-site-footer { padding: 25px 18px 10px; }
+	.asumi-site-footer-main { grid-template-columns: 1fr auto; align-items: start; gap: 12px; padding-bottom: 14px; }
+	.asumi-site-footer-main > p { grid-column: 1 / -1; max-width: none; }
+	.asumi-site-footer-main nav { grid-column: 1 / -1; grid-row: auto; gap: 2px 11px; }
+	.asumi-site-footer-main nav a { min-height: 38px; }
+	.asumi-footer-entry { grid-column: 1 / -1; }
+	.asumi-site-footer-bottom { align-items: flex-start; flex-direction: column; gap: 0; padding-top: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.asumi-site-navigation a,
+	.asumi-site-navigation button { transition: none; }
+}

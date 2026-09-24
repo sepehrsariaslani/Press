@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AsumiButton } from '../../components/atoms/AsumiButton';
+import { SiteFooter } from '../../components/site/SiteFooter';
+import { SiteHeader } from '../../components/site/SiteHeader';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { DocumentFace } from '../../story/board/EvidencePaper';
 import { useStoryProgress } from '../../story/useStoryProgress';
@@ -20,6 +22,7 @@ import './finance-story.css';
 type FinanceStoryProps = {
 	onOpenModule: (moduleId: string) => void;
 	onReturnToModules: () => void;
+	onOpenPricing: () => void;
 };
 
 function toPersianDigits(value: number | string) {
@@ -197,7 +200,7 @@ function FinanceScene({ stage, selectedEvent, onSelectEvent, questionIndex }: {
 	);
 }
 
-export function FinanceStory({ onOpenModule, onReturnToModules }: FinanceStoryProps) {
+export function FinanceStory({ onOpenModule, onReturnToModules, onOpenPricing }: FinanceStoryProps) {
 	const systemReducedMotion = useReducedMotion();
 	const [motionChoice, setMotionChoice] = useState<boolean | null>(null);
 	const reducedMotion = motionChoice ?? systemReducedMotion;
@@ -234,19 +237,10 @@ export function FinanceStory({ onOpenModule, onReturnToModules }: FinanceStoryPr
 	return (
 		<main className="finance-story" data-chapter={stage} data-theme-phase={stage === 5 ? 'bright' : 'dark'} data-reduced-motion={reducedMotion} aria-labelledby="finance-mystery-title">
 			<a className="finance-skip-story" href="#finance-handoff" onClick={event => { event.preventDefault(); scrollTo('finance-handoff'); }}>رفتن مستقیم به معرفی مرکز مالی</a>
-			<header className="module-page-header finance-story-header">
-				<a className="module-page-brand" href="#modules" aria-label="بازگشت به ماژول‌های آسومی" onClick={event => { event.preventDefault(); onReturnToModules(); }}>
-					<span className="brand-signal" aria-hidden="true"><i /><i /><i /></span>
-					<span>آسومی<small>از داده تا تصمیم</small></span>
-				</a>
-				<div className="finance-header-actions">
-					<AsumiButton className="finance-motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های داستان مالی" title="کاهش حرکت‌های داستان مالی">
-						<svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
-						<span>{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
-					</AsumiButton>
-					<a className="module-page-login" href={`/hesab${details.entryPath}`}>ورود به مرکز مالی <span aria-hidden="true">↗</span></a>
-				</div>
-			</header>
+			<SiteHeader variant="paper" className="finance-story-header" actionsClassName="finance-header-actions" onOpenPricing={onOpenPricing} onReturnToModules={onReturnToModules} entryHref={`/hesab${details.entryPath}`} entryLabel="ورود به مرکز مالی" actions={<AsumiButton className="finance-motion-control" onClick={() => setMotionChoice(!reducedMotion)} aria-pressed={reducedMotion} aria-label="کاهش حرکت‌های داستان مالی" title="کاهش حرکت‌های داستان مالی">
+				<svg viewBox="0 0 20 20" aria-hidden="true">{reducedMotion ? <path d="M7 4v12M13 4v12" /> : <path d="M2 8c4-9 6 9 10 0s6 1 6 1M2 14c4-9 6 9 10 0s6 1 6 1" />}</svg>
+				<span>{reducedMotion ? 'حرکت کمتر' : 'حرکت صحنه'}</span>
+			</AsumiButton>} />
 
 			<div className="finance-story-experience" ref={root}>
 				<div className="finance-story-sticky">
@@ -310,6 +304,7 @@ export function FinanceStory({ onOpenModule, onReturnToModules }: FinanceStoryPr
 					<button className="finance-back-to-modules" type="button" onClick={onReturnToModules}>← بازگشت به همه‌ی ۱۵ ماژول</button>
 				</div>
 			</section>
+			<SiteFooter />
 		</main>
 	);
 }

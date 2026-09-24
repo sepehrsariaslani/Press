@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { SiteFooter } from '../components/site/SiteFooter';
+import { SiteHeader } from '../components/site/SiteHeader';
 import { ModuleMark } from './ModuleMark';
 import { productModuleDetails } from './moduleDetails';
 import { productModules, type ProductModule } from './modules';
@@ -8,13 +10,14 @@ type ModuleDetailPageProps = {
   index: number;
   onOpenModule: (moduleId: string) => void;
   onReturnToModules: () => void;
+  onOpenPricing: () => void;
 };
 
 function toPersianNumber(value: number) {
   return String(value).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
 }
 
-export function ModuleDetailPage({ module, index, onOpenModule, onReturnToModules }: ModuleDetailPageProps) {
+export function ModuleDetailPage({ module, index, onOpenModule, onReturnToModules, onOpenPricing }: ModuleDetailPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const details = productModuleDetails[module.id];
   const relatedModules = details.relatedIds
@@ -24,13 +27,7 @@ export function ModuleDetailPage({ module, index, onOpenModule, onReturnToModule
   useEffect(() => heading.current?.focus({ preventScroll: true }), [module.id]);
 
   return <main className="module-detail-page" dir="rtl" aria-labelledby="module-page-title">
-    <header className="module-page-header">
-      <a className="module-page-brand" href="/#modules" aria-label="آسومی، فهرست ماژول‌ها">
-        <span className="brand-signal" aria-hidden="true"><i /><i /><i /></span>
-        <span>آسومی<small>از داده تا تصمیم</small></span>
-      </a>
-      <a className="module-page-login" href="/hesab">ورود به آسومی <span aria-hidden="true">↗</span></a>
-    </header>
+    <SiteHeader variant="paper" entryLabel="ورود به آسومی" onOpenPricing={onOpenPricing} onReturnToModules={onReturnToModules} />
 
     <div className="module-page-inner">
       <nav className="module-breadcrumb" aria-label="مسیر صفحه">
@@ -104,10 +101,7 @@ export function ModuleDetailPage({ module, index, onOpenModule, onReturnToModule
       </section>
 
       <p className="module-page-note">این صفحه معرفی قابلیت‌ها و مسیرهاست، نه داده‌ی واقعی شرکت شما. نمایش هر سند پس از ورود و بر اساس نصب، تنظیمات و سطح دسترسی انجام می‌شود.</p>
-      <footer className="module-page-footer">
-        <button className="module-page-back" type="button" onClick={onReturnToModules}>← برگشت به همه‌ی ۱۵ ماژول</button>
-        <span>آسومی · به‌سوی آینده‌ی روشن</span>
-      </footer>
     </div>
+    <SiteFooter />
   </main>;
 }
