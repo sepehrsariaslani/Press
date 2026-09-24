@@ -3,6 +3,7 @@ import { productModules } from '../product/modules';
 import {
 	getAdminSupportRequests,
 	getCatalogAdmin,
+	createMarketplacePlan as createMarketplacePlanRequest,
 	saveCatalogMapping,
 	updateAdminSupportRequest,
 	updateMarketplacePlanPrices,
@@ -36,6 +37,8 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 	const [description, setDescription] = useState('');
 	const [prerequisites, setPrerequisites] = useState<string[]>([]);
 	const [priceDrafts, setPriceDrafts] = useState<Record<string, { price_inr: string; price_usd: string }>>({});
+	const [creatingPlanFor, setCreatingPlanFor] = useState('');
+	const [newPlanDraft, setNewPlanDraft] = useState({ title: '', price_inr: '', price_usd: '', features: '' });
 	const [ticketDrafts, setTicketDrafts] = useState<Record<string, { status: string; response: string }>>({});
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState('');
@@ -112,6 +115,25 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 		finally { setBusy(''); }
 	}
 
+	function beginCreatePlan(app: MarketplaceApp) {
+		const template = app.plans.find(plan => Boolean(plan.enabled)) || app.plans[0];
+		setCreatingPlanFor(app.name);
+		setNewPlanDraft({ title: `${template?.title || app.title} · نسخهٔ جدید`, price_inr: '', price_usd: '', features: (template?.features || []).join('\n') });
+	}
+
+	async function createPlan(event: FormEvent<HTMLFormElement>, app: MarketplaceApp) {
+		event.preventDefault();
+		const features = newPlanDraft.features.split('\n').map(feature => feature.trim()).filter(Boolean);
+		setBusy(`create:${app.name}`); setError(''); setNotice('');
+		try {
+			await createMarketplacePlanRequest({ marketplace_app: app.name, title: newPlanDraft.title.trim(), price_inr: newPlanDraft.price_inr, price_usd: newPlanDraft.price_usd, features });
+			setCreatingPlanFor('');
+			setNotice('پلن جدید در Marketplace ساخته شد؛ اشتراک‌های فعلی روی پلن قبلی می‌مانند.');
+			await load();
+		} catch (caught) { setError(messageOf(caught)); }
+		finally { setBusy(''); }
+	}
+
 	async function updateTicket(ticket: SupportRequest & { team: string }) {
 		const values = ticketDrafts[ticket.name];
 		if (!values) return;
@@ -152,6 +174,15 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 				<div className="customer-portal-panel-heading"><div><p>قیمت‌گذاری واقعی</p><h2 id="portal-plan-prices-title">پلن‌های Marketplace متصل</h2></div><span>ارزهای پشتیبانی‌شده: INR و USD</span></div>
 				{managedApps.length ? <div className="customer-portal-admin-prices">{managedApps.map(app => <div className="customer-portal-admin-app" key={app.name}>
 						<div><h3>{app.title}</h3><small>{app.app}</small></div>
+						<button type="button" className="customer-portal-secondary-button customer-portal-admin-create-plan-button" disabled={Boolean(busy)} onClick={() => beginCreatePlan(app)}>ساخت پلن جدید</button>
+						{creatingPlanFor === app.name && <form className="customer-portal-admin-plan-create" onSubmit={event => void createPlan(event, app)}>
+							<label><span>نام پلن</span><input required maxLength={140} value={newPlanDraft.title} onChange={event => setNewPlanDraft(current => ({ ...current, title: event.target.value }))} /></label>
+							<label><span>قیمت INR</span><input required inputMode="decimal" type="number" min="0" step="0.01" value={newPlanDraft.price_inr} onChange={event => setNewPlanDraft(current => ({ ...current, price_inr: event.target.value }))} /></label>
+							<label><span>قیمت USD</span><input required inputMode="decimal" type="number" min="0" step="0.01" value={newPlanDraft.price_usd} onChange={event => setNewPlanDraft(current => ({ ...current, price_usd: event.target.value }))} /></label>
+							<label className="customer-portal-admin-plan-features"><span>امکانات پلن، هر مورد در یک خط</span><textarea required rows={4} maxLength={6000} value={newPlanDraft.features} onChange={event => setNewPlanDraft(current => ({ ...current, features: event.target.value }))} /></label>
+							<p>این پلن از مسیر بومی Marketplace ساخته می‌شود و برای خریدهای جدید است؛ اشتراک‌های فعال روی پلن قبلی باقی می‌مانند.</p>
+							<div className="customer-portal-card-actions"><button type="submit" className="customer-portal-primary-button" disabled={busy === `create:${app.name}`}>{busy === `create:${app.name}` ? 'در حال ساخت…' : 'ساخت پلن'}</button><button type="button" className="customer-portal-secondary-button" onClick={() => setCreatingPlanFor('')}>انصراف</button></div>
+						</form>}
 						{app.plans.map(plan => <div className="customer-portal-admin-plan" key={plan.name}>
 							<div><strong>{plan.title}</strong><small>{plan.name} · {periodLabel(plan.interval)}</small></div>
 							<label><span>INR</span><input inputMode="decimal" value={priceDrafts[plan.name]?.price_inr || ''} onChange={event => setPriceDrafts(current => ({ ...current, [plan.name]: { ...current[plan.name], price_inr: event.target.value } }))} /></label>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react
 import { productModules } from '../product/modules';
 import { modulePrerequisites } from '../product/pricing/catalog';
 import { SelectionCheckout, type CheckoutSelectionEntry } from './SelectionCheckout';
+import { usePortalConfirmation } from './PortalConfirmation';
 import {
 	changeMarketplacePlan,
 	getMarketplaceCatalog,
@@ -79,6 +80,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	const [pendingJobState, setPendingJobState] = useState<PendingJobState>(() => ({ teamName, jobs: readPendingJobs(teamName) }));
 	const pendingJobs = pendingJobState.teamName === teamName ? pendingJobState.jobs : [];
 	const [checkoutBusy, setCheckoutBusy] = useState(false);
+	const { confirm, dialog: confirmationDialog } = usePortalConfirmation();
 	const appliedInitialSelection = useRef('');
 	const canBrowseCatalog = canManageApps || canManageBilling;
 	function setSelectedApps(update: SetStateAction<Record<string, string>>) {
@@ -341,7 +343,14 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			return;
 		}
 		if (installed?.subscription?.name && selectedPlan && installed.subscription.plan !== selectedPlan.name) {
-			if (!window.confirm(`پلن «${app.title}» به «${selectedPlan.title}» با مبلغ ${formatPrice(planPrice(selectedPlan, currency), currency)} در دورهٔ ${planPeriodLabel(selectedPlan.interval)} تغییر کند؟`)) return;
+			const confirmed = await confirm({
+				title: 'تأیید تغییر پلن',
+				description: `پلن «${app.title}» برای سایت ${sites.find(site => site.name === selectedSite)?.label || selectedSite} به‌روزرسانی شود؟`,
+				details: [`پلن جدید: ${selectedPlan.title}`, `مبلغ: ${formatPrice(planPrice(selectedPlan, currency), currency)}`, `دورهٔ تمدید: ${planPeriodLabel(selectedPlan.interval)}`],
+				note: 'مبلغ نهایی و هر تعدیل دوره در صورتحساب حساب ثبت می‌شود.',
+				confirmLabel: 'تأیید تغییر پلن',
+			});
+			if (!confirmed) return;
 			setBusyApp(slug);
 			setError('');
 			setNeedsCreditTopUp(false);
@@ -376,7 +385,16 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			return;
 		}
 		const installPlan = isExternalApp ? selectedPlan?.name : undefined;
-		if (installPlan && selectedPlan && selectedPlanPrice !== null && selectedPlanPrice > 0 && !window.confirm(`افزونهٔ «${app.title}» با پلن «${selectedPlan.title}» و مبلغ ${formatPrice(selectedPlanPrice, currency)} در دورهٔ ${planPeriodLabel(selectedPlan.interval)} برای این سایت ثبت شود؟ این مبلغ در هر دوره تمدید می‌شود؛ با لغو اشتراک، تمدید متوقف و افزونه از سایت حذف می‌شود. مبلغ نهایی در فاکتور حساب نمایش داده می‌شود.`)) return;
+		if (installPlan && selectedPlan && selectedPlanPrice !== null && selectedPlanPrice > 0) {
+			const confirmed = await confirm({
+				title: 'تأیید خرید و فعال‌سازی',
+				description: `افزونهٔ «${app.title}» برای سایت ${sites.find(site => site.name === selectedSite)?.label || selectedSite} ثبت شود؟`,
+				details: [`پلن: ${selectedPlan.title}`, `مبلغ هر دوره: ${formatPrice(selectedPlanPrice, currency)}`, `دورهٔ تمدید: ${planPeriodLabel(selectedPlan.interval)}`],
+				note: 'مبلغ نهایی در فاکتور حساب ثبت می‌شود. با لغو اشتراک، تمدید متوقف و افزونه از سایت حذف خواهد شد.',
+				confirmLabel: 'ثبت خرید و نصب',
+			});
+			if (!confirmed) return;
+		}
 		setBusyApp(slug);
 		setError('');
 		setNeedsCreditTopUp(false);
@@ -416,9 +434,14 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			if (entry.amount !== null) totals[planPeriodKey(entry.interval)] = (totals[planPeriodKey(entry.interval)] || 0) + entry.amount;
 			return totals;
 		}, {});
-		const totalLines = Object.entries(actionTotals).map(([period, total]) => `${formatPrice(total, currency)} در ${planPeriodLabel(period)}`).join('، ');
-		const itemLines = plannedEntries.map(entry => `${entry.title} · ${entry.planTitle}`).join('، ');
-		const confirmed = window.confirm(`${new Intl.NumberFormat('fa-IR').format(plannedEntries.length)} ماژول یا تغییر پلن برای سایت ${siteLabel} ثبت شود؟\n${itemLines}\n${totalLines}\nماژول‌ها به‌ترتیب و در اشتراک‌های اصلی خودشان ثبت می‌شوند؛ ممکن است مبلغ نهایی بر اساس اعتبار و روزهای فعال در صورتحساب تغییر کند.`);
+		const totalLines = Object.entries(actionTotals).map(([period, total]) => `${formatPrice(total, currency)} · جمع ${planPeriodLabel(period)}`).join('، ');
+		const confirmed = await confirm({
+			title: 'مرور و ثبت انتخاب‌ها',
+			description: `${new Intl.NumberFormat('fa-IR').format(plannedEntries.length)} ماژول یا تغییر پلن برای سایت ${siteLabel} ثبت شود؟`,
+			details: [...plannedEntries.map(entry => `${entry.title} · ${entry.planTitle} · ${formatPrice(entry.amount, currency)} در ${planPeriodLabel(entry.interval)}`), ...totalLines],
+			note: 'هر ماژول در اشتراک خودش ثبت می‌شود. مبلغ نهایی ممکن است با توجه به اعتبار حساب و روزهای فعال در فاکتور کمی تفاوت داشته باشد.',
+			confirmLabel: 'ثبت انتخاب‌ها',
+		});
 		if (!confirmed) return;
 
 		setCheckoutBusy(true);
@@ -577,7 +600,8 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		</section>
 
 		{canBrowseCatalog && <SelectionCheckout entries={checkoutEntries} totals={selectedTotals} currency={currency} unpricedCount={selectedUnpriced} unavailableCount={unavailableSelectionCount} canManageBilling={canManageBilling} canCheckout={canCheckout} busy={checkoutBusy || busyApp === 'checkout'} pendingCount={activePendingJobs.length} onClear={() => setSelectedApps({})} onCheckout={() => void activateSelectedApps()} />}
-	</div>;
+		{confirmationDialog}
+		</div>;
 }
 
 function orderCheckoutEntries(

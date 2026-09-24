@@ -357,6 +357,12 @@ export async function updateMarketplacePlanPrices(params: { plan: string; price_
 	return frappeCall('press.api.customer_portal.update_marketplace_plan_prices', { method: 'POST', params });
 }
 
+export async function createMarketplacePlan(params: { marketplace_app: string; title: string; price_inr: string; price_usd: string; features: string[] }) {
+	return frappeCall<{ name: string; title: string }>('press.api.customer_portal.create_marketplace_plan', {
+		method: 'POST', params: { ...params, features: JSON.stringify(params.features) },
+	});
+}
+
 export async function getAdminSupportRequests(signal?: AbortSignal) {
 	return frappeCall<Array<SupportRequest & { team: string }>>('press.api.customer_portal.admin_support_requests', { signal });
 }
@@ -427,6 +433,7 @@ function errorMessage(payload: FrappeResponse<unknown>, status: number) {
 	if (/billing currency|currency.*plan|not available.*currency|quote/.test(normalized)) return 'این پلن برای ارز حساب قابل خرید نیست؛ برای دریافت تعرفه با پشتیبانی آسومی تماس بگیر.';
 	if (/billing period|payment period|usage record|billing interval/.test(normalized)) return 'تغییر دورهٔ پرداخت به بررسی تیم پشتیبانی نیاز دارد.';
 	if (/choose an app plan|choose an enabled plan|choose a valid plan/.test(normalized)) return 'یک پلن معتبر برای این افزونه انتخاب کن.';
+	if (/plan is already in use|cannot update the plan/.test(normalized)) return 'این پلن اشتراک فعال دارد و قیمتش قابل‌تغییر نیست؛ برای قیمت تازه یک پلن جدید بساز تا اشتراک‌های فعلی دست‌نخورده بمانند.';
 	if (/not available for the selected site|not compatible|site.*installable/.test(normalized)) return 'این افزونه با نسخه یا وضعیت سایت انتخاب‌شده سازگار نیست.';
 	if (/does not belong to the current team|does not belong to this team|not permitted|permission/.test(normalized) || status === 403) return 'برای این کار دسترسی لازم را نداری؛ از مدیر تیم کمک بگیر.';
 	if (/only a team billing manager/.test(normalized)) return 'برای این کار باید مدیر مالی تیم اقدام کند.';

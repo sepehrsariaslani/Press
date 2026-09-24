@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { cancelTeamInvitation, getTeamAccess, inviteTeamMember, removeTeamMember, updateTeamMemberRoles, type TeamAccessData, type TeamMember } from './portalApi';
+import { usePortalConfirmation } from './PortalConfirmation';
 
 export function TeamView() {
 	const [data, setData] = useState<TeamAccessData | null>(null);
@@ -9,6 +10,7 @@ export function TeamView() {
 	const [role, setRole] = useState('');
 	const [error, setError] = useState('');
 	const [notice, setNotice] = useState('');
+	const { confirm, dialog: confirmationDialog } = usePortalConfirmation();
 
 	async function load(signal?: AbortSignal) {
 		try {
@@ -40,7 +42,7 @@ export function TeamView() {
 	}
 
 	async function cancelInvite(memberEmail: string) {
-		if (!window.confirm(`دعوت ${memberEmail} لغو شود؟`)) return;
+		if (!await confirm({ title: 'لغو دعوت همکار', description: `دعوت ارسال‌شده برای ${memberEmail} لغو شود؟`, confirmLabel: 'لغو دعوت', appearance: 'danger' })) return;
 		setBusy(true); setError('');
 		try { await cancelTeamInvitation(memberEmail); setNotice('دعوت‌نامه لغو شد.'); await load(); }
 		catch (caught) { setError(messageOf(caught)); }
@@ -48,7 +50,7 @@ export function TeamView() {
 	}
 
 	async function removeMember(member: TeamMember) {
-		if (!window.confirm(`دسترسی ${member.email} از این تیم برداشته شود؟`)) return;
+		if (!await confirm({ title: 'حذف دسترسی همکار', description: `دسترسی ${member.email} از این تیم برداشته شود؟`, details: ['این همکار دیگر به سایت‌ها و ماژول‌های این تیم دسترسی نخواهد داشت.'], confirmLabel: 'حذف دسترسی', appearance: 'danger' })) return;
 		setBusy(true); setError('');
 		try { await removeTeamMember(member.email); setNotice('دسترسی همکار حذف شد.'); await load(); }
 		catch (caught) { setError(messageOf(caught)); }
@@ -71,7 +73,8 @@ export function TeamView() {
 
 	const activeMembers = data.members.filter(member => member.status !== 'Pending');
 	const pending = data.members.filter(member => member.status === 'Pending');
-	return <div className="customer-portal-workspace">
+	return <>
+	<div className="customer-portal-workspace">
 		<section className="customer-portal-panel" aria-labelledby="portal-team-title">
 			<div className="customer-portal-panel-heading"><div><p>اعضا و دسترسی</p><h2 id="portal-team-title">تیم {data.team.title}</h2></div><span>{new Intl.NumberFormat('fa-IR').format(activeMembers.length)} عضو</span></div>
 			<p className="customer-portal-help-copy">نقش هر همکار مشخص می‌کند به ماژول‌ها و امور مالی دسترسی داشته باشد یا نه. مدیر تیم می‌تواند نقش اعضا را همین‌جا تغییر دهد.</p>
@@ -91,7 +94,9 @@ export function TeamView() {
 				<button type="submit" className="customer-portal-primary-button" disabled={busy || !email.trim()}>{busy ? 'در حال ارسال…' : 'ارسال دعوت‌نامه'}</button>
 			</form>
 		</section>}
-	</div>;
+	</div>
+	{confirmationDialog}
+	</>;
 }
 
 function MemberRow({ member, roles, canManage, onRemove, onSaveRoles, busy }: { member: TeamMember; roles: TeamAccessData['roles']; canManage: boolean; onRemove: () => void; onSaveRoles: (roles: string[]) => void; busy: boolean }) {

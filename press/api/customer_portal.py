@@ -6,6 +6,7 @@ from press.api.asumi_portal.dashboard import (
 from press.api.asumi_portal.catalog import (
 	catalog,
 	catalog_admin,
+	create_marketplace_plan,
 	save_catalog_mapping,
 	update_marketplace_plan_prices,
 )

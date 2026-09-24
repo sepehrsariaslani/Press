@@ -14,11 +14,13 @@ import {
 	type BillingSettings,
 	type PaymentMethod,
 } from './portalApi';
+import { usePortalConfirmation } from './PortalConfirmation';
 
 const emptyAddress: BillingAddress = { address: '', city: '', state: '', postal_code: '', country: '', gstin: '' };
 const modeLabels: Record<string, string> = { Card: 'کارت بانکی', 'Prepaid Credits': 'اعتبار حساب', 'Paid By Partner': 'پرداخت توسط همکار', 'UPI Autopay': 'پرداخت خودکار UPI' };
 
 export function BillingSettingsPanel() {
+	const { confirm, dialog: confirmationDialog } = usePortalConfirmation();
 	const [settings, setSettings] = useState<BillingSettings | null>(null);
 	const [cards, setCards] = useState<PaymentMethod[]>([]);
 	const [countries, setCountries] = useState<Array<{ name: string; code: string }>>([]);
@@ -145,7 +147,13 @@ export function BillingSettingsPanel() {
 	}
 
 	async function updateCard(action: 'default' | 'remove', method: PaymentMethod) {
-		if (action === 'remove' && !window.confirm(`کارت •••• ${method.last_4} از حساب حذف شود؟`)) return;
+		if (action === 'remove' && !await confirm({
+			title: 'حذف کارت پرداخت',
+			description: `کارت •••• ${method.last_4} از حساب حذف شود؟`,
+			note: 'اگر این کارت روش پیش‌فرض پرداخت باشد یا فاکتور باز داشته باشی، Press ممکن است حذف آن را نپذیرد.',
+			confirmLabel: 'حذف کارت',
+			appearance: 'danger',
+		})) return;
 		setBusy(true); setError(''); setNotice('');
 		try {
 			if (action === 'default') await setDefaultPaymentMethod(method.name);
@@ -170,7 +178,8 @@ export function BillingSettingsPanel() {
 	}
 
 	if (loading) return <div className="customer-portal-inline-state" role="status">در حال دریافت تنظیمات مالی…</div>;
-	return <section className="customer-portal-panel customer-portal-billing-settings" aria-labelledby="billing-settings-title">
+	return <>
+	<section className="customer-portal-panel customer-portal-billing-settings" aria-labelledby="billing-settings-title">
 		<div className="customer-portal-panel-heading"><div><p>حساب مالی</p><h2 id="billing-settings-title">روش پرداخت و اطلاعات صورتحساب</h2></div></div>
 		{error && <div className="customer-portal-inline-error" role="alert"><span>{error}</span><button type="button" onClick={() => { setError(''); void load(); }}>تلاش دوباره</button></div>}
 		{notice && <p className="customer-portal-inline-status" role="status">{notice}</p>}
@@ -193,7 +202,9 @@ export function BillingSettingsPanel() {
 				<div className="customer-portal-card-actions"><button type="submit" className="customer-portal-primary-button" disabled={busy}>{busy ? 'در حال ذخیره…' : 'ذخیره اطلاعات صورتحساب'}</button>{hasAddress && <button type="button" className="customer-portal-secondary-button" disabled={busy} onClick={() => { setEditingAddress(false); setAddress({ ...emptyAddress, ...settings?.address }); setBillingName(settings?.billing_name || ''); }}>انصراف</button>}</div>
 			</form>}
 		</section>
-	</section>;
+	</section>
+	{confirmationDialog}
+	</>;
 }
 
 function messageOf(error: unknown) { return error instanceof Error ? error.message : 'تنظیمات مالی دریافت نشد؛ دوباره تلاش کن.'; }

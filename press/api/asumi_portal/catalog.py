@@ -111,6 +111,11 @@ def save_catalog_mapping(
 def update_marketplace_plan_prices(plan: str, price_inr: str, price_usd: str):
 	_require_catalog_admin()
 	plan_doc = frappe.get_doc("Marketplace App Plan", plan)
+	if not any(
+		mapping.mode == "Marketplace app" and mapping.marketplace_app == plan_doc.app
+		for mapping in _catalog_mappings(include_unpublished=True)
+	):
+		frappe.throw("This Marketplace plan is not connected to an Asumi module.", frappe.PermissionError)
 	try:
 		price_inr = float(price_inr)
 		price_usd = float(price_usd)
@@ -118,7 +123,64 @@ def update_marketplace_plan_prices(plan: str, price_inr: str, price_usd: str):
 		frappe.throw("Enter a valid number for each price.")
 	if not isfinite(price_inr) or not isfinite(price_usd) or price_inr < 0 or price_usd < 0:
 		frappe.throw("Prices cannot be negative.")
-	plan_doc.price_inr = flt(price_inr)
-	plan_doc.price_usd = flt(price_usd)
-	plan_doc.save(ignore_permissions=True)
+	from press.api.marketplace import update_app_plan
+	from press.marketplace.doctype.marketplace_app_plan.marketplace_app_plan import get_app_plan_features
+
+	update_app_plan(
+		plan,
+		{
+			"title": plan_doc.title,
+			"price_inr": flt(price_inr),
+			"price_usd": flt(price_usd),
+			"features": get_app_plan_features(plan),
+			"enabled": bool(plan_doc.enabled),
+		},
+	)
+	plan_doc.reload()
 	return {"name": plan_doc.name, "price_inr": plan_doc.price_inr, "price_usd": plan_doc.price_usd}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_marketplace_plan(
+	marketplace_app: str,
+	title: str,
+	price_inr: str,
+	price_usd: str,
+	features: str | None = None,
+):
+	_require_catalog_admin()
+	if not any(
+		mapping.mode == "Marketplace app" and mapping.marketplace_app == marketplace_app
+		for mapping in _catalog_mappings(include_unpublished=True)
+	):
+		frappe.throw("Choose a Marketplace app connected to an Asumi module.", frappe.PermissionError)
+
+	title = (title or "").strip()
+	if not title or len(title) > 140:
+		frappe.throw("Enter a plan name between 1 and 140 characters.")
+	try:
+		price_inr = float(price_inr)
+		price_usd = float(price_usd)
+		features = json.loads(features or "[]")
+	except (TypeError, ValueError):
+		frappe.throw("Enter valid prices and plan features.")
+	if not isfinite(price_inr) or not isfinite(price_usd) or price_inr < 0 or price_usd < 0:
+		frappe.throw("Prices cannot be negative.")
+	if not isinstance(features, list) or any(not isinstance(feature, str) for feature in features):
+		frappe.throw("Plan features must be a list of descriptions.")
+	features = [feature.strip() for feature in features if feature.strip()]
+	if not features or len(features) > 30 or any(len(feature) > 500 for feature in features):
+		frappe.throw("Add 1 to 30 plan features, each no longer than 500 characters.")
+
+	from press.api.marketplace import create_app_plan
+
+	plan_doc = create_app_plan(
+		marketplace_app,
+		{
+			"title": title,
+			"price_inr": flt(price_inr),
+			"price_usd": flt(price_usd),
+			"features": features,
+		},
+	)
+	return {"name": plan_doc.name, "title": plan_doc.title}

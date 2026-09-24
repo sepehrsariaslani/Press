@@ -129,6 +129,18 @@
 .customer-portal-primary-button { border-color: var(--portal-red); background: var(--portal-red); color: white; }
 .customer-portal-secondary-button:hover, .customer-portal-panel-heading > button:hover { border-color: var(--portal-red); }
 .customer-portal-primary-button:disabled, .customer-portal-secondary-button:disabled { opacity: .5; cursor: not-allowed; }
+.customer-portal-danger-button { display: inline-flex; min-height: 39px; align-items: center; justify-content: center; border: 1px solid #9b2929; padding: 0 12px; background: #9b2929; color: white; font: inherit; font-size: 10px; cursor: pointer; }
+.customer-portal-danger-button:hover { background: #7e1d1d; }
+.customer-portal-confirmation { width: min(calc(100% - 28px), 470px); max-width: none; max-height: min(88dvh, 680px); margin: auto; overflow: auto; border: 1px solid var(--portal-line); padding: 0; background: var(--portal-paper); color: var(--portal-ink); box-shadow: 0 24px 70px #20191538; }
+.customer-portal-confirmation::backdrop { background: #211a17a8; backdrop-filter: blur(2px); }
+.customer-portal-confirmation-content { display: grid; gap: 13px; padding: clamp(20px, 5vw, 30px); }
+.customer-portal-confirmation-eyebrow { margin: 0; color: var(--portal-red); font-size: 9px; }
+.customer-portal-confirmation h2 { margin: 0; font-size: clamp(17px, 4vw, 21px); }
+.customer-portal-confirmation-content > p:not(.customer-portal-confirmation-eyebrow) { margin: 0; color: var(--portal-muted); font-size: 11px; line-height: 1.9; white-space: pre-line; }
+.customer-portal-confirmation-details { display: grid; gap: 7px; margin: 0; border: 1px solid var(--portal-line); padding: 12px 30px 12px 12px; background: #fffefa; font-size: 10px; line-height: 1.8; }
+.customer-portal-confirmation-note { border-right: 2px solid var(--portal-red); padding: 8px 10px; background: #f7f4ee; }
+.customer-portal-confirmation-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.customer-portal-confirmation-actions button { min-height: 42px; padding-inline: 15px; }
 .customer-portal-module-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .customer-portal-module-card { min-width: 0; display: grid; align-content: start; gap: 12px; padding: 14px; border: 1px solid #e8e2da; background: #fbf9f4; }
 .customer-portal-module-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
@@ -251,6 +263,13 @@
 .customer-portal-admin-app, .customer-portal-admin-ticket { padding: 12px; border: 1px solid #e8e2da; background: #fbf9f4; }
 .customer-portal-admin-app > div:first-child h3 { margin: 0; font-size: 12px; }
 .customer-portal-admin-app > div:first-child small, .customer-portal-admin-plan > div small { display: block; margin-top: 3px; color: var(--portal-muted); font-size: 8px; }
+.customer-portal-admin-create-plan-button { margin-top: 8px; }
+.customer-portal-admin-plan-create { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 9px; border: 1px solid var(--portal-line); padding: 12px; background: #fffefa; }
+.customer-portal-admin-plan-create label { display: grid; gap: 5px; color: var(--portal-muted); font-size: 9px; }
+.customer-portal-admin-plan-create input, .customer-portal-admin-plan-create textarea { width: 100%; min-height: 37px; border: 1px solid var(--portal-line); padding: 8px; background: white; color: var(--portal-ink); font: inherit; font-size: 10px; }
+.customer-portal-admin-plan-create .customer-portal-admin-plan-features, .customer-portal-admin-plan-create > p, .customer-portal-admin-plan-create > .customer-portal-card-actions { grid-column: 1 / -1; }
+.customer-portal-admin-plan-create > p { margin: 0; color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
+.customer-portal-admin-plan-create > .customer-portal-card-actions { margin: 0; }
 .customer-portal-admin-plan { display: grid; grid-template-columns: minmax(100px, 1fr) 90px 90px auto; align-items: end; gap: 8px; margin-top: 9px; padding-top: 9px; border-top: 1px solid #e8e2da; }
 .customer-portal-admin-plan > div strong { font-size: 10px; }
 .customer-portal-admin-plan label { grid-template-columns: auto 1fr; align-items: center; gap: 5px; }
@@ -298,6 +317,8 @@
 	.customer-portal-team-switcher select { width: 100%; }
 	.customer-portal-metric { min-height: 90px; padding: 11px; }
 	.customer-portal-metric > strong { font-size: 21px; }
+	.customer-portal-confirmation-actions { flex-direction: column; }
+	.customer-portal-confirmation-actions button { width: 100%; }
 	.customer-portal-upcoming-invoice { align-items: flex-start; flex-direction: column; }
 	.customer-portal-upcoming-invoice button { width: 100%; }
 	.customer-portal-initial-selection { align-items: stretch; flex-direction: column; }
@@ -309,6 +330,7 @@
 	.customer-portal-site-switcher { width: 100%; align-items: flex-start; flex-direction: column; gap: 5px; }
 	.customer-portal-site-switcher select { width: 100%; }
 	.customer-portal-filter-row, .customer-portal-module-grid, .customer-portal-billing-summary, .customer-portal-form-columns, .customer-portal-admin-form { grid-template-columns: 1fr; }
+	.customer-portal-admin-plan-create { grid-template-columns: 1fr; }
 	.customer-portal-module-features { grid-template-columns: 1fr; }
 	.customer-portal-estimate { align-items: stretch; flex-direction: column; }
 	.customer-portal-estimate-main, .customer-portal-estimate-details, .customer-portal-estimate-actions { width: 100%; min-width: 0; }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { productModules } from '../product/modules';
 import { getInstallHistory, getInstallStatus, uninstallMarketplaceApp, type PortalSite, type PortalSubscription } from './portalApi';
+import { usePortalConfirmation } from './PortalConfirmation';
 
 type Props = {
 	subscriptions: PortalSubscription[];
@@ -43,6 +44,7 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 	const [reloadToken, setReloadToken] = useState(0);
 	const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
 	const [busyApp, setBusyApp] = useState('');
+	const { confirm, dialog: confirmationDialog } = usePortalConfirmation();
 
 	useEffect(() => {
 		const controller = new AbortController();
@@ -91,13 +93,24 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 			return;
 		}
 		const siteLabel = subscription.site_label || subscription.site;
-		const confirmed = window.confirm(`ماژول «${subscription.app_title}» از سایت ${siteLabel} حذف و اشتراک آن غیرفعال شود؟ پس از تأیید، کاربران آن سایت دیگر به این ماژول دسترسی نخواهند داشت.`);
+		const confirmed = await confirm({
+			title: 'لغو اشتراک و حذف ماژول',
+			description: `ماژول «${subscription.app_title}» از سایت ${siteLabel} حذف شود؟`,
+			details: ['تمدید اشتراک متوقف می‌شود.', 'پس از تکمیل حذف، کاربران این سایت دیگر به ماژول دسترسی نخواهند داشت.'],
+			confirmLabel: 'لغو اشتراک و حذف',
+			appearance: 'danger',
+		});
 		if (!confirmed) return;
 		await removeApp(subscription.site, subscription.app, subscription.app_title);
 	}
 
 	async function retryRemoval(item: AppActivity) {
-		if (!window.confirm(`حذف «${appTitle(item.app, item.app_title)}» از سایت ${item.siteLabel} دوباره اجرا شود؟`)) return;
+		if (!await confirm({
+			title: 'تلاش دوباره برای حذف',
+			description: `درخواست حذف «${appTitle(item.app, item.app_title)}» از سایت ${item.siteLabel} دوباره ثبت شود؟`,
+			confirmLabel: 'ثبت دوبارهٔ درخواست',
+			appearance: 'danger',
+		})) return;
 		await removeApp(item.site, item.app, appTitle(item.app, item.app_title));
 	}
 
@@ -113,7 +126,8 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 		finally { setBusyApp(''); }
 	}
 
-	return <div className="customer-portal-workspace">
+	return <>
+	<div className="customer-portal-workspace">
 		<section className="customer-portal-panel" aria-labelledby="portal-purchases-title">
 			<div className="customer-portal-panel-heading"><div><p>خریدهای ثبت‌شده</p><h2 id="portal-purchases-title">اشتراک‌ها و پلن‌ها</h2></div><button type="button" onClick={onOpenModules}>مدیریت ماژول‌ها</button></div>
 			{error && <div className="customer-portal-inline-error" role="alert"><span>{error}</span><button type="button" onClick={() => { setError(''); setReloadToken(value => value + 1); }}>تلاش دوباره</button></div>}
@@ -127,7 +141,9 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 			<p className="customer-portal-help-copy">وضعیت نصب یا حذف ماژول‌ها را ببین؛ اگر نصب کامل نشد، جزئیات همان تلاش را برای تیم پشتیبانی بفرست.</p>
 			{loading ? <div className="customer-portal-inline-state" role="status">در حال دریافت سابقهٔ عملیات…</div> : history.length ? <div className="customer-portal-install-history">{history.map(item => <article className="customer-portal-install-row" key={`${item.site}:${item.name}`}><div><strong>{item.action === 'Uninstall App' ? 'حذف' : 'نصب'} · {appTitle(item.app, item.app_title)}</strong><small>{item.siteLabel} · {formatDateTime(item.creation)}</small></div><span className="customer-portal-status" data-status={item.status.toLowerCase().replaceAll(' ', '-')}>{statusLabels[item.status] || item.status}</span>{canManageBilling && item.action === 'Uninstall App' && ['Failure', 'Delivery Failure'].includes(item.status) && <button type="button" className="customer-portal-text-button" disabled={busyApp === item.app} onClick={() => void retryRemoval(item)}>تلاش دوباره</button>}{item.action === 'Install App' && ['Failure', 'Delivery Failure'].includes(item.status) && <button type="button" className="customer-portal-text-button" onClick={() => onRequestInstallationSupport(item.site, item.siteLabel, appTitle(item.app, item.app_title), statusLabels[item.status] || item.status, item.creation)}>پیگیری با پشتیبانی</button>}</article>)}</div> : <div className="customer-portal-inline-state">برای سایت‌های این تیم سابقهٔ نصب یا حذف پیدا نشد.</div>}
 		</section>
-	</div>;
+	</div>
+	{confirmationDialog}
+	</>;
 }
 
 function SubscriptionItem({ subscription, canManageBilling, onOpenBilling, busy, onCancel, onRequestPeriodReview }: { subscription: PortalSubscription; canManageBilling: boolean; onOpenBilling: () => void; busy: boolean; onCancel: () => void; onRequestPeriodReview: (subscription: PortalSubscription) => void }) {
