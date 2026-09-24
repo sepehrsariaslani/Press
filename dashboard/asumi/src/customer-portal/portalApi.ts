@@ -76,6 +76,7 @@ export type SupportRequest = {
 };
 
 export type CustomerPortalData = {
+	csrf_token: string;
 	team: { name: string; title: string; currency: string };
 	teams: Array<{ name: string; title: string }>;
 	sites: PortalSite[];
@@ -182,7 +183,9 @@ declare global {
 }
 
 export async function getCustomerPortalData(signal?: AbortSignal) {
-	return frappeCall<CustomerPortalData>('press.api.customer_portal.dashboard', { signal });
+	const data = await frappeCall<CustomerPortalData>('press.api.customer_portal.dashboard', { signal });
+	window.csrf_token = data.csrf_token;
+	return data;
 }
 
 export async function getMarketplaceCatalog(signal?: AbortSignal) {

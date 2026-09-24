@@ -169,7 +169,11 @@ def dashboard():
 			}
 		)
 
+	csrf_token = frappe.sessions.get_csrf_token()
+	frappe.db.commit()
+
 	return {
+		"csrf_token": csrf_token,
 		"team": {
 			"name": team.name,
 			"title": team.team_title or team.name,
