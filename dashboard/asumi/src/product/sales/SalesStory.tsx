@@ -4,9 +4,9 @@ import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { BrandSignal } from '../../story/BrandSignal';
 import { useStoryProgress } from '../../story/useStoryProgress';
 import { productModuleDetails } from '../moduleDetails';
-import { productModules } from '../modules';
 import { salesChapters, salesSample } from './storyData';
 import { SalesEvidenceBoard } from './SalesEvidenceBoard';
+import { SalesProductGuide } from './SalesProductGuide';
 import './sales-story.css';
 
 type SalesStoryProps = {
@@ -25,10 +25,6 @@ export function SalesStory({ onOpenModule, onReturnToModules }: SalesStoryProps)
 	const { root, motion, chapter: stage } = useStoryProgress(reducedMotion);
 	const heading = useRef<HTMLHeadingElement>(null);
 	const details = productModuleDetails.sales;
-	const salesModule = productModules.find(module => module.id === 'sales')!;
-	const relatedModules = details.relatedIds
-		.map(id => productModules.find(module => module.id === id))
-		.filter((module): module is (typeof productModules)[number] => Boolean(module));
 
 	useEffect(() => {
 		if (window.scrollY > 0) {
@@ -99,39 +95,6 @@ export function SalesStory({ onOpenModule, onReturnToModules }: SalesStoryProps)
 			</div>
 		</div>
 
-		<section className="sales-handoff" id="sales-handoff" aria-labelledby="sales-handoff-title">
-			<div className="sales-handoff-inner">
-				<div className="sales-handoff-heading">
-					<p>از روایت تا کار روزانه</p>
-					<h2 id="sales-handoff-title">هر سفارش، از گفت‌وگو تا وصول.</h2>
-					<span>مسیر را در یک گردش کار ببین؛ جزئیات هر بخش به نصب، تنظیمات و سطح دسترسی شرکت بستگی دارد.</span>
-				</div>
-				<ul className="sales-capability-list">
-					{salesModule.features.map((feature, index) => <li key={feature}><span>{toPersianDigits(index + 1)}</span>{feature}</li>)}
-				</ul>
-				<div className="sales-handoff-section-heading"><p>اسناد مسیر فروش</p><h3>این جریان با کدام سندها پیش می‌رود؟</h3></div>
-				<div className="sales-handoff-records">
-					{details.records.map(record => <div className="sales-handoff-record" key={record.source ?? record.label}><span>{record.label}</span>{record.source && <small>{record.source}</small>}</div>)}
-				</div>
-				<p className="sales-handoff-boundary"><strong>ارتباط با CRM</strong>{details.boundary}</p>
-				<div className="sales-pathways" aria-labelledby="sales-pathways-title">
-					<div className="sales-handoff-section-heading"><p>مسیر خودت را انتخاب کن</p><h3 id="sales-pathways-title">در فروش، چه چیزی برایت مهم‌تر است؟</h3></div>
-					<div className="sales-pathway-grid">
-						<a href={`/hesab${productModuleDetails.crm.entryPath}`}><span>مشتری و فرصت‌ها</span><strong>بازکردن قیف CRM <span aria-hidden="true">↗</span></strong></a>
-						<a href={`/hesab${details.entryPath}`}><span>قیمت و سفارش</span><strong>رفتن به مرکز فروش <span aria-hidden="true">↗</span></strong></a>
-						<div><span>تحویل و وصول</span><strong><a href={`/hesab${productModuleDetails.inventory.entryPath}`}>انبار <span aria-hidden="true">↗</span></a><a href={`/hesab${productModuleDetails.finance.entryPath}`}>مالی <span aria-hidden="true">↗</span></a></strong></div>
-						<a href={`/hesab${productModuleDetails.growth.entryPath}`}><span>تحلیل و رشد</span><strong>بازاریابی و رشد <span aria-hidden="true">↗</span></strong></a>
-					</div>
-				</div>
-				<p className="sales-handoff-note">این صفحه برای نمایش مسیر از داده‌های نمونه استفاده می‌کند؛ اعداد و وضعیت‌ها، اطلاعات زنده‌ی شرکت شما نیستند.</p>
-				<div className="sales-handoff-footer">
-					<nav className="sales-related-modules" aria-label="ماژول‌های مرتبط با فروش">
-						{relatedModules.map(module => <a href={`#module/${module.id}`} key={module.id} onClick={event => { event.preventDefault(); onOpenModule(module.id); }}>{module.title}<span aria-hidden="true">←</span></a>)}
-					</nav>
-					<a className="sales-handoff-cta" href={`/hesab${details.entryPath}`}>{details.entryLabel}<span aria-hidden="true">↗</span></a>
-				</div>
-				<button className="sales-back-to-modules" type="button" onClick={onReturnToModules}>← بازگشت به همه‌ی ۱۵ ماژول</button>
-			</div>
-		</section>
+		<SalesProductGuide onOpenModule={onOpenModule} onNavigateToSection={scrollTo} onReturnToModules={onReturnToModules} />
 	</main>;
 }

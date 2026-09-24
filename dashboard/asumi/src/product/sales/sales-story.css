@@ -66,47 +66,6 @@
 .sales-story .primary-cta { text-decoration: none; }
 .sales-story :where(button, a):focus-visible { outline: 2px solid var(--case-accent); outline-offset: 6px; border-radius: var(--case-radius); }
 
-.sales-handoff { position: relative; z-index: 3; border-top: 1px solid #e7e2da; background: #f7f5f0; color: #28231f; }
-.sales-handoff-inner { width: min(1120px, calc(100% - 10vw)); margin-inline: auto; padding: 88px 0 48px; }
-.sales-handoff-heading { max-width: 790px; }
-.sales-handoff-heading > p,
-.sales-handoff-section-heading > p { margin: 0 0 7px; color: #a92532; font-size: 11px; font-weight: 650; }
-.sales-handoff-heading h2 { margin: 0; font-size: clamp(28px, 4vw, 46px); font-weight: 600; line-height: 1.5; }
-.sales-handoff-heading > span { display: block; margin-top: 10px; color: #716a63; font-size: 12px; line-height: 2; }
-.sales-capability-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 28px 0 0; padding: 0; list-style: none; }
-.sales-capability-list li { display: flex; min-height: 79px; flex-direction: column; justify-content: space-between; gap: 10px; padding: 12px; border: 1px solid #e3ded7; background: #fffefa; color: #49423c; font-size: 10px; line-height: 1.8; }
-.sales-capability-list li > span { color: #a92532; font-size: 10px; }
-.sales-handoff-section-heading { margin: 32px 0 12px; }
-.sales-handoff-section-heading h3 { margin: 0; color: #28231f; font-size: 17px; font-weight: 650; }
-.sales-handoff-records { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
-.sales-handoff-record { display: flex; min-height: 64px; flex-direction: column; justify-content: center; gap: 3px; padding: 11px 13px; border: 1px solid #e3ded7; background: #f0ede8; }
-.sales-handoff-record span { color: #39332e; font-size: 11px; font-weight: 600; }
-.sales-handoff-record small { color: #817970; font-size: 9px; direction: ltr; text-align: right; }
-.sales-handoff-boundary { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 0; padding: 12px 14px; border-right: 2px solid #a92532; background: #f0ede8; color: #716a63; font-size: 10px; line-height: 1.9; }
-.sales-handoff-boundary strong { flex: 0 0 auto; color: #a92532; font-weight: 650; }
-.sales-pathway-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
-.sales-pathway-grid > a,
-.sales-pathway-grid > div { display: flex; min-height: 96px; flex-direction: column; justify-content: space-between; gap: 13px; padding: 13px; border: 1px solid #e2ddd5; background: #fffefa; color: #28231f; text-decoration: none; transition: border-color .2s ease, transform .2s ease; }
-.sales-pathway-grid > a:hover { transform: translateY(-2px); border-color: #b98284; }
-.sales-pathway-grid > a > span,
-.sales-pathway-grid > div > span { color: #716a63; font-size: 10px; }
-.sales-pathway-grid > a > strong,
-.sales-pathway-grid > div > strong { display: flex; flex-wrap: wrap; gap: 8px 12px; color: #a92532; font-size: 10px; font-weight: 650; }
-.sales-pathway-grid > a > strong > span,
-.sales-pathway-grid > div > strong > a > span { font-size: 15px; }
-.sales-pathway-grid > div > strong > a { display: inline-flex; min-height: 44px; align-items: center; gap: 4px; color: #a92532; text-decoration: none; }
-.sales-pathway-grid > div > strong > a:hover { text-decoration: underline; text-underline-offset: 3px; }
-.sales-handoff-note { margin: 18px 0 0; color: #817970; font-size: 10px; line-height: 1.9; }
-.sales-handoff-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 23px; padding-top: 20px; border-top: 1px solid #ded9d1; }
-.sales-related-modules { display: flex; flex-wrap: wrap; gap: 7px; }
-.sales-related-modules a { display: inline-flex; min-height: 42px; align-items: center; gap: 14px; padding: 0 11px; border: 1px solid #ded9d1; background: #fffefa; color: #39332e; font-size: 10px; text-decoration: none; transition: border-color .2s ease, color .2s ease; }
-.sales-related-modules a:hover { border-color: #a92532; color: #a92532; }
-.sales-related-modules a span { color: #a92532; font-size: 14px; }
-.sales-handoff-cta { display: inline-flex; min-height: 48px; flex: 0 0 auto; align-items: center; gap: 20px; padding: 0 16px; background: #a92532; color: white; font-size: 11px; text-decoration: none; }
-.sales-handoff-cta span { font-size: 17px; }
-.sales-back-to-modules { display: inline-flex; min-height: 44px; align-items: center; margin-top: 14px; padding: 0; border: 0; background: none; color: #a92532; font: inherit; font-size: 10px; cursor: pointer; }
-.sales-handoff :where(button, a):focus-visible { outline: 3px solid #a9253259; outline-offset: 4px; }
-
 .sales-story[data-theme-phase='bright'] .sales-story-sticky { background: #f7f5f0; }
 .sales-story[data-theme-phase='bright'] .story-brand { color: #28231f; }
 .sales-story[data-theme-phase='bright'] .header-description { color: #716a63; }
@@ -162,30 +121,6 @@
 	.sales-story .chapter-name { display: none; }
 	.sales-story .chapter-nav a[aria-current] .chapter-name { display: block; }
 	.sales-story .scene-caption { text-align: center; max-width: none; font-size: 9px; }
-	.sales-handoff-inner { width: calc(100% - 40px); padding: 58px 0 32px; }
-	.sales-handoff-heading > p, .sales-handoff-section-heading > p { font-size: 9px; }
-	.sales-handoff-heading h2 { font-size: 27px; line-height: 1.55; }
-	.sales-handoff-heading > span { font-size: 10px; }
-	.sales-capability-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 22px; }
-	.sales-capability-list li { min-height: 70px; gap: 7px; padding: 9px 8px; font-size: 8px; }
-	.sales-handoff-section-heading { margin-top: 24px; }
-	.sales-handoff-section-heading h3 { font-size: 14px; line-height: 1.7; }
-	.sales-handoff-records { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-	.sales-handoff-record { min-height: 56px; padding: 8px; }
-	.sales-handoff-record span { font-size: 9px; }
-	.sales-handoff-record small { font-size: 8px; }
-	.sales-handoff-boundary { align-items: flex-start; flex-direction: column; gap: 3px; padding: 10px; font-size: 9px; }
-	.sales-pathway-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-	.sales-pathway-grid > a, .sales-pathway-grid > div { min-height: 82px; gap: 8px; padding: 9px; }
-	.sales-pathway-grid > a > span, .sales-pathway-grid > div > span { font-size: 8px; }
-	.sales-pathway-grid > a > strong, .sales-pathway-grid > div > strong { gap: 5px 8px; font-size: 8px; }
-	.sales-pathway-grid > div > strong > a { min-height: 44px; }
-	.sales-handoff-note { font-size: 9px; }
-	.sales-handoff-footer { align-items: stretch; flex-direction: column; gap: 13px; margin-top: 18px; }
-	.sales-related-modules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	.sales-related-modules a { min-height: 40px; justify-content: space-between; padding-inline: 8px; font-size: 9px; }
-	.sales-handoff-cta { justify-content: space-between; }
-	.sales-back-to-modules { margin-top: 11px; font-size: 9px; }
 }
 
 @media (max-width: 380px) {
@@ -194,7 +129,6 @@
 	.sales-story .login-link { font-size: 9px; }
 	.sales-story .chapter-content h1, .sales-story .chapter-content h2 { font-size: 25px; }
 	.sales-story .chapter-description { font-size: 12px; }
-	.sales-handoff-heading h2 { font-size: 24px; }
 }
 
 @media (max-height: 740px) and (max-width: 700px) {

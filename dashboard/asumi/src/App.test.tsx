@@ -91,7 +91,7 @@ test('opens the sales story in the homepage case-board style with a request-to-o
   expect(container.querySelector('.finance-story')).not.toBeInTheDocument();
 });
 
-test('shows the accepted quotation, four order obligations and clear illustrative-data disclosure', () => {
+test('explains the full sales process, capabilities, module boundaries and sample-data limits after the story', () => {
   window.history.replaceState(null, '', '#module/sales');
   const { container } = render(<AsumiApp />);
   expect(container.querySelector('[data-quote-total]')).toHaveTextContent('۲۷۳٬۶۰۰٬۰۰۰ تومان');
@@ -103,9 +103,37 @@ test('shows the accepted quotation, four order obligations and clear illustrativ
   expect(container.querySelector('[data-obligation="shipment"]')).toHaveTextContent('آماده‌ی ثبت');
   expect(container.querySelector('[data-obligation="finance"]')).toHaveTextContent('۴۰٪ پیش‌پرداخت');
   expect(container.querySelectorAll('[data-sales-thread]')).toHaveLength(5);
-  expect(container.querySelector('.sales-handoff-note')).toHaveTextContent('اعداد و وضعیت‌ها، اطلاعات زنده‌ی شرکت شما نیستند');
+  expect(screen.getByRole('heading', { level: 2, name: 'هر فرصت، یک مسیر روشن تا تحویل و وصول.' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 3, name: 'مسیر یک فروش، قدم‌به‌قدم' })).toBeInTheDocument();
+  expect(container.querySelectorAll('.sales-journey-step')).toHaveLength(6);
+  expect(container.querySelector('[data-sales-journey-step="opportunity"]')).toHaveTextContent('CRM Lead');
+  expect(container.querySelector('[data-sales-journey-step="quotation"]')).toHaveTextContent('Quotation');
+  expect(container.querySelector('[data-sales-journey-step="fulfillment"]')).toHaveTextContent('Pick List');
+  expect(container.querySelector('[data-sales-journey-step="invoice"]')).toHaveTextContent('Sales Invoice');
+  expect(container.querySelectorAll('.sales-capability-card')).toHaveLength(5);
+  expect(container.querySelectorAll('.sales-connection-card')).toHaveLength(3);
+  expect(screen.getByText('ارسال پیامک به فعال‌بودن اتصال sms.ir و تنظیمات حساب وابسته است.')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /فرایند فروش/ })).toHaveAttribute('href', '#sales-process');
+  expect(container.querySelector('.sales-handoff-note')).toHaveTextContent('اطلاعات زنده‌ی شرکت شما نیستند');
   expect(screen.getByRole('link', { name: /بازکردن قیف CRM/ })).toHaveAttribute('href', '/hesab/crm/pipeline');
   expect(screen.getAllByRole('link', { name: /ورود به مرکز فروش/ })[0]).toHaveAttribute('href', '/hesab/modules/sales');
+});
+
+test('keeps sales-guide jump links inside the sales page instead of routing on their section hashes', () => {
+  window.history.replaceState(null, '', '#module/sales');
+  const scrollIntoView = vi.fn();
+  const originalScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+  Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scrollIntoView });
+  try {
+    render(<AsumiApp />);
+    fireEvent.click(screen.getByRole('link', { name: /فرایند فروش/ }));
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(window.location.hash).toBe('#module/sales');
+    expect(screen.getByRole('heading', { level: 2, name: 'هر فرصت، یک مسیر روشن تا تحویل و وصول.' })).toBeInTheDocument();
+  } finally {
+    if (originalScrollIntoView) Object.defineProperty(Element.prototype, 'scrollIntoView', originalScrollIntoView);
+    else delete (Element.prototype as unknown as { scrollIntoView?: () => void }).scrollIntoView;
+  }
 });
 
 test('moves the flashlight with the pointer while keeping scroll and links available', async () => {
