@@ -11,6 +11,7 @@ from .common import (
 	_catalog_mappings,
 	_is_catalog_admin,
 	_is_support_agent,
+	_marketplace_plan_requires_billing,
 	_pending_marketplace_invoice_lines,
 	_customer_team_options,
 	serialize_plan,
@@ -22,6 +23,8 @@ from .common import (
 def dashboard():
 	"""Return the current team's sites and native Marketplace subscriptions."""
 	team = get_current_team(get_doc=True)
+	can_manage_apps_access = can_manage_apps(team)
+	can_manage_billing_access = can_manage_billing(team)
 	asumi_app_ids = _asumi_marketplace_app_ids()
 	sites = frappe.get_all(
 		"Site",
@@ -158,6 +161,9 @@ def dashboard():
 				"site_label": (site.host_name or site.name) if site else subscription.site,
 				"site_status": site.status if site else None,
 				"status": status,
+				"requires_billing": _marketplace_plan_requires_billing(
+					team, app.app if app else subscription.document_name, subscription.plan
+				),
 				"payment_status": "Unpaid" if invoice_name else None,
 				"pending_invoice": invoice_name,
 				"interval": billing_interval,
@@ -168,6 +174,21 @@ def dashboard():
 				"selected_plan": selected_plan,
 			}
 		)
+
+	if not can_manage_apps_access and not can_manage_billing_access:
+		visible_statuses = {"Active", "Provisioning", "Cancellation Pending", "Needs Attention"}
+		serialized_subscriptions = [
+			subscription for subscription in serialized_subscriptions if subscription["status"] in visible_statuses
+		]
+		for subscription in serialized_subscriptions:
+			if subscription["selected_plan"]:
+				subscription["selected_plan"]["price_inr"] = None
+				subscription["selected_plan"]["price_usd"] = None
+
+	if not can_manage_billing_access:
+		for subscription in serialized_subscriptions:
+			subscription["payment_status"] = None
+			subscription["pending_invoice"] = None
 
 	csrf_token = frappe.sessions.get_csrf_token()
 	frappe.db.commit()
@@ -183,8 +204,8 @@ def dashboard():
 		"sites": [serialize_site(site, site_plans.get(site.plan), team.currency) for site in sites],
 		"included_module_ids": [mapping.module_id for mapping in _catalog_mappings() if mapping.mode == "Included"],
 		"subscriptions": serialized_subscriptions,
-		"can_manage_billing": can_manage_billing(team),
-		"can_manage_apps": can_manage_apps(team),
+		"can_manage_billing": can_manage_billing_access,
+		"can_manage_apps": can_manage_apps_access,
 		"can_manage_catalog": _is_catalog_admin(),
 		"can_manage_support": _is_support_agent(),
 	}

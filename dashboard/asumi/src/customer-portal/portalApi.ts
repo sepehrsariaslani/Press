@@ -26,6 +26,7 @@ export type PortalSubscription = {
 	site_label: string | null;
 	site_status: string | null;
 	status: string;
+	requires_billing?: boolean;
 	payment_status?: string | null;
 	pending_invoice?: string | null;
 	interval: string | null;

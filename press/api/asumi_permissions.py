@@ -30,5 +30,10 @@ def can_manage_apps(team) -> bool:
 	return has_team_permission(team, "allow_apps")
 
 
+def require_apps_access(team):
+	if not can_manage_apps(team):
+		frappe.throw("Only a team app manager can manage installed apps.", frappe.PermissionError)
+
+
 def can_manage_billing(team) -> bool:
 	return has_team_permission(team, "allow_billing")

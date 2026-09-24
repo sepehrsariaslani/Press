@@ -271,6 +271,30 @@ def _validate_marketplace_plan_currency(team, app_slug: str, plan_name: str):
 		frappe.throw(
 			"This paid plan is not available in the team's billing currency. Contact Asumi support for a quote."
 		)
+	return price
+
+
+def _marketplace_plan_requires_billing(team, app_slug: str, plan_name: str | None) -> bool:
+	if not plan_name:
+		return False
+	app_name = frappe.db.get_value("Marketplace App", {"app": app_slug}, "name")
+	if not app_name:
+		return True
+	plan = frappe.db.get_value(
+		"Marketplace App Plan",
+		{"name": plan_name, "app": app_name},
+		["price_inr", "price_usd"],
+		as_dict=True,
+	)
+	if not plan:
+		return True
+	if team.currency == "INR":
+		price = plan.price_inr
+	elif team.currency == "USD":
+		price = plan.price_usd
+	else:
+		return not (plan.price_inr == 0 and plan.price_usd == 0)
+	return price is None or price > 0
 
 
 def serialize_support_request(doc, include_messages=False):

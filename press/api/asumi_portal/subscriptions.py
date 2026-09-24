@@ -1,11 +1,13 @@
 import frappe
 
 from press.api.asumi_billing import require_billing_access
+from press.api.asumi_permissions import can_manage_apps, can_manage_billing, require_apps_access
 from press.api.site import protected
 from press.utils import get_current_team
 
 from .common import (
 	_asumi_marketplace_app_ids,
+	_marketplace_plan_requires_billing,
 	_require_asumi_marketplace_app,
 	_validate_marketplace_plan_currency,
 )
@@ -30,15 +32,20 @@ def site_app_state(name: str):
 
 @frappe.whitelist(methods=["POST"])
 def install_marketplace_app(name: str, app: str, plan: str | None = None):
-	"""Install one native Marketplace app after enforcing the team's billing role."""
+	"""Install a free app by app permission or a paid app by billing permission."""
 	team = get_current_team(get_doc=True)
-	require_billing_access(team)
 	_require_asumi_marketplace_app(app, published_only=True)
 	site = frappe.get_doc("Site", name)
 	if site.team != team.name:
 		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
 	if plan:
 		_validate_marketplace_plan_currency(team, app, plan)
+		if _marketplace_plan_requires_billing(team, app, plan):
+			require_billing_access(team)
+		else:
+			require_apps_access(team)
+	else:
+		require_apps_access(team)
 	return site.install_app(app, plan)
 
 
@@ -61,7 +68,6 @@ def change_marketplace_plan(subscription: str, new_plan: str):
 def uninstall_marketplace_app(name: str, app: str):
 	"""Cancel a Marketplace subscription by using Press's native uninstall lifecycle."""
 	team = get_current_team(get_doc=True)
-	require_billing_access(team)
 	_require_asumi_marketplace_app(app)
 	site = frappe.get_doc("Site", name)
 	if site.team != team.name:
@@ -75,9 +81,13 @@ def uninstall_marketplace_app(name: str, app: str):
 	subscriptions = frappe.get_all(
 		"Subscription",
 		filters={"team": team.name, "site": site.name, "document_type": "Marketplace App"},
-		fields=["document_name", "enabled"],
+		fields=["document_name", "enabled", "plan"],
+		order_by="modified desc",
 	)
-	if not any(row.document_name in {app, marketplace_app} and row.enabled for row in subscriptions):
+	matching_subscriptions = [
+		row for row in subscriptions if row.document_name in {app, marketplace_app}
+	]
+	if not any(row.enabled for row in matching_subscriptions):
 		latest_uninstall = frappe.get_all(
 			"Site Activity",
 			filters={"site": site.name, "action": "Uninstall App", "reason": app},
@@ -90,6 +100,16 @@ def uninstall_marketplace_app(name: str, app: str):
 		job_status = frappe.db.get_value("Agent Job", latest_uninstall[0].job, "status")
 		if job_status not in {"Failure", "Delivery Failure"}:
 			frappe.throw("This module has no active subscription to cancel.")
+	permission_subscription = next(
+		(row for row in matching_subscriptions if row.enabled),
+		matching_subscriptions[0] if matching_subscriptions else None,
+	)
+	if permission_subscription and _marketplace_plan_requires_billing(
+		team, app, permission_subscription.plan
+	):
+		require_billing_access(team)
+	else:
+		require_apps_access(team)
 	return site.uninstall_app(app)
 
 
@@ -110,6 +130,9 @@ def credit_topup_constraints():
 @frappe.whitelist(methods=["GET"])
 @protected("Site")
 def installation_history(name: str):
+	team = get_current_team(get_doc=True)
+	if not (can_manage_apps(team) or can_manage_billing(team)):
+		return []
 	app_ids = _asumi_marketplace_app_ids()
 	if not app_ids:
 		return []
