@@ -91,6 +91,7 @@ def dashboard():
 		fields=["name", "document_name", "site", "enabled", "interval", "plan", "creation"],
 		order_by="modified desc",
 	)
+	pending_marketplace_invoices = _pending_marketplace_invoice_lines(team.name, sites_by_name)
 	app_names = list({subscription.document_name for subscription in subscriptions})
 	apps = {}
 	plans_by_app = {}
@@ -151,6 +152,14 @@ def dashboard():
 		elif app_activity and app_activity["status"] in {"Failure", "Delivery Failure"}:
 			status = "Needs Attention"
 		app_plan_key = app.name if app else subscription.document_name
+		invoice_name = next(
+			(
+				pending_marketplace_invoices[(subscription.site, document_name)]
+				for document_name in {subscription.document_name, app.name if app else None, app.app if app else None}
+				if document_name and (subscription.site, document_name) in pending_marketplace_invoices
+			),
+			None,
+		)
 		selected_plan = next(
 			(
 				serialize_plan(plan)
@@ -189,6 +198,8 @@ def dashboard():
 				"site_label": (site.host_name or site.name) if site else subscription.site,
 				"site_status": site.status if site else None,
 				"status": status,
+				"payment_status": "Unpaid" if invoice_name else None,
+				"pending_invoice": invoice_name,
 				"interval": billing_interval,
 				"plan_interval": plan_interval,
 				"billing_period_mismatch": bool(billing_interval and plan_interval and billing_interval != plan_interval),
@@ -211,6 +222,36 @@ def dashboard():
 		"can_manage_catalog": _is_catalog_admin(),
 		"can_manage_support": _is_support_agent(),
 	}
+
+
+def _pending_marketplace_invoice_lines(team: str, sites_by_name: dict) -> dict:
+	if not sites_by_name:
+		return {}
+	invoices = frappe.get_all(
+		"Invoice",
+		filters={"team": team, "status": "Unpaid", "docstatus": 1, "amount_due": (">", 0)},
+		fields=["name", "creation"],
+		order_by="creation desc",
+	)
+	if not invoices:
+		return {}
+	invoice_rank = {invoice.name: index for index, invoice in enumerate(invoices)}
+	items = frappe.get_all(
+		"Invoice Item",
+		filters={
+			"parent": ("in", [invoice.name for invoice in invoices]),
+			"parenttype": "Invoice",
+			"document_type": "Marketplace App",
+			"site": ("in", list(sites_by_name)),
+		},
+		fields=["parent", "document_name", "site"],
+	)
+	items.sort(key=lambda item: invoice_rank.get(item.parent, len(invoice_rank)))
+	pending = {}
+	for item in items:
+		if item.site and item.document_name:
+			pending.setdefault((item.site, item.document_name), item.parent)
+	return pending
 
 
 def serialize_site(site):
@@ -248,6 +289,7 @@ def catalog():
 			{
 				"module_id": mapping.module_id,
 				"mode": mapping.mode,
+				"description": mapping.description,
 				"marketplace_app_slug": app.app if app else None,
 				"marketplace_app_title": app.title if app else None,
 				"published": cint(mapping.published),
@@ -326,7 +368,13 @@ def credit_topup_constraints():
 
 
 @frappe.whitelist(methods=["POST"])
-def save_catalog_mapping(module_id: str, mode: str, marketplace_app: str | None = None, published: int = 1):
+def save_catalog_mapping(
+	module_id: str,
+	mode: str,
+	marketplace_app: str | None = None,
+	published: int = 1,
+	description: str | None = None,
+):
 	_require_catalog_admin()
 	from press.press.doctype.asumi_module_mapping.asumi_module_mapping import ASUMI_MODULE_IDS
 
@@ -338,6 +386,9 @@ def save_catalog_mapping(module_id: str, mode: str, marketplace_app: str | None 
 		frappe.throw("Choose a Marketplace app for this module.")
 	if marketplace_app and not frappe.db.exists("Marketplace App", marketplace_app):
 		frappe.throw("The selected Marketplace app does not exist.")
+	description = (description or "").strip()
+	if len(description) > 2000:
+		frappe.throw("Compatibility notes cannot exceed 2000 characters.")
 
 	name = frappe.db.get_value("Asumi Module Mapping", {"module_id": module_id}, "name")
 	doc = frappe.get_doc("Asumi Module Mapping", name) if name else frappe.new_doc("Asumi Module Mapping")
@@ -345,12 +396,14 @@ def save_catalog_mapping(module_id: str, mode: str, marketplace_app: str | None 
 	doc.mode = mode
 	doc.marketplace_app = marketplace_app if mode == "Marketplace app" else None
 	doc.published = cint(published)
+	doc.description = description
 	doc.save(ignore_permissions=True)
 	return {
 		"module_id": doc.module_id,
 		"mode": doc.mode,
 		"marketplace_app": doc.marketplace_app,
 		"published": doc.published,
+		"description": doc.description,
 	}
 
 

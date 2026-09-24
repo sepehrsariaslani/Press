@@ -11,7 +11,7 @@ import { StoryLanding } from './story/StoryLanding';
 export function AsumiApp() {
   const { activeModuleId, openModule, openPricing, openPortalPurchase, returnToModules, showPortal, showPricing } = useModuleNavigation();
   if (showPortal) {
-    return <CustomerPortal onOpenPricing={openPricing} onReturnToModules={returnToModules} />;
+    return <CustomerPortal onReturnToModules={returnToModules} />;
   }
 	if (showPricing) {
 		return <ModulePricingPage onOpenModule={openModule} onReturnToModules={returnToModules} onRequestPurchase={openPortalPurchase} />;

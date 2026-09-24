@@ -23,6 +23,8 @@ export type PortalSubscription = {
 	site_label: string | null;
 	site_status: string | null;
 	status: string;
+	payment_status?: string | null;
+	pending_invoice?: string | null;
 	interval: string | null;
 	plan_interval?: string | null;
 	billing_period_mismatch?: boolean;
@@ -178,7 +180,7 @@ export async function getCustomerPortalData(signal?: AbortSignal) {
 }
 
 export async function getMarketplaceCatalog(signal?: AbortSignal) {
-	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; published: number; marketplace_app_slug: string | null; marketplace_app_title: string | null }> }>(
+	return frappeCall<{ apps: MarketplaceApp[]; mappings: Array<{ module_id: string; mode: string; description: string | null; published: number; marketplace_app_slug: string | null; marketplace_app_title: string | null }> }>(
 		'press.api.customer_portal.catalog', { signal },
 	);
 }
@@ -345,7 +347,7 @@ export async function getCatalogAdmin(signal?: AbortSignal) {
 	);
 }
 
-export async function saveCatalogMapping(params: { module_id: string; mode: string; marketplace_app?: string; published: boolean }) {
+export async function saveCatalogMapping(params: { module_id: string; mode: string; marketplace_app?: string; published: boolean; description: string }) {
 	return frappeCall('press.api.customer_portal.save_catalog_mapping', { method: 'POST', params });
 }
 

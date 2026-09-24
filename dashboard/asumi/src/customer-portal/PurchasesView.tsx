@@ -7,6 +7,7 @@ type Props = {
 	sites: PortalSite[];
 	canManageBilling: boolean;
 	onOpenModules: () => void;
+	onOpenBilling: () => void;
 	onRequestCancellation: (subscription: PortalSubscription) => void;
 	onRequestPeriodReview: (subscription: PortalSubscription) => void;
 	onRefresh: () => void;
@@ -32,7 +33,7 @@ const statusLabels: Record<string, string> = {
 };
 const intervalLabel: Record<string, string> = { Hourly: 'ساعتی', Monthly: 'ماهانه', Annual: 'سالانه', Annually: 'سالانه', Daily: 'روزانه با نرخ ماهانه' };
 
-export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenModules, onRequestCancellation, onRequestPeriodReview, onRefresh }: Props) {
+export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenModules, onOpenBilling, onRequestCancellation, onRequestPeriodReview, onRefresh }: Props) {
 	const [history, setHistory] = useState<AppActivity[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
@@ -116,7 +117,7 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 			{error && <div className="customer-portal-inline-error" role="alert"><span>{error}</span><button type="button" onClick={() => { setError(''); setReloadToken(value => value + 1); }}>تلاش دوباره</button></div>}
 			{notice && <p className="customer-portal-inline-status" role="status">{notice}</p>}
 			{pendingRemoval && <div className="customer-portal-install-progress" role="status"><span className="customer-portal-spinner" aria-hidden="true" /><div><strong>در حال حذف {pendingRemoval.title}</strong><p>اشتراک متوقف شده؛ منتظر تأیید نتیجهٔ حذف سایت هستیم.</p></div></div>}
-			{subscriptions.length ? <div className="customer-portal-subscription-list">{subscriptions.map(subscription => <SubscriptionItem key={subscription.name} subscription={subscription} canManageBilling={canManageBilling} busy={busyApp === subscription.app || pendingRemoval?.app === subscription.app} onCancel={() => void cancelSubscription(subscription)} onRequestPeriodReview={onRequestPeriodReview} />)}</div> : <div className="customer-portal-inline-state">هنوز خرید یا اشتراکی ثبت نشده است؛ از کاتالوگ، ماژول‌های قابل خرید را ببین.</div>}
+			{subscriptions.length ? <div className="customer-portal-subscription-list">{subscriptions.map(subscription => <SubscriptionItem key={subscription.name} subscription={subscription} canManageBilling={canManageBilling} onOpenBilling={onOpenBilling} busy={busyApp === subscription.app || pendingRemoval?.app === subscription.app} onCancel={() => void cancelSubscription(subscription)} onRequestPeriodReview={onRequestPeriodReview} />)}</div> : <div className="customer-portal-inline-state">هنوز خرید یا اشتراکی ثبت نشده است؛ از کاتالوگ، ماژول‌های قابل خرید را ببین.</div>}
 		</section>
 
 		<section className="customer-portal-panel" aria-labelledby="portal-install-history-title">
@@ -127,10 +128,11 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 	</div>;
 }
 
-function SubscriptionItem({ subscription, canManageBilling, busy, onCancel, onRequestPeriodReview }: { subscription: PortalSubscription; canManageBilling: boolean; busy: boolean; onCancel: () => void; onRequestPeriodReview: (subscription: PortalSubscription) => void }) {
+function SubscriptionItem({ subscription, canManageBilling, onOpenBilling, busy, onCancel, onRequestPeriodReview }: { subscription: PortalSubscription; canManageBilling: boolean; onOpenBilling: () => void; busy: boolean; onCancel: () => void; onRequestPeriodReview: (subscription: PortalSubscription) => void }) {
 	return <article className="customer-portal-subscription-card">
 		<div className="customer-portal-subscription-head"><div><small>{subscription.site_label || subscription.site || 'بدون سایت مشخص'}</small><h3>{subscription.app_title}</h3></div><span className="customer-portal-status" data-status={subscription.status.toLowerCase().replaceAll(' ', '-')}>{statusLabels[subscription.status] || subscription.status}</span></div>
 		<div className="customer-portal-plan-line"><span>پلن</span><strong>{subscription.selected_plan?.title || 'پلن ثبت‌شده'}</strong><small>{subscription.interval ? intervalLabel[subscription.interval] || subscription.interval : ''}</small></div>
+		{subscription.payment_status === 'Unpaid' && <div className="customer-portal-payment-alert"><span>فاکتور {subscription.pending_invoice} پرداخت‌نشده است.</span>{canManageBilling ? <button type="button" onClick={onOpenBilling}>دیدن فاکتور و پرداخت</button> : <small>برای پیگیری پرداخت با مدیر مالی تیم تماس بگیر.</small>}</div>}
 		<div className="customer-portal-subscription-dates"><span>شروع: {formatDate(subscription.start_date)}</span><span>{['Active', 'Provisioning'].includes(subscription.status) ? `چرخهٔ جاری تا: ${formatDate(subscription.end_date)}` : subscription.status === 'Cancellation Pending' ? 'در حال حذف از سایت' : 'اشتراک فعال نیست'}</span></div>
 		{subscription.billing_period_mismatch && <div className="customer-portal-period-review"><span>دورهٔ قیمت پلن ({intervalLabel[subscription.plan_interval || ''] || subscription.plan_interval}) با دورهٔ صورتحساب فعلی ({intervalLabel[subscription.interval || ''] || subscription.interval}) یکی نیست.</span><button type="button" onClick={() => onRequestPeriodReview(subscription)}>درخواست بررسی</button></div>}
 		{canManageBilling && ['Active', 'Provisioning', 'Needs Attention'].includes(subscription.status) && <div className="customer-portal-subscription-actions"><button type="button" className="customer-portal-text-button" disabled={busy} onClick={onCancel}>{busy ? 'در حال ثبت…' : 'لغو و حذف ماژول'}</button><small>{subscription.site_status === 'Active' ? 'با تأیید، ماژول از سایت حذف و تمدید اشتراک متوقف می‌شود.' : 'سایت آمادهٔ حذف مستقیم نیست؛ درخواست به پشتیبانی فرستاده می‌شود.'}</small></div>}

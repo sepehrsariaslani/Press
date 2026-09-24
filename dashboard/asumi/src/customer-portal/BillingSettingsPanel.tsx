@@ -176,7 +176,7 @@ export function BillingSettingsPanel() {
 		{notice && <p className="customer-portal-inline-status" role="status">{notice}</p>}
 		<div className="customer-portal-billing-settings-grid">
 			<section className="customer-portal-billing-setting-card" aria-labelledby="billing-mode-title">
-				<div className="customer-portal-subheading"><h3 id="billing-mode-title">روش پرداخت</h3><p>Press هزینه‌ها را با روش انتخابی حساب ثبت می‌کند.</p></div>
+				<div className="customer-portal-subheading"><h3 id="billing-mode-title">روش پرداخت</h3><p>هزینه‌ها مطابق روش پرداخت انتخاب‌شده برای حساب پردازش می‌شوند.</p></div>
 				<label className="customer-portal-search"><span>روش فعلی</span><select value={settings?.payment_mode || ''} disabled={busy} onChange={event => void updateMode(event.target.value)}><option value="">انتخاب روش پرداخت</option>{settings?.payment_mode && !['Card', 'Prepaid Credits'].includes(settings.payment_mode) && <option value={settings.payment_mode}>{modeLabels[settings.payment_mode] || settings.payment_mode}</option>}<option value="Card" disabled={!cards.length && settings?.payment_mode !== 'Card'}>کارت بانکی{!cards.length && settings?.payment_mode !== 'Card' ? ' · ابتدا کارت اضافه کن' : ''}</option><option value="Prepaid Credits">اعتبار حساب</option></select></label>
 				<p className="customer-portal-footnote">{settings?.payment_mode === 'Card' ? 'هزینهٔ اشتراک به کارت پیش‌فرض صورتحساب می‌شود.' : settings?.payment_mode === 'Prepaid Credits' ? 'هزینه‌ها از اعتبار موجود حساب کم می‌شوند.' : 'برای تکمیل این روش پرداخت ممکن است تنظیمات بیشتری لازم باشد.'}</p>
 			</section>

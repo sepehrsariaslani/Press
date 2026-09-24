@@ -11,7 +11,6 @@ import { getCustomerPortalData, type CustomerPortalData, type Invoice, type Port
 import './customer-portal.css';
 
 type CustomerPortalProps = {
-	onOpenPricing: () => void;
 	onReturnToModules: () => void;
 };
 
@@ -43,7 +42,7 @@ function readSelectedSite() {
 	try { return window.localStorage.getItem('asumi-portal-site') || ''; } catch { return ''; }
 }
 
-export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPortalProps) {
+export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 	const [data, setData] = useState<CustomerPortalData | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
@@ -104,11 +103,6 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 		} catch { /* Site selection still works for the current visit. */ }
 	}
 
-	function openPricing() {
-		try { window.localStorage.setItem('asumi-pricing-from-portal', '1'); } catch { /* Navigation can continue without the return hint. */ }
-		onOpenPricing();
-	}
-
 	function openSupportRequest(category: string, subject: string, context: string, site?: string) {
 		setIntent({ moduleIds: [], category, subject, context, site });
 		setView('support');
@@ -144,7 +138,7 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 	const canSeeAdmin = Boolean(data?.can_manage_catalog || data?.can_manage_support);
 
 	return <main className="customer-portal" dir="rtl" aria-labelledby="customer-portal-title">
-		<SiteHeader variant="paper" onReturnToModules={onReturnToModules} onOpenPricing={openPricing} actions={<span className="customer-portal-header-label">پنل مشتری آسومی</span>} />
+		<SiteHeader variant="paper" onReturnToModules={onReturnToModules} showSiteNavigation={false} showEntryLink={false} actions={<span className="customer-portal-header-label">پنل مشتری آسومی</span>} />
 		<div className="customer-portal-inner">
 			<nav className="customer-portal-breadcrumb" aria-label="مسیر صفحه">
 				<button type="button" onClick={onReturnToModules}>معرفی آسومی</button><span aria-hidden="true">/</span><span aria-current="page">پنل مشتری</span>
@@ -168,9 +162,9 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 						<div className="customer-portal-site-switcher"><label htmlFor="portal-current-site">سایت فعال</label><select id="portal-current-site" value={selectedSite} onChange={event => selectSite(event.target.value)}><option value="">انتخاب سایت</option>{data.sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatus[site.status] || site.status}</option>)}</select></div>
 						{updatedAt && <small>آخرین بررسی: {formatDateTime(updatedAt)}</small>}
 					</div>
-					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} onOpenView={setView} onOpenPricing={openPricing} />}
-					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onOpenPricing={openPricing} onRefresh={refreshPortalFromChild} />}
-					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
+					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} onOpenView={setView} />}
+					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onRefresh={refreshPortalFromChild} />}
+					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onOpenBilling={() => setView('billing')} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
 					{view === 'billing' && data.can_manage_billing && <BillingView currency={data.team.currency} onAskSupport={askBillingSupport} />}
 					{view === 'team' && <TeamView />}
 					{view === 'support' && <SupportView key={`${intent.moduleIds.join(',')}:${intent.category || ''}:${intent.subject || ''}:${intent.site || ''}:${intent.context}`} sites={data.sites} selectedSite={selectedSite} initialPurchaseModuleIds={intent.moduleIds} initialContext={intent.context} initialCategory={intent.category} initialSubject={intent.subject} initialSite={intent.site} />}
@@ -181,9 +175,9 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 	</main>;
 }
 
-function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, canManageBilling, onOpenView, onOpenPricing }: { data: CustomerPortalData; activeSubscriptionCount: number; inactiveSubscriptionCount: number; canManageBilling: boolean; onOpenView: (view: PortalView) => void; onOpenPricing: () => void }) {
+function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, canManageBilling, onOpenView }: { data: CustomerPortalData; activeSubscriptionCount: number; inactiveSubscriptionCount: number; canManageBilling: boolean; onOpenView: (view: PortalView) => void }) {
 	const activeSubscriptions = data.subscriptions.filter(item => ['Active', 'Provisioning'].includes(item.status));
-	const attentionCount = data.sites.filter(site => ['Broken', 'Suspended', 'Pending', 'Installing'].includes(site.status)).length + inactiveSubscriptionCount + data.subscriptions.filter(item => item.status === 'Needs Attention').length;
+	const attentionCount = data.sites.filter(site => ['Broken', 'Suspended', 'Pending', 'Installing'].includes(site.status)).length + inactiveSubscriptionCount + data.subscriptions.filter(item => item.status === 'Needs Attention' || item.payment_status === 'Unpaid').length;
 	return <>
 		<section className="customer-portal-metrics" aria-label="وضعیت فعلی">
 			<Metric label="سایت‌های متصل" value={toPersian(data.sites.length)} detail="فضاهای کاری تیم" />
@@ -202,8 +196,8 @@ function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, ca
 			</section>
 		</div>
 
-		<section className="customer-portal-quick-actions" aria-label="کارهای سریع"><div><p>از کجا شروع کنیم؟</p><h2>سرویس‌هایت را در چند قدم مدیریت کن</h2></div><button type="button" onClick={() => onOpenView('modules')}>نصب یا تغییر ماژول</button>{canManageBilling && <button type="button" onClick={() => onOpenView('billing')}>دیدن فاکتورها</button>}<button type="button" onClick={() => onOpenView('team')}>دعوت همکار</button><button type="button" onClick={onOpenPricing}>برآورد تعرفه</button></section>
-		<aside className="customer-portal-note"><div><strong>امکانات پایه و پلن‌های افزونه</strong><p>هزینهٔ میزبانی سایت جداست؛ مبلغ نهایی افزونهٔ خریداری‌شده در پلن و فاکتور حساب ثبت می‌شود.</p></div><button type="button" onClick={onOpenPricing}>مقایسهٔ تعرفه‌های آسومی</button></aside>
+		<section className="customer-portal-quick-actions" aria-label="کارهای سریع"><div><p>از کجا شروع کنیم؟</p><h2>سرویس‌هایت را در چند قدم مدیریت کن</h2></div><button type="button" onClick={() => onOpenView('modules')}>نصب یا تغییر ماژول</button>{canManageBilling && <button type="button" onClick={() => onOpenView('billing')}>دیدن فاکتورها</button>}<button type="button" onClick={() => onOpenView('team')}>دعوت همکار</button><button type="button" onClick={() => onOpenView('modules')}>برآورد تعرفه</button></section>
+		<aside className="customer-portal-note"><div><strong>امکانات پایه و پلن‌های افزونه</strong><p>هزینهٔ میزبانی سایت جداست؛ مبلغ نهایی افزونهٔ خریداری‌شده در پلن و فاکتور حساب ثبت می‌شود.</p></div><button type="button" onClick={() => onOpenView('modules')}>دیدن ماژول‌ها و تعرفه‌ها</button></aside>
 	</>;
 }
 
