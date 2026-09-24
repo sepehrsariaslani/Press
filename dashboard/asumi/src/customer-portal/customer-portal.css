@@ -50,6 +50,9 @@
 .customer-portal--admin .customer-portal-inner { padding-bottom: 72px; }
 .customer-portal-panel { min-width: 0; padding: 17px; border: 1px solid var(--portal-line); background: var(--portal-card); }
 .customer-portal-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.customer-portal-billing-heading { flex-wrap: wrap; }
+.customer-portal-billing-actions { flex: 0 1 auto; margin-top: 0; }
+.customer-portal-billing-actions > button { flex: 0 1 auto; min-height: 36px; }
 .customer-portal-panel-heading > div > p { margin: 0 0 3px; color: var(--portal-red); font-size: 9px; font-weight: 650; }
 .customer-portal-panel-heading h2 { margin: 0; font-size: 17px; font-weight: 650; }
 .customer-portal-panel-heading > span { color: var(--portal-muted); font-size: 9px; }

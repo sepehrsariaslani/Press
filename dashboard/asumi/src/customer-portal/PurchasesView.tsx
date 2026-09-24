@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { productModules } from '../product/modules';
 import { getInstallHistory, getInstallStatus, uninstallMarketplaceApp, type PortalSite, type PortalSubscription } from './portalApi';
 import { usePortalConfirmation } from './PortalConfirmation';
@@ -49,6 +49,7 @@ export function PurchasesView({ subscriptions, sites, currency, canManageApps, c
 	const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
 	const [busyApp, setBusyApp] = useState('');
 	const { confirm, dialog: confirmationDialog } = usePortalConfirmation();
+	const pendingInstallJobs = useMemo(() => history.filter(event => event.action === 'Install App' && event.job && ['Pending', 'Running'].includes(event.status)), [history]);
 
 	useEffect(() => {
 		const controller = new AbortController();
@@ -70,6 +71,43 @@ export function PurchasesView({ subscriptions, sites, currency, canManageApps, c
 		}).finally(() => { if (!controller.signal.aborted) setLoading(false); });
 		return () => controller.abort();
 	}, [sites, reloadToken]);
+
+	useEffect(() => {
+		if (!pendingInstallJobs.length) return;
+		const timer = window.setTimeout(() => {
+			void Promise.allSettled(pendingInstallJobs.map(async event => ({
+				event,
+				result: await getInstallStatus(event.site, event.job as string),
+			}))).then(results => {
+				const statuses = new Map<string, string>();
+				let failedToCheck = false;
+				for (const result of results) {
+					if (result.status === 'fulfilled') statuses.set(`${result.value.event.site}:${result.value.event.job}`, result.value.result.status);
+					else failedToCheck = true;
+				}
+				setHistory(current => current.map(event => {
+					const status = event.job ? statuses.get(`${event.site}:${event.job}`) : undefined;
+					return status ? { ...event, status } : event;
+				}));
+				if (failedToCheck) setError('وضعیت بعضی از نصب‌ها دریافت نشد؛ پیگیری به‌صورت خودکار ادامه دارد.');
+
+				const completed = pendingInstallJobs.filter(event => {
+					const status = statuses.get(`${event.site}:${event.job}`);
+					return status && ['Success', 'Failure', 'Delivery Failure'].includes(status);
+				});
+				if (completed.length) {
+					const succeeded = completed.filter(event => statuses.get(`${event.site}:${event.job}`) === 'Success').length;
+					const failed = completed.length - succeeded;
+					setNotice(failed
+						? `${new Intl.NumberFormat('fa-IR').format(succeeded)} نصب کامل شد و ${new Intl.NumberFormat('fa-IR').format(failed)} مورد نیازمند پیگیری است؛ جزئیات را در تاریخچه ببین.`
+						: `${new Intl.NumberFormat('fa-IR').format(succeeded)} ماژول با موفقیت فعال شد.`);
+					setReloadToken(value => value + 1);
+					onRefresh();
+				}
+			});
+		}, 5000);
+		return () => window.clearTimeout(timer);
+	}, [pendingInstallJobs, onRefresh]);
 
 	useEffect(() => {
 		if (!pendingRemoval) return;
@@ -142,7 +180,7 @@ export function PurchasesView({ subscriptions, sites, currency, canManageApps, c
 
 			{canViewHistory && <section className="customer-portal-panel" aria-labelledby="portal-install-history-title">
 			<div className="customer-portal-panel-heading"><div><p>پیگیری عملیات</p><h2 id="portal-install-history-title">تاریخچهٔ نصب و حذف</h2></div><span>{new Intl.NumberFormat('fa-IR').format(history.length)} مورد</span></div>
-			<p className="customer-portal-help-copy">وضعیت نصب یا حذف ماژول‌ها را ببین؛ اگر نصب کامل نشد، جزئیات همان تلاش را برای تیم پشتیبانی بفرست.</p>
+			<p className="customer-portal-help-copy">وضعیت نصب یا حذف ماژول‌ها را ببین؛ نصب‌های در حال انجام خودکار پیگیری می‌شوند و اگر نصب کامل نشد، جزئیات همان تلاش را برای تیم پشتیبانی بفرست.</p>
 				{loading ? <div className="customer-portal-inline-state" role="status">در حال دریافت سابقهٔ عملیات…</div> : history.length ? <div className="customer-portal-install-history">{history.map(item => <article className="customer-portal-install-row" key={`${item.site}:${item.name}`}><div><strong>{item.action === 'Uninstall App' ? 'حذف' : 'نصب'} · {appTitle(item.app, item.app_title)}</strong><small>{item.siteLabel} · {formatDateTime(item.creation)}</small></div><span className="customer-portal-status" data-status={item.status.toLowerCase().replaceAll(' ', '-')}>{statusLabels[item.status] || item.status}</span>{item.action === 'Uninstall App' && canManageRemoval(item, subscriptions, currency, canManageApps, canManageBilling) && ['Failure', 'Delivery Failure'].includes(item.status) && <button type="button" className="customer-portal-text-button" disabled={busyApp === item.app} onClick={() => void retryRemoval(item)}>تلاش دوباره</button>}{item.action === 'Install App' && ['Failure', 'Delivery Failure'].includes(item.status) && <button type="button" className="customer-portal-text-button" onClick={() => onRequestInstallationSupport(item.site, item.siteLabel, appTitle(item.app, item.app_title), statusLabels[item.status] || item.status, item.creation)}>پیگیری با پشتیبانی</button>}</article>)}</div> : <div className="customer-portal-inline-state">برای سایت‌های این تیم سابقهٔ نصب یا حذف پیدا نشد.</div>}
 			</section>}
 	</div>
