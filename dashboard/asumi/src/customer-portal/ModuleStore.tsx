@@ -19,7 +19,7 @@ import {
 type ModuleMapping = {
 	module_id: string;
 	mode: string;
-	description?: string | null;
+	customer_description?: string | null;
 	marketplace_app?: string | null;
 	marketplace_app_slug: string | null;
 	marketplace_app_title: string | null;
@@ -499,7 +499,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		const available = app && siteApps.available.find(item => item.app === app.app);
 		const siteApp = available || (app && siteApps.installed.find(item => item.app === app.app));
 		const plans = plansForApp(siteApp?.plans, app?.plans);
-		const searchable = [module.title, module.description, mapping?.description, app?.title, ...(app?.categories || [])].filter(Boolean).join(' ').toLocaleLowerCase();
+		const searchable = [module.title, module.description, mapping?.customer_description, app?.title, ...(app?.categories || [])].filter(Boolean).join(' ').toLocaleLowerCase();
 		return searchable.includes(normalizedQuery)
 			&& (!selectedCategory || Boolean(app?.categories?.includes(selectedCategory)))
 			&& matchesPricingFilter(mode, plans, pricingFilter, currency);
@@ -542,7 +542,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 					return <article className="customer-portal-module-card" key={module.id}>
 						<div className="customer-portal-module-card-head"><div><span className="customer-portal-module-icon" aria-hidden="true">{module.shortTitle.slice(0, 1)}</span><div><h3>{module.title}</h3><p>{module.description}</p></div></div><StatusPill label={installed ? 'فعال روی سایت' : mode === 'Included' ? 'شامل امکانات پایه' : mode === 'Marketplace app' ? 'افزونهٔ قابل خرید' : 'درخواست خرید'} status={installed ? 'Active' : mode === 'Included' ? 'Free' : 'Pending'} /></div>
 						<ul className="customer-portal-module-features">{module.features.map(feature => <li key={feature}>{feature}</li>)}</ul>
-						{(prerequisiteTitles.length > 0 || mapping?.description) && <div className="customer-portal-compatibility-note"><strong>پیش‌نیاز و سازگاری</strong><p>{[prerequisiteTitles.length ? `نیازمند: ${prerequisiteTitles.join('، ')}` : '', mapping?.description].filter(Boolean).join(' · ')}</p></div>}
+						{(prerequisiteTitles.length > 0 || mapping?.customer_description) && <div className="customer-portal-compatibility-note"><strong>پیش‌نیاز و سازگاری</strong><p>{[prerequisiteTitles.length ? `نیازمند: ${prerequisiteTitles.join('، ')}` : '', mapping?.customer_description].filter(Boolean).join(' · ')}</p></div>}
 						{missingDependencies.length > 0 && <p className="customer-portal-card-hint">برای ثبت این ماژول، ابتدا این پیش‌نیازها را به انتخاب‌ها اضافه کن: {missingDependencies.join('، ')}.</p>}
 						{mode === 'Included' ? <div className="customer-portal-free-note">شامل امکانات پایهٔ آسومی است و هزینهٔ جداگانهٔ افزونه ندارد؛ هزینهٔ میزبانی یا پلن سایت جداست.</div>
 							: mode === 'Marketplace app' && app ? <>

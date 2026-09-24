@@ -10,7 +10,7 @@ import {
 	type SupportRequest,
 } from './portalApi';
 
-type ModuleMapping = { module_id: string; mode: string; marketplace_app: string | null; published: number; description: string | null; prerequisites: string[] };
+type ModuleMapping = { module_id: string; mode: string; marketplace_app: string | null; published: number; description: string | null; customer_description: string | null; prerequisites: string[] };
 type AdminCatalog = { apps: MarketplaceApp[]; mappings: ModuleMapping[] };
 
 const modes = [
@@ -57,7 +57,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 					setMode(firstMapping.mode);
 					setApp(firstMapping.marketplace_app || '');
 					setPublished(Boolean(firstMapping.published));
-					setDescription(firstMapping.description || '');
+					setDescription(firstMapping.customer_description || '');
 					setPrerequisites(firstMapping.prerequisites || []);
 				}
 				const prices: typeof priceDrafts = {};
@@ -85,7 +85,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 		setMode(currentMapping.mode);
 		setApp(currentMapping.marketplace_app || '');
 		setPublished(Boolean(currentMapping.published));
-		setDescription(currentMapping.description || '');
+		setDescription(currentMapping.customer_description || '');
 		setPrerequisites(currentMapping.prerequisites || []);
 	}, [currentMapping]);
 
@@ -93,7 +93,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 		event.preventDefault();
 		setBusy('mapping'); setError(''); setNotice('');
 		try {
-			await saveCatalogMapping({ module_id: selectedModuleId, mode, marketplace_app: app || undefined, published, description, prerequisites });
+			await saveCatalogMapping({ module_id: selectedModuleId, mode, marketplace_app: app || undefined, published, customer_description: description, prerequisites });
 			setNotice('اتصال، پیش‌نیازها و وضعیت انتشار ماژول ذخیره شد.');
 			await load();
 		} catch (caught) { setError(messageOf(caught)); }

@@ -62,6 +62,7 @@ def _catalog_mappings(include_unpublished=False):
 				"marketplace_app",
 				"published",
 				"description",
+				"customer_description",
 				"prerequisites",
 			],
 		)
@@ -83,6 +84,7 @@ def _catalog_mappings(include_unpublished=False):
 				marketplace_app=None,
 				published=1,
 				description=None,
+				customer_description=None,
 				prerequisites=DEFAULT_MODULE_PREREQUISITES.get(module_id, []),
 			)
 		mappings.append(mapping)
@@ -457,7 +459,7 @@ def catalog():
 			{
 				"module_id": mapping.module_id,
 				"mode": mapping.mode,
-				"description": mapping.description,
+				"customer_description": mapping.customer_description,
 				"marketplace_app_slug": app.app if app else None,
 				"marketplace_app_title": app.title if app else None,
 				"published": cint(mapping.published),
@@ -576,6 +578,7 @@ def save_catalog_mapping(
 	marketplace_app: str | None = None,
 	published: int = 1,
 	description: str | None = None,
+	customer_description: str | None = None,
 	prerequisites: str | None = None,
 ):
 	_require_catalog_admin()
@@ -589,8 +592,9 @@ def save_catalog_mapping(
 		frappe.throw("Choose a Marketplace app for this module.")
 	if mode == "Marketplace app" and marketplace_app and not frappe.db.exists("Marketplace App", marketplace_app):
 		frappe.throw("The selected Marketplace app does not exist.")
-	description = (description or "").strip()
-	if len(description) > 2000:
+	customer_description = (customer_description if customer_description is not None else description) or ""
+	customer_description = customer_description.strip()
+	if len(customer_description) > 2000:
 		frappe.throw("Compatibility notes cannot exceed 2000 characters.")
 	prerequisites = _parse_module_prerequisites(prerequisites)
 	if prerequisites is None:
@@ -604,7 +608,7 @@ def save_catalog_mapping(
 	if mode == "Marketplace app":
 		doc.marketplace_app = marketplace_app
 	doc.published = cint(published)
-	doc.description = description
+	doc.customer_description = customer_description
 	doc.prerequisites = json.dumps(prerequisites)
 	doc.save(ignore_permissions=True)
 	return {
@@ -612,7 +616,7 @@ def save_catalog_mapping(
 		"mode": doc.mode,
 		"marketplace_app": doc.marketplace_app,
 		"published": doc.published,
-		"description": doc.description,
+		"customer_description": doc.customer_description,
 		"prerequisites": prerequisites,
 	}
 
