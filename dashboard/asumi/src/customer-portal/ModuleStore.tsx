@@ -35,10 +35,11 @@ type Props = {
 	selectedSite: string;
 	siteStatus: string | null;
 	initialModuleIds: string[];
+	initialContext: string;
 	canManageApps: boolean;
 	canManageBilling: boolean;
 	onSelectSite: (site: string) => void;
-	onRequestPurchase: (moduleIds: string[]) => void;
+	onRequestPurchase: (moduleIds: string[], context?: string) => void;
 	onRequestSupport: (subject: string, context: string, site?: string) => void;
 	onRequestBillingSupport: (subject: string, context: string) => void;
 	onOpenBilling: () => void;
@@ -58,7 +59,7 @@ const pricingFilters: Array<{ value: PricingFilter; label: string }> = [
 ];
 const INTERNAL_APP_PLAN = '__asumi_internal__';
 
-export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, initialModuleIds, canManageApps, canManageBilling, onSelectSite, onRequestPurchase, onRequestSupport, onRequestBillingSupport, onOpenBilling, onRefresh }: Props) {
+export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, initialModuleIds, initialContext, canManageApps, canManageBilling, onSelectSite, onRequestPurchase, onRequestSupport, onRequestBillingSupport, onOpenBilling, onRefresh }: Props) {
 	const [catalog, setCatalog] = useState<{ apps: MarketplaceApp[]; mappings: ModuleMapping[]; hidden_module_ids: string[] } | null>(null);
 	const [siteApps, setSiteApps] = useState<SiteAppState>({ installed: [], available: [] });
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -127,6 +128,12 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	const orderedCheckoutEntries = orderCheckoutEntries(checkoutEntries, mappingByModule, prerequisitesForModule);
 	const activePendingJobs = pendingJobs.filter(job => job.site === selectedSite && !isTerminalJob(job.status));
 	const canCheckout = Boolean(selectedSite && siteStatus === 'Active' && !loadingCatalog && !loadingSiteApps && !error && !checkoutBusy && !activePendingJobs.length && !selectedUnpriced && !unavailableSelectionCount);
+	const purchaseRequestModuleIds = catalog ? initialModuleIds.filter(moduleId => {
+		const module = productModules.find(item => item.id === moduleId);
+		if (!module) return false;
+		const mode = modeForModule(module.id);
+		return mode === 'Purchase request' || (mode === 'Marketplace app' && !appForModule(module.id));
+	}) : [];
 
 	useEffect(() => {
 		const controller = new AbortController();
@@ -511,7 +518,10 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 				<span>{selectedSite ? `سایت مقصد: ${sites.find(site => site.name === selectedSite)?.label || selectedSite}` : 'سایت مقصد انتخاب نشده'}</span>
 			</div>
 			<p className="customer-portal-help-copy">{canBrowseCatalog ? <>امکانات پایهٔ آسومی جدا از افزونه‌های قابل خرید نشان داده می‌شوند. قیمت افزونه‌ها از پلن‌های فعال حساب می‌آید و هزینهٔ میزبانی جداگانه است.{!canManageBilling ? ' برآورد در دسترس است؛ ثبت خرید را مدیر مالی تیم انجام می‌دهد.' : ''}</> : 'امکانات رایگان و ماژول‌های فعال این تیم را می‌بینی. برای دیدن تعرفه‌ها یا درخواست ماژول جدید، از مدیر تیم بخواه دسترسی ماژول‌ها را برای نقش تو فعال کند.'}</p>
-			{initialModuleIds.length > 0 && <div className="customer-portal-inline-state" role="status">ترکیب انتخابی به کاتالوگ منتقل شد؛ قیمت قابل خرید بر اساس پلن فعال هر افزونه محاسبه می‌شود. ماژول‌های بدون اتصال هنوز نیازمند بررسی تیم آسومی هستند.</div>}
+			{initialModuleIds.length > 0 && <div className={`customer-portal-inline-state${purchaseRequestModuleIds.length ? ' customer-portal-initial-selection' : ''}`}>
+				<span role="status">ترکیب انتخابی به کاتالوگ منتقل شد؛ قیمت قابل خرید بر اساس پلن فعال هر افزونه محاسبه می‌شود.</span>
+				{purchaseRequestModuleIds.length > 0 && <><span>برای {purchaseRequestModuleIds.map(id => productModules.find(module => module.id === id)?.shortTitle || id).join('، ')} هنوز خرید خودکار تعریف نشده.</span><button type="button" className="customer-portal-secondary-button" onClick={() => onRequestPurchase(purchaseRequestModuleIds, [initialContext, `درخواست بررسی خرید برای: ${purchaseRequestModuleIds.map(id => productModules.find(module => module.id === id)?.title || id).join('، ')}`].filter(Boolean).join('\n\n'))}>درخواست بررسی این ماژول‌ها</button></>}
+			</div>}
 			<div className="customer-portal-filter-row">
 				<label className="customer-portal-search"><span>جست‌وجو</span><input value={query} onChange={event => setQuery(event.target.value)} type="search" placeholder="نام ماژول یا افزونه" /></label>
 				<label className="customer-portal-search"><span>سایت مقصد</span><select value={selectedSite} onChange={event => onSelectSite(event.target.value)}><option value="">انتخاب سایت</option>{sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatusLabel(site.status)}</option>)}</select></label>

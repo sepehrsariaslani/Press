@@ -175,6 +175,8 @@
 .customer-portal-estimate-actions .customer-portal-text-button { min-height: 30px; }
 .customer-portal-estimate-note { flex-basis: 100%; max-width: none !important; }
 .customer-portal-inline-state, .customer-portal-inline-error, .customer-portal-inline-status { margin: 8px 0; padding: 11px 12px; background: #f7f4ee; color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
+.customer-portal-initial-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.customer-portal-initial-selection > span { flex-basis: 100%; }
 .customer-portal-inline-error { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-right: 2px solid #a92532; background: #fff4f1; color: #8b3033; }
 .customer-portal-inline-error button { min-height: 34px; border: 1px solid #d8b1ae; padding: 0 10px; background: white; color: #8b3033; font: inherit; font-size: 9px; cursor: pointer; }
 .customer-portal-inline-error > div { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 6px; }
@@ -298,6 +300,8 @@
 	.customer-portal-metric > strong { font-size: 21px; }
 	.customer-portal-upcoming-invoice { align-items: flex-start; flex-direction: column; }
 	.customer-portal-upcoming-invoice button { width: 100%; }
+	.customer-portal-initial-selection { align-items: stretch; flex-direction: column; }
+	.customer-portal-initial-selection .customer-portal-secondary-button { width: 100%; }
 	.customer-portal-panel { padding: 12px; }
 	.customer-portal-panel-heading h2 { font-size: 15px; }
 	.customer-portal-note { align-items: flex-start; flex-direction: column; }
