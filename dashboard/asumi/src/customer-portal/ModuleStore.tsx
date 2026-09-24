@@ -32,13 +32,15 @@ type Props = {
 	canManageBilling: boolean;
 	onSelectSite: (site: string) => void;
 	onRequestPurchase: (moduleIds: string[]) => void;
+	onRequestBillingSupport: (subject: string, context: string) => void;
+	onOpenBilling: () => void;
 	onOpenPricing: () => void;
 	onRefresh: () => void;
 };
 
 type PendingJob = { site: string; job: string; app: string; title: string; status: string };
 
-export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, canManageBilling, onSelectSite, onRequestPurchase, onOpenPricing, onRefresh }: Props) {
+export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, canManageBilling, onSelectSite, onRequestPurchase, onRequestBillingSupport, onOpenBilling, onOpenPricing, onRefresh }: Props) {
 	const [catalog, setCatalog] = useState<{ apps: MarketplaceApp[]; mappings: ModuleMapping[] } | null>(null);
 	const [siteApps, setSiteApps] = useState<SiteAppState>({ installed: [], available: [] });
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -49,16 +51,24 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	const [planChoices, setPlanChoices] = useState<Record<string, string>>({});
 	const [busyApp, setBusyApp] = useState('');
 	const [statusMessage, setStatusMessage] = useState('');
+	const [needsCreditTopUp, setNeedsCreditTopUp] = useState(false);
+	const [billingSupportContext, setBillingSupportContext] = useState('');
 	const [pendingJob, setPendingJob] = useState<PendingJob | null>(() => readPendingJob());
 	const mappingByModule = useMemo(() => new Map((catalog?.mappings || []).map(mapping => [mapping.module_id, mapping])), [catalog]);
 	const mappedSlugs = useMemo(() => new Set((catalog?.mappings || []).map(mapping => mapping.marketplace_app_slug).filter((slug): slug is string => Boolean(slug))), [catalog]);
-	const selectedTotal = useMemo(() => Object.entries(selectedApps).reduce((sum, [slug, planName]) => {
-		const app = catalog?.apps.find(item => item.app === slug);
-		const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
-		const plan = findPlan(siteApp?.plans || app?.plans || [], planName);
-		const amount = plan ? planPrice(plan, currency) : null;
-		return amount === null ? sum : sum + amount;
-	}, 0), [catalog, currency, selectedApps, siteApps]);
+	const selectedTotals = useMemo(() => {
+		const totals: Record<string, number> = {};
+		for (const [slug, planName] of Object.entries(selectedApps)) {
+			const app = catalog?.apps.find(item => item.app === slug);
+			const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
+			const plan = findPlan(siteApp?.plans || app?.plans || [], planName);
+			const amount = plan ? planPrice(plan, currency) : null;
+			if (amount === null) continue;
+			const period = planPeriodKey(plan?.interval);
+			totals[period] = (totals[period] || 0) + amount;
+		}
+		return totals;
+	}, [catalog, currency, selectedApps, siteApps]);
 	const selectedUnpriced = Object.keys(selectedApps).filter(slug => {
 		const app = catalog?.apps.find(item => item.app === slug);
 		const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
@@ -166,16 +176,18 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			return;
 		}
 		if (installed?.subscription?.name && selectedPlan && installed.subscription.plan !== selectedPlan.name) {
-			if (!window.confirm(`پلن «${app.title}» به «${selectedPlan.title}» با مبلغ ${formatPrice(planPrice(selectedPlan, currency), currency)} تغییر کند؟`)) return;
+			if (!window.confirm(`پلن «${app.title}» به «${selectedPlan.title}» با مبلغ ${formatPrice(planPrice(selectedPlan, currency), currency)} در دورهٔ ${planPeriodLabel(selectedPlan.interval)} تغییر کند؟`)) return;
 			setBusyApp(slug);
 			setError('');
+			setNeedsCreditTopUp(false);
+			setBillingSupportContext('');
 			try {
 				await changeMarketplacePlan(installed.subscription.name, selectedPlan.name);
 				setStatusMessage(`پلن «${app.title}» به‌روزرسانی شد.`);
 				await reloadSiteApps();
 				onRefresh();
 			} catch (caught) {
-				setError(messageOf(caught));
+				showActionError(caught);
 			} finally { setBusyApp(''); }
 			return;
 		}
@@ -193,9 +205,11 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			setStatusMessage('برای نصب این افزونه یک پلن انتخاب کن.');
 			return;
 		}
-		if (paidPlanRequired && selectedPlan && !window.confirm(`افزونهٔ «${app.title}» با پلن «${selectedPlan.title}» و مبلغ ${formatPrice(planPrice(selectedPlan, currency), currency)} برای این سایت ثبت شود؟ مبلغ نهایی در فاکتور حساب نمایش داده می‌شود.`)) return;
+		if (paidPlanRequired && selectedPlan && !window.confirm(`افزونهٔ «${app.title}» با پلن «${selectedPlan.title}» و مبلغ ${formatPrice(planPrice(selectedPlan, currency), currency)} در دورهٔ ${planPeriodLabel(selectedPlan.interval)} برای این سایت ثبت شود؟ مبلغ نهایی در فاکتور حساب نمایش داده می‌شود.`)) return;
 		setBusyApp(slug);
 		setError('');
+		setNeedsCreditTopUp(false);
+		setBillingSupportContext('');
 		try {
 			const job = await installMarketplaceApp(selectedSite, slug, paidPlanRequired ? selectedPlan?.name : undefined);
 			if (job) {
@@ -208,8 +222,15 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			}
 			onRefresh();
 		} catch (caught) {
-			setError(messageOf(caught));
+			showActionError(caught);
 		} finally { setBusyApp(''); }
+	}
+
+	function showActionError(caught: unknown) {
+		const message = messageOf(caught);
+		setError(message);
+		setNeedsCreditTopUp(canManageBilling && /credit|balance|fund|اعتبار|مانده|پرداخت/.test(message.toLocaleLowerCase()));
+		setBillingSupportContext(/billing period|دورهٔ پرداخت|دوره/.test(message.toLocaleLowerCase()) ? message : '');
 	}
 
 	const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -232,7 +253,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 				<button type="button" className="customer-portal-secondary-button" onClick={onOpenPricing}>محاسبهٔ تعرفهٔ آسومی</button>
 			</div>
 			{loadingCatalog || loadingSiteApps ? <div className="customer-portal-inline-state" role="status">در حال بارگذاری کاتالوگ و سازگاری سایت…</div> : null}
-			{error && <div className="customer-portal-inline-error" role="alert"><span>{error}</span><button type="button" onClick={() => { setError(''); void reloadSiteApps(); }}>تلاش دوباره</button></div>}
+			{error && <div className="customer-portal-inline-error" role="alert"><span>{error}</span><div>{needsCreditTopUp && <button type="button" onClick={onOpenBilling}>افزایش اعتبار</button>}{billingSupportContext && <button type="button" onClick={() => onRequestBillingSupport('بررسی دورهٔ پرداخت اشتراک', billingSupportContext)}>درخواست بررسی دوره</button>}<button type="button" onClick={() => { setError(''); setNeedsCreditTopUp(false); setBillingSupportContext(''); void reloadSiteApps(); }}>تلاش دوباره</button></div></div>}
 			{statusMessage && <p className="customer-portal-inline-status" role="status">{statusMessage}</p>}
 			{pendingJob?.site === selectedSite && <div className="customer-portal-install-progress" role="status"><span className="customer-portal-spinner" aria-hidden="true" /><div><strong>در حال نصب {pendingJob.title}</strong><p>پس از آماده‌شدن، نتیجه به‌صورت خودکار به‌روز می‌شود.</p></div></div>}
 			<div className="customer-portal-module-grid">
@@ -250,7 +271,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 						{mode === 'Included' ? <div className="customer-portal-free-note">بدون هزینهٔ جداگانهٔ افزونه؛ هزینهٔ میزبانی یا پلن سایت جداست.</div>
 							: mode === 'Marketplace app' && app ? <>
 								<div className="customer-portal-linked-app">متصل به: <strong>{app.title}</strong>{installed && <span> · روی سایت نصب است</span>}</div>
-								{plans.length > 0 && <label className="customer-portal-plan-select"><span>پلن</span><select value={selectedPlanName} onChange={event => { const next = event.target.value; setPlanChoices(current => ({ ...current, [app.app]: next })); setSelectedApps(current => current[app.app] ? { ...current, [app.app]: next } : current); }}>{plans.map(item => <option key={item.name} value={item.name}>{item.title} · {formatPrice(planPrice(item, currency), currency)}</option>)}</select></label>}
+						{plans.length > 0 && <label className="customer-portal-plan-select"><span>پلن</span><select value={selectedPlanName} onChange={event => { const next = event.target.value; setPlanChoices(current => ({ ...current, [app.app]: next })); setSelectedApps(current => current[app.app] ? { ...current, [app.app]: next } : current); }}>{plans.map(item => <option key={item.name} value={item.name}>{item.title} · {formatPrice(planPrice(item, currency), currency)} · {planPeriodLabel(item.interval)}</option>)}</select></label>}
 								{!selectedSite ? <p className="customer-portal-card-hint">برای نصب، ابتدا سایت مقصد را انتخاب کن.</p> : !available && !installed ? <p className="customer-portal-card-hint">این افزونه در نسخهٔ فعلی سایت در دسترس نیست.</p> : null}
 								<div className="customer-portal-card-actions">
 									<button type="button" className="customer-portal-secondary-button" aria-pressed={Boolean(selectedApps[app.app])} onClick={() => toggleEstimate(app, plans)}>{selectedApps[app.app] ? 'حذف از برآورد' : 'افزودن به برآورد'}</button>
@@ -272,7 +293,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 				const selectedPlan = findPlan(plans, planChoices[app.app] || selectedApps[app.app] || installed?.subscription?.plan || plans[0]?.name || '');
 				return <article className="customer-portal-marketplace-card" key={app.name}>
 					<div className="customer-portal-marketplace-copy"><h3>{app.title}</h3><p>{app.description || 'افزونهٔ منتشرشده در Marketplace'}</p><small>{(app.categories || []).join(' · ')}</small></div>
-						{plans.length ? <label className="customer-portal-plan-select"><span>پلن</span><select value={selectedPlan?.name || ''} onChange={event => { const next = event.target.value; setPlanChoices(current => ({ ...current, [app.app]: next })); setSelectedApps(current => current[app.app] ? { ...current, [app.app]: next } : current); }}>{plans.map(plan => <option key={plan.name} value={plan.name}>{plan.title} · {formatPrice(planPrice(plan, currency), currency)}</option>)}</select></label> : <span className="customer-portal-price">قیمت اعلام نشده</span>}
+						{plans.length ? <label className="customer-portal-plan-select"><span>پلن</span><select value={selectedPlan?.name || ''} onChange={event => { const next = event.target.value; setPlanChoices(current => ({ ...current, [app.app]: next })); setSelectedApps(current => current[app.app] ? { ...current, [app.app]: next } : current); }}>{plans.map(plan => <option key={plan.name} value={plan.name}>{plan.title} · {formatPrice(planPrice(plan, currency), currency)} · {planPeriodLabel(plan.interval)}</option>)}</select></label> : <span className="customer-portal-price">قیمت اعلام نشده</span>}
 					<div className="customer-portal-card-actions">
 						<button type="button" className="customer-portal-secondary-button" aria-pressed={Boolean(selectedApps[app.app])} onClick={() => toggleEstimate(app, plans)}>{selectedApps[app.app] ? 'حذف از برآورد' : 'افزودن به برآورد'}</button>
 						<button type="button" className="customer-portal-primary-button" disabled={!canManageBilling || Boolean(busyApp) || Boolean(pendingJob && !isTerminalJob(pendingJob.status)) || (installed ? (!installed.subscription?.name || !selectedPlan || installed.subscription.plan === selectedPlan.name) : (!available || siteStatus !== 'Active'))} onClick={() => void activateApp(app, selectedPlan)}>{!canManageBilling ? 'فقط مدیر مالی می‌تواند ثبت کند' : installed?.subscription?.name && selectedPlan && installed.subscription.plan !== selectedPlan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
@@ -282,8 +303,8 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		</section>
 
 		<aside className="customer-portal-estimate">
-			<div><span>برآورد پلن‌های افزونه</span><strong>{formatPrice(selectedTotal, currency)} <small>/ ماه</small></strong><p>{Object.keys(selectedApps).length} انتخاب · {selectedUnpriced} مورد بدون قیمت قابل‌محاسبه</p></div>
-			<p>این جمع فقط قیمت پلن افزونه‌های انتخاب‌شده را نشان می‌دهد. میزبانی سایت و هزینه‌های احتمالی جداست؛ مبلغ نهایی در صورتحساب حساب ثبت می‌شود.</p>
+			<div><span>برآورد پلن‌های افزونه</span>{Object.keys(selectedTotals).length ? <div className="customer-portal-estimate-totals">{Object.entries(selectedTotals).map(([period, total]) => <strong key={period}>{formatPrice(total, currency)} <small>/ {planPeriodLabel(period)}</small></strong>)}</div> : <strong>ماژولی انتخاب نشده</strong>}<p>{Object.keys(selectedApps).length} انتخاب · {selectedUnpriced} مورد بدون قیمت قابل‌محاسبه</p></div>
+			<p>این جمع نرخ مبنا را نشان می‌دهد. در پلن‌های روزشمار، مبلغ صورتحساب بر اساس روزهای فعال محاسبه می‌شود؛ میزبانی سایت و هزینه‌های احتمالی جداست.</p>
 		</aside>
 	</div>;
 }
@@ -296,6 +317,16 @@ function planPrice(plan: PortalPlan, currency: string) {
 	const amount = currency === 'INR' ? plan.price_inr : plan.price_usd;
 	if (amount === null || amount === undefined || !Number.isFinite(Number(amount))) return null;
 	return Number(amount);
+}
+
+function planPeriodKey(interval?: string | null) {
+	if (interval === 'Yearly' || interval === 'Annual' || interval === 'Annually') return 'Annually';
+	return 'Monthly';
+}
+
+function planPeriodLabel(interval?: string | null) {
+	if (interval === 'Yearly' || interval === 'Annual' || interval === 'Annually') return 'سالانه';
+	return interval === 'Daily' ? 'ماهانه با محاسبهٔ روزشمار' : 'ماهانه';
 }
 
 function formatPrice(amount: number | null, currency: string) {

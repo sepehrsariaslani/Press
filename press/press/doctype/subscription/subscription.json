@@ -50,7 +50,7 @@
 			"fieldtype": "Select",
 			"in_list_view": 1,
 			"label": "Interval",
-			"options": "Hourly\nDaily\nMonthly"
+			"options": "Hourly\nDaily\nMonthly\nAnnually"
 		},
 		{
 			"default": "1",

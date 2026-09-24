@@ -52,6 +52,7 @@
 .customer-portal-status[data-status='suspended'], .customer-portal-status[data-status='disabled'] { border-color: #e4c8c4; background: #fff4f1; color: #992e33; }
 .customer-portal-status[data-status='inactive'] { border-color: #ddd5cb; background: #f6f3ee; color: #7b7167; }
 .customer-portal-status[data-status='broken'], .customer-portal-status[data-status='failure'], .customer-portal-status[data-status='delivery-failure'], .customer-portal-status[data-status='unpaid'], .customer-portal-status[data-status='uncollectible'] { border-color: #e4c8c4; background: #fff4f1; color: #992e33; }
+.customer-portal-status[data-status='needs-attention'] { border-color: #e4c8c4; background: #fff4f1; color: #992e33; }
 .customer-portal-status[data-status='pending'], .customer-portal-status[data-status='running'], .customer-portal-status[data-status='installing'], .customer-portal-status[data-status='in-progress'], .customer-portal-status[data-status='waiting-on-customer'] { border-color: #e7d7ab; background: #fff9e7; color: #826326; }
 .customer-portal-status[data-status='closed'], .customer-portal-status[data-status='refunded'], .customer-portal-status[data-status='draft'] { border-color: #ddd5cb; background: #f6f3ee; color: #7b7167; }
 .customer-portal-subscription-card { padding: 13px; border: 1px solid #e8e2da; background: #fbf9f4; }
@@ -67,6 +68,10 @@
 .customer-portal-module-tags span { padding: 4px 7px; border: 1px solid #e4d9ce; background: #fffdfa; color: #5f574f; font-size: 8px; }
 .customer-portal-feature-list { display: grid; gap: 3px; margin: 9px 0 0; padding: 0 15px 0 0; color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
 .customer-portal-subscription-dates { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 10px; color: var(--portal-muted); font-size: 9px; }
+.customer-portal-subscription-actions { display: flex; align-items: center; gap: 9px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #e8e2da; }
+.customer-portal-subscription-actions small { color: var(--portal-muted); font-size: 8px; }
+.customer-portal-period-review { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; padding: 8px 10px; border-right: 2px solid #d8a13a; background: #fff9e7; color: #76591f; font-size: 8px; line-height: 1.8; }
+.customer-portal-period-review button { flex: 0 0 auto; border: 0; padding: 0; background: transparent; color: #76591f; font: inherit; cursor: pointer; text-decoration: underline; }
 .customer-portal-empty { display: grid; min-height: 120px; align-content: center; justify-items: start; gap: 6px; padding: 12px; background: #fbf9f4; }
 .customer-portal-empty h3 { margin: 0; font-size: 12px; }
 .customer-portal-empty p { max-width: 380px; margin: 0; color: var(--portal-muted); font-size: 9px; line-height: 1.9; }
@@ -125,11 +130,14 @@
 .customer-portal-estimate > div > span, .customer-portal-estimate > p { color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
 .customer-portal-estimate > div > strong { color: var(--portal-red); font-size: 18px; }
 .customer-portal-estimate > div > strong small { color: var(--portal-muted); font-size: 9px; font-weight: 400; }
+.customer-portal-estimate-totals { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.customer-portal-estimate-totals strong { color: var(--portal-red); font-size: 18px; }
 .customer-portal-estimate > div > p { margin: 0; color: var(--portal-muted); font-size: 8px; }
 .customer-portal-estimate > p { max-width: 430px; margin: 0; }
 .customer-portal-inline-state, .customer-portal-inline-error, .customer-portal-inline-status { margin: 8px 0; padding: 11px 12px; background: #f7f4ee; color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
 .customer-portal-inline-error { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-right: 2px solid #a92532; background: #fff4f1; color: #8b3033; }
 .customer-portal-inline-error button { min-height: 34px; border: 1px solid #d8b1ae; padding: 0 10px; background: white; color: #8b3033; font: inherit; font-size: 9px; cursor: pointer; }
+.customer-portal-inline-error > div { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 6px; }
 .customer-portal-inline-status { border-right: 2px solid #4f7b5d; background: #f0f6ef; color: #376347; }
 .customer-portal-install-progress { display: flex; align-items: center; gap: 11px; margin: 8px 0; padding: 12px; border: 1px solid #e4d9ce; background: #fffdfa; }
 .customer-portal-install-progress strong { font-size: 10px; }
@@ -203,6 +211,19 @@
 .customer-portal-admin-ticket-actions { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; align-items: end; gap: 8px; margin-top: 10px; }
 .customer-portal-resolution-input textarea { min-height: 60px; }
 .customer-portal-admin-ticket > .customer-portal-ticket-message { margin: 10px 0; padding: 9px 10px; background: #fffdfa; }
+.customer-portal-topup { display: grid; gap: 10px; margin: 10px 0 16px; padding: 13px; border: 1px solid #e8e2da; background: #fbf9f4; }
+.customer-portal-topup-copy { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.customer-portal-topup-copy p { margin: 0 0 2px; color: var(--portal-red); font-size: 9px; }
+.customer-portal-topup-copy h3 { margin: 0; font-size: 12px; }
+.customer-portal-topup-copy > span { color: var(--portal-muted); font-size: 8px; }
+.customer-portal-topup-amount { display: grid; max-width: 360px; gap: 5px; color: var(--portal-muted); font-size: 9px; }
+.customer-portal-topup-amount input { min-height: 40px; border: 1px solid var(--portal-line); padding: 8px 10px; background: white; color: var(--portal-ink); direction: ltr; font: inherit; font-size: 12px; }
+.customer-portal-card-element { min-height: 42px; border: 1px solid var(--portal-line); padding: 12px; background: white; direction: ltr; }
+.customer-portal-topup-total { margin: 0; color: var(--portal-muted); font-size: 10px; }
+.customer-portal-topup-total strong { color: var(--portal-ink); }
+.customer-portal-topup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.customer-portal-topup .customer-portal-inline-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; }
+.customer-portal-topup .customer-portal-inline-status button { border: 0; background: none; color: var(--portal-red); font: inherit; font-size: 9px; cursor: pointer; text-decoration: underline; }
 
 @media (max-width: 850px) {
 	.customer-portal-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -14,21 +14,24 @@ type Props = {
 	selectedSite: string;
 	initialPurchaseModuleIds?: string[];
 	initialContext?: string;
+	initialCategory?: string;
+	initialSubject?: string;
+	initialSite?: string;
 };
 
 const categoryLabels: Record<string, string> = { Technical: 'فنی', Billing: 'صورتحساب و پرداخت', Purchase: 'خرید ماژول', Other: 'سایر' };
 const statusLabels: Record<string, string> = { Open: 'ثبت‌شده', 'In Progress': 'در حال بررسی', 'Waiting on Customer': 'نیازمند پاسخ شما', Resolved: 'پاسخ داده‌شده', Closed: 'بسته‌شده' };
 
-export function SupportView({ sites, selectedSite, initialPurchaseModuleIds = [], initialContext = '' }: Props) {
+export function SupportView({ sites, selectedSite, initialPurchaseModuleIds = [], initialContext = '', initialCategory, initialSubject = '', initialSite }: Props) {
 	const purchaseDraft = createPurchaseDraft(initialPurchaseModuleIds);
 	const [requests, setRequests] = useState<SupportRequest[]>([]);
 	const [selected, setSelected] = useState<SupportRequest | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
-	const [subject, setSubject] = useState(purchaseDraft.subject);
+	const [subject, setSubject] = useState(initialSubject || purchaseDraft.subject);
 	const [message, setMessage] = useState([purchaseDraft.message, initialContext].filter(Boolean).join('\n\n'));
-	const [category, setCategory] = useState(initialPurchaseModuleIds.length ? 'Purchase' : initialContext ? 'Billing' : 'Technical');
-	const [site, setSite] = useState(selectedSite);
+	const [category, setCategory] = useState(initialCategory || (initialPurchaseModuleIds.length ? 'Purchase' : initialContext ? 'Billing' : 'Technical'));
+	const [site, setSite] = useState(initialSite || selectedSite);
 	const [reply, setReply] = useState('');
 	const [error, setError] = useState('');
 	const [notice, setNotice] = useState('');

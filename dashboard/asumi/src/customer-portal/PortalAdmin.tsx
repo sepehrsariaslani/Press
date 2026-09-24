@@ -146,7 +146,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 				{managedApps.length ? <div className="customer-portal-admin-prices">{managedApps.map(app => <div className="customer-portal-admin-app" key={app.name}>
 						<div><h3>{app.title}</h3><small>{app.app}</small></div>
 						{app.plans.map(plan => <div className="customer-portal-admin-plan" key={plan.name}>
-							<div><strong>{plan.title}</strong><small>{plan.name}</small></div>
+							<div><strong>{plan.title}</strong><small>{plan.name} · {periodLabel(plan.interval)}</small></div>
 							<label><span>INR</span><input inputMode="decimal" value={priceDrafts[plan.name]?.price_inr || ''} onChange={event => setPriceDrafts(current => ({ ...current, [plan.name]: { ...current[plan.name], price_inr: event.target.value } }))} /></label>
 							<label><span>USD</span><input inputMode="decimal" value={priceDrafts[plan.name]?.price_usd || ''} onChange={event => setPriceDrafts(current => ({ ...current, [plan.name]: { ...current[plan.name], price_usd: event.target.value } }))} /></label>
 							<button type="button" className="customer-portal-secondary-button" disabled={busy === plan.name} onClick={() => void savePrices(plan.name)}>{busy === plan.name ? 'ذخیره…' : 'ذخیرهٔ قیمت'}</button>
@@ -179,4 +179,10 @@ function formatDateTime(value: string) {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
 	return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
+function periodLabel(interval?: string | null) {
+	if (interval === 'Yearly' || interval === 'Annual' || interval === 'Annually') return 'سالانه';
+	if (interval === 'Daily') return 'نرخ ماهانه با محاسبهٔ روزشمار';
+	return 'ماهانه';
 }

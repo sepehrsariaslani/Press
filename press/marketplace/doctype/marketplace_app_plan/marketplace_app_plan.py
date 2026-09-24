@@ -50,6 +50,15 @@ def has_permission(doc, ptype: str, user: str | None = None) -> bool:
 class MarketplaceAppPlan(Plan):
 	dashboard_fields: ClassVar = ["app", "name", "title", "price_inr", "price_usd", "enabled"]
 
+	def get_price_for_interval(self, interval, currency):
+		if interval == "Annually":
+			return self.price_inr if currency == "INR" else self.price_usd
+		return super().get_price_for_interval(interval, currency)
+
+	@staticmethod
+	def get_subscription_interval(interval: str | None) -> str:
+		return {"Monthly": "Monthly", "Yearly": "Annually"}.get(interval, "Daily")
+
 	@staticmethod
 	def get_list_query(query):
 		plans = query.run(as_dict=True)
@@ -104,6 +113,8 @@ class MarketplaceAppPlan(Plan):
 	def create_marketplace_app_subscription(
 		site_name, app_name, plan_name, team_name, while_site_creation=False
 	):
+		plan_interval = frappe.db.get_value("Marketplace App Plan", plan_name, "interval")
+		subscription_interval = MarketplaceAppPlan.get_subscription_interval(plan_interval)
 		marketplace_app = frappe.db.get_value("Marketplace App", {"app": app_name})
 		subscription = frappe.db.exists(
 			"Subscription",
@@ -123,6 +134,7 @@ class MarketplaceAppPlan(Plan):
 			)
 
 			subscription.plan = plan_name
+			subscription.interval = subscription_interval
 			subscription.enabled = 1
 			subscription.save(ignore_permissions=True)
 			subscription.reload()
@@ -136,6 +148,7 @@ class MarketplaceAppPlan(Plan):
 				"document_name": app_name,
 				"plan_type": "Marketplace App Plan",
 				"plan": plan_name,
+				"interval": subscription_interval,
 				"site": site_name,
 				"team": team_name,
 			}

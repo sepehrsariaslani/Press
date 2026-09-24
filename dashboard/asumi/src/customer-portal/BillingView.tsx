@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
+import { CreditTopUpPanel } from './CreditTopUpPanel';
 import { getInvoices, getUpcomingInvoice, type Invoice } from './portalApi';
 
-type Props = { onAskSupport: (invoice?: Invoice) => void };
+type Props = { currency: string; onAskSupport: (invoice?: Invoice) => void };
 
 const statusLabels: Record<string, string> = {
 	Paid: 'پرداخت‌شده', Unpaid: 'پرداخت‌نشده', Draft: 'پیش‌نویس', Refunded: 'بازپرداخت‌شده',
 	Uncollectible: 'وصول‌ناپذیر', Collected: 'وصول‌شده', 'Invoice Created': 'فاکتور صادرشده', Empty: 'بدون مبلغ',
 };
 
-export function BillingView({ onAskSupport }: Props) {
+export function BillingView({ currency, onAskSupport }: Props) {
 	const [invoices, setInvoices] = useState<Invoice[]>([]);
 	const [upcoming, setUpcoming] = useState<{ upcoming_invoice: Invoice | null; available_credits: string } | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 	const [reloadToken, setReloadToken] = useState(0);
+	const [showTopUp, setShowTopUp] = useState(false);
+	const [topUpNotice, setTopUpNotice] = useState('');
 	const reload = useCallback(async (signal?: AbortSignal) => {
 		setLoading(true);
 		setError('');
@@ -45,8 +48,10 @@ export function BillingView({ onAskSupport }: Props) {
 
 	return <div className="customer-portal-workspace">
 		<section className="customer-portal-panel" aria-labelledby="portal-billing-title">
-			<div className="customer-portal-panel-heading"><div><p>صورتحساب و پرداخت</p><h2 id="portal-billing-title">وضعیت مالی تیم</h2></div><span>صورتحساب آسومی</span></div>
+			<div className="customer-portal-panel-heading"><div><p>صورتحساب و پرداخت</p><h2 id="portal-billing-title">وضعیت مالی تیم</h2></div><button type="button" aria-expanded={showTopUp} onClick={() => setShowTopUp(value => !value)}>{showTopUp ? 'بستن شارژ حساب' : 'افزایش اعتبار'}</button></div>
 			{loading ? <div className="customer-portal-inline-state" role="status">در حال دریافت فاکتورها…</div> : error ? <div className="customer-portal-inline-error" role="alert"><span>{error}</span><button type="button" onClick={() => setReloadToken(value => value + 1)}>تلاش دوباره</button></div> : <>
+				{topUpNotice && <p className="customer-portal-inline-status" role="status">{topUpNotice}</p>}
+				{showTopUp && <CreditTopUpPanel currency={currency} onSuccess={() => { setTopUpNotice('پرداخت ثبت شد؛ اعتبار پس از تأیید Stripe به‌روزرسانی می‌شود.'); setReloadToken(value => value + 1); }} />}
 				<div className="customer-portal-billing-summary">
 					<article><span>اعتبار حساب</span><strong>{upcoming?.available_credits || '—'}</strong><small>بر اساس موجودی فعلی تیم</small></article>
 					<article><span>فاکتور بعدی</span><strong>{upcoming?.upcoming_invoice ? formatCurrency(upcoming.upcoming_invoice.total, upcoming.upcoming_invoice.currency) : 'فعلاً ندارد'}</strong><small>{upcoming?.upcoming_invoice?.due_date ? `موعد ${formatDate(upcoming.upcoming_invoice.due_date)}` : 'هزینه با چرخهٔ صورتحساب حساب محاسبه می‌شود'}</small></article>

@@ -4,6 +4,7 @@ import frappe
 from frappe.utils import cint, flt
 
 from press.press.doctype.marketplace_app.marketplace_app import get_plans_for_app
+from press.marketplace.doctype.marketplace_app_plan.marketplace_app_plan import MarketplaceAppPlan
 from press.press.doctype.team.team_members import get_invitations, get_roles
 from press.guards.role_guard import roles_enabled, skip_roles
 from press.utils import get_current_team, is_admin_user, is_team_owner
@@ -41,6 +42,11 @@ def _require_catalog_admin():
 def _require_support_agent():
 	if not _is_support_agent():
 		frappe.throw("Not permitted to manage support requests.", frappe.PermissionError)
+
+
+def _require_billing_access(team):
+	if not _can_manage_billing(team):
+		frappe.throw("Only a team billing manager can register Marketplace purchases.", frappe.PermissionError)
 
 
 def _can_manage_billing(team):
@@ -103,61 +109,107 @@ def dashboard():
 	sites_by_name = {site.name: site for site in sites}
 
 	subscriptions = frappe.get_all(
-		"Marketplace App Subscription",
-		filters={"team": team.name},
-		fields=[
-			"name",
-			"app",
-			"site",
-			"status",
-			"interval",
-			"start_date",
-			"end_date",
-			"marketplace_app_plan",
-		],
+		"Subscription",
+		filters={"team": team.name, "document_type": "Marketplace App"},
+		fields=["name", "document_name", "site", "enabled", "interval", "plan", "creation"],
 		order_by="modified desc",
 	)
-	app_names = list({subscription.app for subscription in subscriptions})
+	app_names = list({subscription.document_name for subscription in subscriptions})
 	apps = {}
 	plans_by_app = {}
 	if app_names:
-		apps = {
-			app.name: app
-			for app in frappe.get_all(
-				"Marketplace App",
-				filters={"name": ("in", app_names)},
-				fields=["name", "app", "title", "image"],
-			)
-		}
+		marketplace_apps = frappe.get_all(
+			"Marketplace App",
+			or_filters=[{"name": ("in", app_names)}, {"app": ("in", app_names)}],
+			fields=["name", "app", "title", "image"],
+		)
+		apps = {key: app for app in marketplace_apps for key in (app.name, app.app)}
 		plans_by_app = {
-			app_name: get_plans_for_app(app_name, include_disabled=True) for app_name in app_names
+			app.name: get_plans_for_app(app.name, include_disabled=True) for app in marketplace_apps
 		}
 
 	serialized_subscriptions = []
+	latest_install_activity = {}
+	if sites_by_name:
+		activities = frappe.get_all(
+			"Site Activity",
+			filters={"site": ("in", list(sites_by_name)), "action": "Install App"},
+			fields=["site", "reason", "job", "creation"],
+			order_by="creation desc",
+			limit=500,
+		)
+		job_names = list({activity.job for activity in activities if activity.job})
+		jobs = (
+			{
+				job.name: job.status
+				for job in frappe.get_all(
+					"Agent Job",
+					filters={"name": ("in", job_names)},
+					fields=["name", "status"],
+				)
+			}
+			if job_names
+			else {}
+		)
+		for activity in activities:
+			key = (activity.site, activity.reason)
+			if key not in latest_install_activity:
+				latest_install_activity[key] = jobs.get(activity.job, "Unknown")
+
 	for subscription in subscriptions:
-		app = apps.get(subscription.app)
+		app = apps.get(subscription.document_name)
 		site = sites_by_name.get(subscription.site)
+		install_app = app.app if app else subscription.document_name
+		install_status = latest_install_activity.get((subscription.site, install_app)) or latest_install_activity.get(
+			(subscription.site, subscription.document_name)
+		)
+		status = "Active" if subscription.enabled else "Inactive"
+		if subscription.enabled and install_status in {"Pending", "Running"}:
+			status = "Provisioning"
+		elif subscription.enabled and install_status in {"Failure", "Delivery Failure"}:
+			status = "Needs Attention"
+		app_plan_key = app.name if app else subscription.document_name
 		selected_plan = next(
 			(
 				serialize_plan(plan)
-				for plan in plans_by_app.get(subscription.app, [])
-				if plan["name"] == subscription.marketplace_app_plan
+				for plan in plans_by_app.get(app_plan_key, [])
+				if plan["name"] == subscription.plan
 			),
 			None,
 		)
+		plan_interval = (
+			MarketplaceAppPlan.get_subscription_interval(selected_plan.get("interval"))
+			if selected_plan
+			else subscription.interval
+		)
+		billing_interval = subscription.interval or plan_interval
+		cycle_start = subscription.creation
+		cycle_end = None
+		if billing_interval == "Annually":
+			last_annual_usage = frappe.db.get_value(
+				"Usage Record",
+				{"subscription": subscription.name, "interval": "Annually", "docstatus": 1},
+				"date",
+				order_by="date desc",
+			)
+			if last_annual_usage:
+				cycle_start = last_annual_usage
+			cycle_end = frappe.utils.add_to_date(cycle_start, years=1, as_string=True)
 		serialized_subscriptions.append(
 			{
 				"name": subscription.name,
-				"app": app.app if app else subscription.app,
-				"app_title": app.title if app else subscription.app,
+				"app": app.app if app else subscription.document_name,
+				"app_title": app.title if app else subscription.document_name,
 				"app_image": app.image if app else None,
 				"site": subscription.site,
 				"site_label": (site.host_name or site.name) if site else subscription.site,
 				"site_status": site.status if site else None,
-				"status": subscription.status,
-				"interval": subscription.interval,
-				"start_date": subscription.start_date,
-				"end_date": subscription.end_date,
+				"status": status,
+				"interval": billing_interval,
+				"plan_interval": plan_interval,
+				"billing_period_mismatch": bool(billing_interval and plan_interval and billing_interval != plan_interval),
+				"start_date": str(cycle_start)[:10] if cycle_start else None,
+				"end_date": str(cycle_end)[:10] if cycle_end else None,
 				"selected_plan": selected_plan,
 			}
 		)
@@ -190,6 +242,7 @@ def serialize_plan(plan):
 		"title": plan["title"],
 		"price_inr": plan["price_inr"],
 		"price_usd": plan["price_usd"],
+		"interval": plan.get("interval"),
 		"enabled": plan["enabled"],
 		"features": plan["features"],
 	}
@@ -225,6 +278,31 @@ def catalog_admin():
 
 	mappings = _catalog_mappings(include_unpublished=True)
 	return {"apps": get_marketplace_pricing_catalog(), "mappings": mappings}
+
+
+@frappe.whitelist(methods=["POST"])
+def install_marketplace_app(name: str, app: str, plan: str | None = None):
+	"""Install one native Marketplace app after enforcing the team's billing role."""
+	team = get_current_team(get_doc=True)
+	_require_billing_access(team)
+	site = frappe.get_doc("Site", name)
+	if site.team != team.name:
+		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
+	return site.install_app(app, plan)
+
+
+@frappe.whitelist(methods=["GET"])
+def credit_topup_constraints():
+	"""Return the minimum credit payment permitted by native Press billing."""
+	team = get_current_team(get_doc=True)
+	_require_billing_access(team)
+	from press.api.billing import total_unpaid_amount
+
+	return {
+		"currency": team.currency,
+		"minimum_amount": 0 if team.erpnext_partner else total_unpaid_amount(),
+		"allow_below_minimum": bool(team.erpnext_partner),
+	}
 
 
 @frappe.whitelist(methods=["POST"])

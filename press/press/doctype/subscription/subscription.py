@@ -36,7 +36,7 @@ class Subscription(Document):
 		document_name: DF.DynamicLink
 		document_type: DF.Link
 		enabled: DF.Check
-		interval: DF.Literal["Hourly", "Daily", "Monthly"]
+		interval: DF.Literal["Hourly", "Daily", "Monthly", "Annually"]
 		marketplace_app_subscription: DF.Link | None
 		plan: DF.DynamicLink
 		plan_type: DF.Link
@@ -259,6 +259,20 @@ class Subscription(Document):
 			first_day = frappe.utils.get_first_day(date)
 			last_day = frappe.utils.get_last_day(date)
 			filters.update({"date": ("between", (first_day, last_day))})
+
+		elif self.interval == "Annually":
+			annual_filters = {
+				"subscription": self.name,
+				"interval": "Annually",
+				"docstatus": ("<", 2),
+			}
+			last_usage_date = frappe.db.get_value(
+				"Usage Record", annual_filters, "date", order_by="date desc"
+			)
+			if not last_usage_date:
+				return False
+			next_due_date = frappe.utils.add_to_date(last_usage_date, years=1)
+			return frappe.utils.getdate(date or frappe.utils.today()) < frappe.utils.getdate(next_due_date)
 
 		elif self.interval == "Hourly":
 			last_usage_record = frappe.db.get_value(

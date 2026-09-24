@@ -840,6 +840,7 @@ def get_plans_for_app(
 			"enabled",
 			"price_inr",
 			"price_usd",
+			"interval",
 		],
 	)
 

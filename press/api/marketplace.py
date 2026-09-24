@@ -906,7 +906,7 @@ def get_marketplace_pricing_catalog() -> list[dict]:
 	plans = frappe.get_all(
 		"Marketplace App Plan",
 		filters={"app": ("in", app_names), "enabled": 1},
-		fields=["name", "app", "title", "price_inr", "price_usd"],
+		fields=["name", "app", "title", "price_inr", "price_usd", "interval"],
 		order_by="price_usd asc",
 	)
 	plan_names = [plan.name for plan in plans]
@@ -982,7 +982,7 @@ def change_app_plan(subscription: str, new_plan: str):
 	plan = frappe.db.get_value(
 		"Marketplace App Plan",
 		{"name": new_plan, "app": subscription_doc.document_name, "enabled": 1},
-		["price_inr", "price_usd"],
+		["price_inr", "price_usd", "interval"],
 		as_dict=True,
 	)
 	if not plan:
@@ -996,8 +996,19 @@ def change_app_plan(subscription: str, new_plan: str):
 				"You cannot upgrade to paid plan on Free Credits. Please buy credits before trying to upgrade plan."
 			)
 
+	from press.marketplace.doctype.marketplace_app_plan.marketplace_app_plan import MarketplaceAppPlan
+
+	new_interval = MarketplaceAppPlan.get_subscription_interval(plan.interval)
+	if subscription_doc.interval != new_interval and frappe.db.exists(
+		"Usage Record", {"subscription": subscription_doc.name, "docstatus": 1}
+	):
+		frappe.throw(
+			"پس از صدور صورتحساب، تغییر دورهٔ پرداخت باید با هماهنگی پشتیبانی آسومی انجام شود."
+		)
+
 	subscription_doc.enabled = 1
 	subscription_doc.plan = new_plan
+	subscription_doc.interval = new_interval
 	subscription_doc.save(ignore_permissions=True)
 
 

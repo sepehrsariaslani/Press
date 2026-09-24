@@ -7,7 +7,7 @@ import { PortalAdmin } from './PortalAdmin';
 import { PurchasesView } from './PurchasesView';
 import { SupportView } from './SupportView';
 import { TeamView } from './TeamView';
-import { getCustomerPortalData, type CustomerPortalData, type PortalSite, type PortalSubscription } from './portalApi';
+import { getCustomerPortalData, type CustomerPortalData, type Invoice, type PortalSite, type PortalSubscription } from './portalApi';
 import './customer-portal.css';
 
 type CustomerPortalProps = {
@@ -16,9 +16,9 @@ type CustomerPortalProps = {
 };
 
 type PortalView = 'overview' | 'modules' | 'purchases' | 'billing' | 'team' | 'support' | 'admin';
-type PortalIntent = { moduleIds: string[]; context: string };
+type PortalIntent = { moduleIds: string[]; context: string; category?: string; subject?: string; site?: string };
 
-const subscriptionStatus: Record<string, string> = { Active: 'فعال', Inactive: 'متوقف', Disabled: 'غیرفعال' };
+const subscriptionStatus: Record<string, string> = { Active: 'فعال', Inactive: 'متوقف', Disabled: 'غیرفعال', Provisioning: 'در حال نصب', 'Needs Attention': 'نیازمند پیگیری' };
 const siteStatus: Record<string, string> = { Active: 'فعال', Inactive: 'غیرفعال', Pending: 'در صف آماده‌سازی', Installing: 'در حال نصب', Suspended: 'متوقف', Broken: 'نیازمند پیگیری', Archived: 'بایگانی‌شده' };
 const viewLabels: Record<PortalView, string> = {
 	overview: 'نمای کلی', modules: 'ماژول‌ها', purchases: 'خریدها و اشتراک‌ها', billing: 'فاکتورها', team: 'اعضا و دسترسی', support: 'پشتیبانی', admin: 'مدیریت آسومی',
@@ -27,7 +27,13 @@ const viewLabels: Record<PortalView, string> = {
 function readPortalIntent(): PortalIntent {
 	try {
 		const value = JSON.parse(window.localStorage.getItem('asumi-portal-intent') || 'null') as Partial<PortalIntent> | null;
-		return { moduleIds: Array.isArray(value?.moduleIds) ? value.moduleIds.filter((id): id is string => typeof id === 'string') : [], context: typeof value?.context === 'string' ? value.context : '' };
+		return {
+			moduleIds: Array.isArray(value?.moduleIds) ? value.moduleIds.filter((id): id is string => typeof id === 'string') : [],
+			context: typeof value?.context === 'string' ? value.context : '',
+			category: ['Technical', 'Billing', 'Purchase', 'Other'].includes(value?.category || '') ? value?.category : undefined,
+			subject: typeof value?.subject === 'string' ? value.subject : undefined,
+			site: typeof value?.site === 'string' ? value.site : undefined,
+		};
 	} catch {
 		return { moduleIds: [], context: '' };
 	}
@@ -45,8 +51,8 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 	const [view, setView] = useState<PortalView>(() => intent.moduleIds.length ? 'support' : 'overview');
 	const [selectedSite, setSelectedSite] = useState(readSelectedSite);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-	const activeSubscriptionCount = useMemo(() => (data?.subscriptions || []).filter(item => item.status === 'Active').length, [data]);
-	const inactiveSubscriptionCount = data?.subscriptions.filter(item => item.status !== 'Active').length || 0;
+	const activeSubscriptionCount = useMemo(() => (data?.subscriptions || []).filter(item => ['Active', 'Provisioning'].includes(item.status)).length, [data]);
+	const inactiveSubscriptionCount = data?.subscriptions.filter(item => ['Inactive', 'Disabled'].includes(item.status)).length || 0;
 
 	const refreshPortal = useCallback(async (signal?: AbortSignal) => {
 		setLoading(true);
@@ -103,6 +109,37 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 		onOpenPricing();
 	}
 
+	function openSupportRequest(category: string, subject: string, context: string, site?: string) {
+		setIntent({ moduleIds: [], category, subject, context, site });
+		setView('support');
+	}
+
+	function requestCancellation(subscription: PortalSubscription) {
+		openSupportRequest(
+			'Purchase',
+			`درخواست لغو اشتراک ${subscription.app_title}`,
+			`درخواست لغو اشتراک ماژول «${subscription.app_title}» برای سایت ${subscription.site_label || subscription.site || 'تیم'} و پلن «${subscription.selected_plan?.title || 'پلن فعلی'}».\n\nلطفاً زمان و شرایط پایان اشتراک را بررسی کنید. تا زمان تأیید درخواست توسط آسومی، سرویس و دسترسی فعال می‌ماند.`,
+			subscription.site || undefined,
+		);
+	}
+
+	function requestPeriodReview(subscription: PortalSubscription) {
+		openSupportRequest(
+			'Billing',
+			`بررسی دورهٔ پرداخت ${subscription.app_title}`,
+			`دورهٔ تعریف‌شده برای پلن «${subscription.selected_plan?.title || 'پلن فعلی'}» ${intervalName(subscription.plan_interval)} است، اما دورهٔ صورتحساب جاری ${intervalName(subscription.interval)} ثبت شده است. لطفاً اشتراک این سایت را بررسی کنید: ${subscription.site_label || subscription.site || 'بدون سایت مشخص'}.`,
+			subscription.site || undefined,
+		);
+	}
+
+	function askBillingSupport(invoice?: Invoice) {
+		openSupportRequest(
+			'Billing',
+			invoice ? `پیگیری فاکتور ${invoice.name}` : 'درخواست راهنمایی صورتحساب',
+			invoice ? `درخواست پیگیری فاکتور ${invoice.name} به مبلغ ${formatCurrency(invoice.amount_due, invoice.currency)}.` : 'درخواست کمک برای صورتحساب و پرداخت.',
+		);
+	}
+
 	const selectedSiteData = data?.sites.find(site => site.name === selectedSite) || null;
 	const canSeeAdmin = Boolean(data?.can_manage_catalog || data?.can_manage_support);
 
@@ -132,11 +169,11 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 						{updatedAt && <small>آخرین بررسی: {formatDateTime(updatedAt)}</small>}
 					</div>
 					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} onOpenView={setView} onOpenPricing={openPricing} />}
-					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onOpenPricing={openPricing} onRefresh={refreshPortalFromChild} />}
-					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} onOpenModules={() => setView('modules')} />}
-					{view === 'billing' && data.can_manage_billing && <BillingView onAskSupport={invoice => { setIntent({ moduleIds: [], context: invoice ? `درخواست پیگیری فاکتور ${invoice.name} به مبلغ ${formatCurrency(invoice.amount_due, invoice.currency)}.` : 'درخواست کمک برای صورتحساب و پرداخت.' }); setView('support'); }} />}
+					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onOpenPricing={openPricing} onRefresh={refreshPortalFromChild} />}
+					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} />}
+					{view === 'billing' && data.can_manage_billing && <BillingView currency={data.team.currency} onAskSupport={askBillingSupport} />}
 					{view === 'team' && <TeamView />}
-					{view === 'support' && <SupportView key={`${intent.moduleIds.join(',')}:${intent.context}`} sites={data.sites} selectedSite={selectedSite} initialPurchaseModuleIds={intent.moduleIds} initialContext={intent.context} />}
+					{view === 'support' && <SupportView key={`${intent.moduleIds.join(',')}:${intent.category || ''}:${intent.subject || ''}:${intent.site || ''}:${intent.context}`} sites={data.sites} selectedSite={selectedSite} initialPurchaseModuleIds={intent.moduleIds} initialContext={intent.context} initialCategory={intent.category} initialSubject={intent.subject} initialSite={intent.site} />}
 					{view === 'admin' && canSeeAdmin && <PortalAdmin canManageCatalog={data.can_manage_catalog} canManageSupport={data.can_manage_support} />}
 				</> : null}
 		</div>
@@ -145,8 +182,8 @@ export function CustomerPortal({ onOpenPricing, onReturnToModules }: CustomerPor
 }
 
 function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, canManageBilling, onOpenView, onOpenPricing }: { data: CustomerPortalData; activeSubscriptionCount: number; inactiveSubscriptionCount: number; canManageBilling: boolean; onOpenView: (view: PortalView) => void; onOpenPricing: () => void }) {
-	const activeSubscriptions = data.subscriptions.filter(item => item.status === 'Active');
-	const attentionCount = data.sites.filter(site => ['Broken', 'Suspended', 'Pending', 'Installing'].includes(site.status)).length + inactiveSubscriptionCount;
+	const activeSubscriptions = data.subscriptions.filter(item => ['Active', 'Provisioning'].includes(item.status));
+	const attentionCount = data.sites.filter(site => ['Broken', 'Suspended', 'Pending', 'Installing'].includes(site.status)).length + inactiveSubscriptionCount + data.subscriptions.filter(item => item.status === 'Needs Attention').length;
 	return <>
 		<section className="customer-portal-metrics" aria-label="وضعیت فعلی">
 			<Metric label="سایت‌های متصل" value={toPersian(data.sites.length)} detail="فضاهای کاری تیم" />
@@ -182,7 +219,8 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
 function StatusPill({ status, label }: { status: string; label: string }) { return <span className="customer-portal-status" data-status={status.toLowerCase()}>{label}</span>; }
 function EmptyState({ title, description, actionLabel, onAction }: { title: string; description: string; actionLabel?: string; onAction?: () => void }) { return <div className="customer-portal-empty"><h3>{title}</h3><p>{description}</p>{actionLabel && onAction && <button type="button" onClick={onAction}>{actionLabel}</button>}</div>; }
 
-const intervalLabel: Record<string, string> = { Monthly: 'ماهانه', Annual: 'سالانه', Annually: 'سالانه', Daily: 'روزانه' };
+const intervalLabel: Record<string, string> = { Hourly: 'ساعتی', Monthly: 'ماهانه', Annual: 'سالانه', Annually: 'سالانه', Daily: 'روزانه با نرخ ماهانه' };
+function intervalName(interval?: string | null) { return interval ? intervalLabel[interval] || interval : 'نامشخص'; }
 function formatDate(value: string | null) { if (!value) return '—'; const date = new Date(`${value}T00:00:00`); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: 'short', day: 'numeric' }).format(date); }
 function formatDateTime(value: Date) { return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(value); }
 function toPersian(value: number) { return new Intl.NumberFormat('fa-IR').format(value); }

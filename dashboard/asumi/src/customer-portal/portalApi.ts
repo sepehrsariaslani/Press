@@ -9,6 +9,7 @@ export type PortalPlan = {
 	title: string;
 	price_inr: number | null;
 	price_usd: number | null;
+	interval?: string | null;
 	enabled?: boolean | number;
 	features: string[];
 };
@@ -23,6 +24,8 @@ export type PortalSubscription = {
 	site_status: string | null;
 	status: string;
 	interval: string | null;
+	plan_interval?: string | null;
+	billing_period_mismatch?: boolean;
 	start_date: string | null;
 	end_date: string | null;
 	selected_plan: PortalPlan | null;
@@ -150,7 +153,7 @@ export async function getSiteAppState(site: string, signal?: AbortSignal): Promi
 }
 
 export async function installMarketplaceApp(site: string, app: string, plan?: string) {
-	return frappeCall<string | null>('press.api.site.install_app', {
+	return frappeCall<string | null>('press.api.customer_portal.install_marketplace_app', {
 		method: 'POST',
 		params: { name: site, app, plan },
 	});
@@ -181,6 +184,18 @@ export async function getInvoices(signal?: AbortSignal) {
 export async function getUpcomingInvoice(signal?: AbortSignal) {
 	return frappeCall<{ upcoming_invoice: Invoice | null; available_credits: string }>(
 		'press.api.billing.upcoming_invoice', { signal },
+	);
+}
+
+export async function getCreditTopUpConstraints(signal?: AbortSignal) {
+	return frappeCall<{ currency: string; minimum_amount: number; allow_below_minimum: boolean }>(
+		'press.api.customer_portal.credit_topup_constraints', { signal },
+	);
+}
+
+export async function createCreditPaymentIntent(amount: number) {
+	return frappeCall<{ client_secret: string; publishable_key: string }>(
+		'press.api.billing.create_payment_intent_for_buying_credits', { method: 'POST', params: { amount } },
 	);
 }
 
