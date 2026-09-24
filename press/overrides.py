@@ -12,6 +12,7 @@ from frappe.utils import cint
 
 from press.access.support_access import has_support_access
 from press.runner import constants
+from press.routing import ASUMI_HOSTS, get_request_host
 from press.utils import _get_current_team, _system_user
 
 
@@ -112,6 +113,12 @@ def update_website_context(context):
 		"Press Settings", "publish_docs"
 	):
 		raise frappe.DoesNotExistError
+
+	if get_request_host() in ASUMI_HOSTS:
+		context.app_name = "آسومی"
+		context.logo = "/assets/press/asumi_site/asumi-mark.svg"
+
+	return context
 
 
 def has_permission(doc, ptype, user):
