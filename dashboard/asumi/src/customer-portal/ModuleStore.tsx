@@ -265,7 +265,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 
 	function modeForModule(moduleId: string) {
 		const mapping = mappingByModule.get(moduleId);
-		return mapping?.mode || (['finance', 'sales', 'crm', 'procurement', 'inventory', 'projects', 'quality', 'people', 'assets'].includes(moduleId) ? 'Included' : 'Purchase request');
+		return mapping?.mode || 'Purchase request';
 	}
 
 	function prerequisitesForModule(moduleId: AsumiModuleId) {

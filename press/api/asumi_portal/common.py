@@ -3,18 +3,6 @@ import json
 import frappe
 from frappe.utils import cint
 
-DEFAULT_INCLUDED_MODULES = {
-	"finance",
-	"sales",
-	"crm",
-	"procurement",
-	"inventory",
-	"projects",
-	"quality",
-	"people",
-	"assets",
-}
-
 SUPPORT_STATUSES = {"Open", "In Progress", "Waiting on Customer", "Resolved", "Closed"}
 
 SUPPORT_CATEGORIES = {"Technical", "Billing", "Purchase", "Other"}
@@ -76,7 +64,7 @@ def _catalog_mappings(include_unpublished=False):
 		else:
 			mapping = frappe._dict(
 				module_id=module_id,
-				mode="Included" if module_id in DEFAULT_INCLUDED_MODULES else "Purchase request",
+				mode="Purchase request",
 				marketplace_app=None,
 				published=1,
 				description=None,
