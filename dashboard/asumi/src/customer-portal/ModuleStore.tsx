@@ -439,7 +439,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			title: 'مرور و ثبت انتخاب‌ها',
 			description: `${new Intl.NumberFormat('fa-IR').format(plannedEntries.length)} ماژول یا تغییر پلن برای سایت ${siteLabel} ثبت شود؟`,
 			details: [...plannedEntries.map(entry => `${entry.title} · ${entry.planTitle} · ${formatPrice(entry.amount, currency)} در ${planPeriodLabel(entry.interval)}`), ...totalLines],
-			note: 'هر ماژول در اشتراک خودش ثبت می‌شود. مبلغ نهایی ممکن است با توجه به اعتبار حساب و روزهای فعال در فاکتور کمی تفاوت داشته باشد.',
+			note: 'هر ماژول در اشتراک خودش ثبت می‌شود. این جمع بر اساس قیمت پلن‌هاست؛ مالیات احتمالی، اعتبار حساب و محاسبهٔ روزشمار در فاکتور نهایی اعمال می‌شود.',
 			confirmLabel: 'ثبت انتخاب‌ها',
 		});
 		if (!confirmed) return;

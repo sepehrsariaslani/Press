@@ -157,11 +157,16 @@ def _customer_team_options(current_team):
 	]
 
 
-def _asumi_marketplace_app_ids():
+def _asumi_marketplace_app_ids(published_only=False):
+	mappings = _catalog_mappings(include_unpublished=True)
 	mapped_names = {
 		mapping.marketplace_app
-		for mapping in _catalog_mappings(include_unpublished=True)
+		for mapping in mappings
 		if mapping.marketplace_app
+		and (
+			not published_only
+			or (mapping.mode == "Marketplace app" and cint(mapping.published))
+		)
 	}
 	if not mapped_names:
 		return set()
@@ -171,6 +176,14 @@ def _asumi_marketplace_app_ids():
 		fields=["name", "app"],
 	)
 	return {identifier for app in apps for identifier in (app.name, app.app) if identifier}
+
+
+def _require_asumi_marketplace_app(app_identifier, published_only=False):
+	if app_identifier not in _asumi_marketplace_app_ids(published_only=published_only):
+		frappe.throw(
+			"This Marketplace app is not available through the Asumi catalog.",
+			frappe.PermissionError,
+		)
 
 
 def _pending_marketplace_invoice_lines(team: str, sites_by_name: dict) -> dict:

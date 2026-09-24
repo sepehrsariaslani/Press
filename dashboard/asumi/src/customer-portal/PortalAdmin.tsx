@@ -38,7 +38,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 	const [prerequisites, setPrerequisites] = useState<string[]>([]);
 	const [priceDrafts, setPriceDrafts] = useState<Record<string, { price_inr: string; price_usd: string }>>({});
 	const [creatingPlanFor, setCreatingPlanFor] = useState('');
-	const [newPlanDraft, setNewPlanDraft] = useState({ title: '', price_inr: '', price_usd: '', features: '' });
+	const [newPlanDraft, setNewPlanDraft] = useState({ title: '', price_inr: '', price_usd: '', interval: 'Monthly', features: '' });
 	const [ticketDrafts, setTicketDrafts] = useState<Record<string, { status: string; response: string }>>({});
 	const [loading, setLoading] = useState(true);
 	const [busy, setBusy] = useState('');
@@ -117,8 +117,15 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 
 	function beginCreatePlan(app: MarketplaceApp) {
 		const template = app.plans.find(plan => Boolean(plan.enabled)) || app.plans[0];
+		const templateInterval = template?.interval;
 		setCreatingPlanFor(app.name);
-		setNewPlanDraft({ title: `${template?.title || app.title} · نسخهٔ جدید`, price_inr: '', price_usd: '', features: (template?.features || []).join('\n') });
+		setNewPlanDraft({
+			title: `${template?.title || app.title} · نسخهٔ جدید`,
+			price_inr: '',
+			price_usd: '',
+			interval: templateInterval && ['Daily', 'Monthly', 'Yearly'].includes(templateInterval) ? templateInterval : 'Monthly',
+			features: (template?.features || []).join('\n'),
+		});
 	}
 
 	async function createPlan(event: FormEvent<HTMLFormElement>, app: MarketplaceApp) {
@@ -126,7 +133,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 		const features = newPlanDraft.features.split('\n').map(feature => feature.trim()).filter(Boolean);
 		setBusy(`create:${app.name}`); setError(''); setNotice('');
 		try {
-			await createMarketplacePlanRequest({ marketplace_app: app.name, title: newPlanDraft.title.trim(), price_inr: newPlanDraft.price_inr, price_usd: newPlanDraft.price_usd, features });
+			await createMarketplacePlanRequest({ marketplace_app: app.name, title: newPlanDraft.title.trim(), price_inr: newPlanDraft.price_inr, price_usd: newPlanDraft.price_usd, interval: newPlanDraft.interval, features });
 			setCreatingPlanFor('');
 			setNotice('پلن جدید در Marketplace ساخته شد؛ اشتراک‌های فعلی روی پلن قبلی می‌مانند.');
 			await load();
@@ -177,6 +184,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 						<button type="button" className="customer-portal-secondary-button customer-portal-admin-create-plan-button" disabled={Boolean(busy)} onClick={() => beginCreatePlan(app)}>ساخت پلن جدید</button>
 						{creatingPlanFor === app.name && <form className="customer-portal-admin-plan-create" onSubmit={event => void createPlan(event, app)}>
 							<label><span>نام پلن</span><input required maxLength={140} value={newPlanDraft.title} onChange={event => setNewPlanDraft(current => ({ ...current, title: event.target.value }))} /></label>
+							<label><span>دورهٔ پرداخت</span><select value={newPlanDraft.interval} onChange={event => setNewPlanDraft(current => ({ ...current, interval: event.target.value }))}><option value="Monthly">ماهانه</option><option value="Yearly">سالانه</option><option value="Daily">روزانه با محاسبهٔ روزشمار</option></select></label>
 							<label><span>قیمت INR</span><input required inputMode="decimal" type="number" min="0" step="0.01" value={newPlanDraft.price_inr} onChange={event => setNewPlanDraft(current => ({ ...current, price_inr: event.target.value }))} /></label>
 							<label><span>قیمت USD</span><input required inputMode="decimal" type="number" min="0" step="0.01" value={newPlanDraft.price_usd} onChange={event => setNewPlanDraft(current => ({ ...current, price_usd: event.target.value }))} /></label>
 							<label className="customer-portal-admin-plan-features"><span>امکانات پلن، هر مورد در یک خط</span><textarea required rows={4} maxLength={6000} value={newPlanDraft.features} onChange={event => setNewPlanDraft(current => ({ ...current, features: event.target.value }))} /></label>

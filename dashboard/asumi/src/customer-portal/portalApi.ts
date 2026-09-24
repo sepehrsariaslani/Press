@@ -357,7 +357,7 @@ export async function updateMarketplacePlanPrices(params: { plan: string; price_
 	return frappeCall('press.api.customer_portal.update_marketplace_plan_prices', { method: 'POST', params });
 }
 
-export async function createMarketplacePlan(params: { marketplace_app: string; title: string; price_inr: string; price_usd: string; features: string[] }) {
+export async function createMarketplacePlan(params: { marketplace_app: string; title: string; price_inr: string; price_usd: string; interval: string; features: string[] }) {
 	return frappeCall<{ name: string; title: string }>('press.api.customer_portal.create_marketplace_plan', {
 		method: 'POST', params: { ...params, features: JSON.stringify(params.features) },
 	});

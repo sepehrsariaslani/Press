@@ -46,7 +46,7 @@ export function SelectionCheckout({ entries, totals, currency, unpricedCount, un
 			<button type="button" className="customer-portal-text-button" disabled={count === 0 || busy} onClick={onClear}>پاک‌کردن انتخاب‌ها</button>
 		</div>
 		<p className="customer-portal-estimate-note">
-			{!canManageBilling ? 'انتخاب‌ها را مدیر مالی تیم می‌تواند ثبت کند.' : unavailableCount ? `${new Intl.NumberFormat('fa-IR').format(unavailableCount)} مورد با سایت انتخاب‌شده آمادهٔ نصب نیست؛ قبل از ثبت، جزئیات هر مورد را بررسی کن.` : unpricedCount ? `${new Intl.NumberFormat('fa-IR').format(unpricedCount)} پلن برای ارز حساب قیمت ندارد؛ از گزینهٔ استعلام تعرفه در کارت ماژول استفاده کن.` : 'هر ماژول در اشتراک خودش ثبت می‌شود. مبلغ‌ها بر اساس دورهٔ انتخابی تمدید می‌شوند و در صورتحساب حساب نمایش داده خواهند شد.'}
+			{!canManageBilling ? 'انتخاب‌ها را مدیر مالی تیم می‌تواند ثبت کند.' : unavailableCount ? `${new Intl.NumberFormat('fa-IR').format(unavailableCount)} مورد با سایت انتخاب‌شده آمادهٔ نصب نیست؛ قبل از ثبت، جزئیات هر مورد را بررسی کن.` : unpricedCount ? `${new Intl.NumberFormat('fa-IR').format(unpricedCount)} پلن برای ارز حساب قیمت ندارد؛ از گزینهٔ استعلام تعرفه در کارت ماژول استفاده کن.` : 'این جمع بر اساس قیمت پلن‌هاست؛ مالیات احتمالی و اعتبار حساب در فاکتور نهایی محاسبه می‌شود. هر ماژول اشتراک و تمدید خودش را دارد.'}
 		</p>
 	</aside>;
 }

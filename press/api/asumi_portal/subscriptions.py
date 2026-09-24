@@ -4,7 +4,11 @@ from press.api.asumi_billing import require_billing_access
 from press.api.site import protected
 from press.utils import get_current_team
 
-from .common import _asumi_marketplace_app_ids, _validate_marketplace_plan_currency
+from .common import (
+	_asumi_marketplace_app_ids,
+	_require_asumi_marketplace_app,
+	_validate_marketplace_plan_currency,
+)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -29,6 +33,7 @@ def install_marketplace_app(name: str, app: str, plan: str | None = None):
 	"""Install one native Marketplace app after enforcing the team's billing role."""
 	team = get_current_team(get_doc=True)
 	require_billing_access(team)
+	_require_asumi_marketplace_app(app, published_only=True)
 	site = frappe.get_doc("Site", name)
 	if site.team != team.name:
 		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
@@ -45,6 +50,7 @@ def change_marketplace_plan(subscription: str, new_plan: str):
 	if doc.team != team.name or doc.document_type != "Marketplace App":
 		frappe.throw("This subscription does not belong to the current team.", frappe.PermissionError)
 	app_slug = frappe.db.get_value("Marketplace App", doc.document_name, "app") or doc.document_name
+	_require_asumi_marketplace_app(app_slug)
 	_validate_marketplace_plan_currency(team, app_slug, new_plan)
 	return frappe.call(
 		"press.api.marketplace.change_app_plan", subscription=subscription, new_plan=new_plan
@@ -56,6 +62,7 @@ def uninstall_marketplace_app(name: str, app: str):
 	"""Cancel a Marketplace subscription by using Press's native uninstall lifecycle."""
 	team = get_current_team(get_doc=True)
 	require_billing_access(team)
+	_require_asumi_marketplace_app(app)
 	site = frappe.get_doc("Site", name)
 	if site.team != team.name:
 		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)

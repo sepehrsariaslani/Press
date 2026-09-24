@@ -146,6 +146,7 @@ def create_marketplace_plan(
 	title: str,
 	price_inr: str,
 	price_usd: str,
+	interval: str = "Daily",
 	features: str | None = None,
 ):
 	_require_catalog_admin()
@@ -158,6 +159,8 @@ def create_marketplace_plan(
 	title = (title or "").strip()
 	if not title or len(title) > 140:
 		frappe.throw("Enter a plan name between 1 and 140 characters.")
+	if interval not in {"Daily", "Monthly", "Yearly"}:
+		frappe.throw("Choose a valid billing interval.")
 	try:
 		price_inr = float(price_inr)
 		price_usd = float(price_usd)
@@ -183,4 +186,6 @@ def create_marketplace_plan(
 			"features": features,
 		},
 	)
+	plan_doc.interval = interval
+	plan_doc.save(ignore_permissions=True)
 	return {"name": plan_doc.name, "title": plan_doc.title}
