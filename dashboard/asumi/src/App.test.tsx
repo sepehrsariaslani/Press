@@ -64,6 +64,14 @@ test('supports opening a module directly from its deep link', () => {
   expect(screen.getByText('CRM Deal')).toBeInTheDocument();
 });
 
+test('resolves the marketing module name to the growth detail page for direct links', () => {
+  window.history.replaceState(null, '', '#module/marketing');
+  render(<AsumiApp />);
+  expect(screen.getByRole('heading', { level: 1, name: 'بازاریابی و رشد' })).toBeInTheDocument();
+  expect(screen.getByText('Marketing Campaign Brief')).toBeInTheDocument();
+});
+
+
 test('opens finance as a separate Persian financial story with a direct route into the real center', () => {
   window.history.replaceState(null, '', '#module/finance');
   const { container } = render(<AsumiApp />);

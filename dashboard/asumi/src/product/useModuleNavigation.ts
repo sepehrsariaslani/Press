@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 
+function resolveModuleId(moduleId: string) {
+  const normalizedId = moduleId.toLowerCase();
+  return normalizedId === 'marketing' ? 'growth' : normalizedId;
+}
+
 function readModuleId() {
-  return /^#module\/([a-z0-9-]+)$/i.exec(window.location.hash)?.[1] ?? null;
+  const moduleId = /^#module\/([a-z0-9-]+)$/i.exec(window.location.hash)?.[1];
+  return moduleId ? resolveModuleId(moduleId) : null;
 }
 
 export function useModuleNavigation() {
@@ -18,8 +24,9 @@ export function useModuleNavigation() {
   }, []);
 
   function openModule(moduleId: string) {
-    window.history.pushState({ asumiModule: true }, '', `#module/${moduleId}`);
-    setActiveModuleId(moduleId);
+    const resolvedModuleId = resolveModuleId(moduleId);
+    window.history.pushState({ asumiModule: true }, '', `#module/${resolvedModuleId}`);
+    setActiveModuleId(resolvedModuleId);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   }
