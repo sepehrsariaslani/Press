@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CreditTopUpPanel } from './CreditTopUpPanel';
 import { BillingSettingsPanel } from './BillingSettingsPanel';
 import { getBalanceTransactions, getInvoices, getUpcomingInvoice, refreshInvoicePaymentLink, type BalanceTransaction, type Invoice } from './portalApi';
@@ -22,6 +22,7 @@ export function BillingView({ currency, onAskSupport }: Props) {
 	const [refreshingInvoice, setRefreshingInvoice] = useState('');
 	const [invoiceNotice, setInvoiceNotice] = useState('');
 	const [invoiceActionError, setInvoiceActionError] = useState('');
+	const paymentWindowOpened = useRef(false);
 	const reload = useCallback(async (signal?: AbortSignal) => {
 		setLoading(true);
 		setError('');
@@ -43,8 +44,19 @@ export function BillingView({ currency, onAskSupport }: Props) {
 		return () => controller.abort();
 	}, [reload, reloadToken]);
 
+	useEffect(() => {
+		function refreshAfterPayment() {
+			if (!paymentWindowOpened.current) return;
+			paymentWindowOpened.current = false;
+			setReloadToken(value => value + 1);
+		}
+		window.addEventListener('focus', refreshAfterPayment);
+		return () => window.removeEventListener('focus', refreshAfterPayment);
+	}, []);
+
 	function openInvoicePayment(invoice: Invoice) {
 		if (invoice.stripe_invoice_url) {
+			paymentWindowOpened.current = true;
 			const url = `/api/method/press.api.client.run_doc_method?dt=Invoice&dn=${encodeURIComponent(invoice.name)}&method=stripe_payment_url`;
 			window.open(url, '_blank', 'noopener,noreferrer');
 			return;
@@ -64,7 +76,7 @@ export function BillingView({ currency, onAskSupport }: Props) {
 
 	return <div className="customer-portal-workspace">
 		<section className="customer-portal-panel" aria-labelledby="portal-billing-title">
-			<div className="customer-portal-panel-heading"><div><p>صورتحساب و پرداخت</p><h2 id="portal-billing-title">وضعیت مالی تیم</h2></div><button type="button" aria-expanded={showTopUp} onClick={() => setShowTopUp(value => !value)}>{showTopUp ? 'بستن شارژ حساب' : 'افزایش اعتبار'}</button></div>
+			<div className="customer-portal-panel-heading"><div><p>صورتحساب و پرداخت</p><h2 id="portal-billing-title">وضعیت مالی تیم</h2></div><div className="customer-portal-card-actions"><button type="button" className="customer-portal-secondary-button" disabled={loading} onClick={() => setReloadToken(value => value + 1)}>{loading ? 'در حال به‌روزرسانی…' : 'به‌روزرسانی فاکتورها'}</button><button type="button" aria-expanded={showTopUp} onClick={() => setShowTopUp(value => !value)}>{showTopUp ? 'بستن شارژ حساب' : 'افزایش اعتبار'}</button></div></div>
 			{loading ? <div className="customer-portal-inline-state" role="status">در حال دریافت فاکتورها…</div> : error ? <div className="customer-portal-inline-error" role="alert"><span>{error}</span><button type="button" onClick={() => setReloadToken(value => value + 1)}>تلاش دوباره</button></div> : <>
 				{topUpNotice && <p className="customer-portal-inline-status" role="status">{topUpNotice}</p>}
 				{invoiceNotice && <p className="customer-portal-inline-status" role="status">{invoiceNotice}</p>}

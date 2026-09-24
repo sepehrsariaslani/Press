@@ -150,7 +150,7 @@ export function BillingSettingsPanel() {
 		if (action === 'remove' && !await confirm({
 			title: 'حذف کارت پرداخت',
 			description: `کارت •••• ${method.last_4} از حساب حذف شود؟`,
-			note: 'اگر این کارت روش پیش‌فرض پرداخت باشد یا فاکتور باز داشته باشی، Press ممکن است حذف آن را نپذیرد.',
+			note: 'اگر این کارت روش پیش‌فرض پرداخت باشد یا فاکتور باز داشته باشی، ممکن است حذف آن امکان‌پذیر نباشد.',
 			confirmLabel: 'حذف کارت',
 			appearance: 'danger',
 		})) return;
