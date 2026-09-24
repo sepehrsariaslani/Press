@@ -34,7 +34,7 @@ export function ProcurementDashboardPreview({ entryHref }: ProcurementDashboardP
 				className="procurement-preview-frame"
 				title="پیش‌نمایش زنده‌ی داشبورد خرید در برنامه‌ی Accounts"
 				src={accountsHref}
-				loading="lazy"
+				loading="eager"
 				referrerPolicy="strict-origin-when-cross-origin"
 			/>
 		</div>

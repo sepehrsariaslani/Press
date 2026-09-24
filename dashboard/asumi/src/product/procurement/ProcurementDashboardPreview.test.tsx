@@ -6,9 +6,11 @@ test('embeds the real Accounts procurement dashboard and offers a full-page rout
 	render(<ProcurementDashboardPreview entryHref="/hesab/modules/procurement" />);
 
 	const expectedHref = '/hesab/modules/procurement';
+	const previewFrame = screen.getByTitle('پیش‌نمایش زنده‌ی داشبورد خرید در برنامه‌ی Accounts');
 
 	expect(screen.getByRole('heading', { name: 'داشبورد خرید در Accounts' })).toBeInTheDocument();
-	expect(screen.getByTitle('پیش‌نمایش زنده‌ی داشبورد خرید در برنامه‌ی Accounts')).toHaveAttribute('src', expectedHref);
+	expect(previewFrame).toHaveAttribute('src', expectedHref);
+	expect(previewFrame).toHaveAttribute('loading', 'eager');
 	expect(screen.getByRole('link', { name: /بازکردن در صفحه‌ی کامل/ })).toHaveAttribute('href', expectedHref);
 	expect(screen.getByText(/داده‌های شرکت، باید در Accounts وارد شده باشید/)).toBeInTheDocument();
 	expect(document.querySelector('.procurement-preview-kpi')).not.toBeInTheDocument();
