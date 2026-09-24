@@ -1,5 +1,6 @@
 import { ModuleDetailPage } from './product/ModuleDetailPage';
 import { FinanceStory } from './product/finance/FinanceStory';
+import { ProcurementStory } from './product/procurement/ProcurementStory';
 import { SalesStory } from './product/sales/SalesStory';
 import { productModules } from './product/modules';
 import { useModuleNavigation } from './product/useModuleNavigation';
@@ -14,6 +15,9 @@ export function AsumiApp() {
 	}
 	if (activeModule?.id === 'sales') {
 		return <SalesStory onOpenModule={openModule} onReturnToModules={returnToModules} />;
+	}
+	if (activeModule?.id === 'procurement') {
+		return <ProcurementStory onOpenModule={openModule} onReturnToModules={returnToModules} />;
 	}
 	if (activeModule) {
 		return <ModuleDetailPage module={activeModule} index={activeModuleIndex} onOpenModule={openModule} onReturnToModules={returnToModules} />;

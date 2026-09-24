@@ -91,6 +91,57 @@ test('opens the sales story in the homepage case-board style with a request-to-o
   expect(container.querySelector('.finance-story')).not.toBeInTheDocument();
 });
 
+test('opens a distinct Persian purchase story from demand through sourcing, receipt and invoice matching', () => {
+  window.history.replaceState(null, '', '#module/procurement');
+  const { container } = render(<AsumiApp />);
+  expect(screen.getByRole('heading', { level: 1, name: 'یک کمبود، یک سؤال.' })).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: /پرونده‌ی نمونه‌ی خرید/ })).toBeInTheDocument();
+  expect(container.querySelector('.procurement-story')).toHaveAttribute('data-stage', '0');
+  expect(container.querySelectorAll('.procurement-chapter-nav a')).toHaveLength(6);
+  expect(container.querySelector('[data-evidence="request"]')).toHaveTextContent('۸۰');
+  expect(container.querySelector('[data-evidence="request"]')).toHaveTextContent('۲۴');
+  expect(container.querySelectorAll('[data-supplier]')).toHaveLength(3);
+  expect(container.querySelector('[data-evidence="comparison"]')).toHaveTextContent('ارزان‌ترین همیشه مناسب‌ترین نیست');
+  expect(container.querySelector('[data-evidence="order"]')).toHaveTextContent('PO-1405-00128');
+  expect(container.querySelector('[data-evidence="receipt"]')).toHaveTextContent('۷۸');
+  expect(container.querySelector('[data-evidence="quality"]')).toHaveTextContent('۲');
+  expect(container.querySelector('[data-evidence="match"]')).toHaveTextContent('Purchase Invoice');
+  expect(screen.getAllByRole('link', { name: /ورود به مرکز خرید/ })[0]).toHaveAttribute('href', '/hesab/modules/procurement');
+  expect(screen.getByText('روایت نمونه · پیشنهادها و وضعیت‌ها نمایشی‌اند')).toBeInTheDocument();
+});
+
+test('presents purchase features as five connected boards with direct operational entries', () => {
+  window.history.replaceState(null, '', '#module/procurement');
+  const { container } = render(<AsumiApp />);
+  expect(screen.getByRole('heading', { level: 2, name: 'از یک نیاز تا خریدی که می‌توانی توضیحش بدهی.' })).toBeInTheDocument();
+  expect(container.querySelectorAll('.procurement-caseboard')).toHaveLength(5);
+  expect(container.querySelectorAll('[data-procurement-paper]')).toHaveLength(20);
+  expect(container.querySelectorAll('[data-procurement-bridge]')).toHaveLength(4);
+  expect(container.querySelector('[data-procurement-paper="request"]')).toHaveAttribute('href', '/hesab/material-requests?new=1');
+  expect(container.querySelector('[data-procurement-paper="comparison"]')).toHaveAttribute('href', '/hesab/procurement/quotation-comparison');
+  expect(container.querySelector('[data-procurement-paper="three-way"]')).toHaveAttribute('href', '/hesab/procurement/three-way');
+  expect(container.querySelector('.procurement-related-modules a[href="#module/inventory"]')).toBeInTheDocument();
+  expect(container.querySelector('.procurement-related-modules a[href="#module/finance"]')).toBeInTheDocument();
+  expect(container.querySelector('.procurement-handoff-note')).toHaveTextContent('داده‌ی زنده‌ی شرکت شما نیستند');
+});
+
+test('keeps purchase-guide jump links within the story route', () => {
+  window.history.replaceState(null, '', '#module/procurement');
+  const scrollIntoView = vi.fn();
+  const originalScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+  Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scrollIntoView });
+  try {
+    render(<AsumiApp />);
+    fireEvent.click(screen.getByRole('link', { name: /استعلام و انتخاب تأمین‌کننده/ }));
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(window.location.hash).toBe('#module/procurement');
+    expect(screen.getByRole('heading', { level: 2, name: 'از یک نیاز تا خریدی که می‌توانی توضیحش بدهی.' })).toBeInTheDocument();
+  } finally {
+    if (originalScrollIntoView) Object.defineProperty(Element.prototype, 'scrollIntoView', originalScrollIntoView);
+    else delete (Element.prototype as unknown as { scrollIntoView?: () => void }).scrollIntoView;
+  }
+});
+
 test('presents sales capabilities as four connected evidence boards after the story', () => {
   window.history.replaceState(null, '', '#module/sales');
   const { container } = render(<AsumiApp />);
