@@ -115,6 +115,9 @@ test('presents purchase features as five connected boards with direct operationa
   const { container } = render(<AsumiApp />);
   expect(screen.getByRole('heading', { level: 2, name: 'از یک نیاز تا خریدی که می‌توانی توضیحش بدهی.' })).toBeInTheDocument();
   expect(container.querySelectorAll('.procurement-caseboard')).toHaveLength(5);
+  expect(container.querySelectorAll('.procurement-caseboard-frame')).toHaveLength(5);
+  expect(container.querySelectorAll('.procurement-caseboard-felt')).toHaveLength(5);
+  expect(container.querySelectorAll('.procurement-caseboard-fasteners i')).toHaveLength(20);
   expect(container.querySelectorAll('[data-procurement-paper]')).toHaveLength(20);
   expect(container.querySelectorAll('[data-procurement-bridge]')).toHaveLength(4);
   expect(container.querySelector('[data-procurement-paper="request"]')).toHaveAttribute('href', '/hesab/material-requests?new=1');

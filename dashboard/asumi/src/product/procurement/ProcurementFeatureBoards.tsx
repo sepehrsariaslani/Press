@@ -31,11 +31,14 @@ export function ProcurementFeatureBoards() {
 					<div><p>بورد پرونده‌ی خرید</p><h3 id={`procurement-board-${board.id}-title`}>{board.title}</h3><span>{board.description}</span></div>
 					<span className="procurement-caseboard-code">AS · PURCHASE</span>
 				</header>
-				<div className="procurement-corkboard">
-					<div className="procurement-corkboard-label"><span>ASUMI · BUYING FILE</span><span>{board.number} / ۰۵</span></div>
-					<div className="procurement-paper-grid">
-						<svg className="procurement-paper-threads" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M75 25 C60 12 40 12 25 25 C11 41 11 59 25 75 C40 88 60 88 75 75" /><circle cx="75" cy="25" r="1.35" /><circle cx="25" cy="25" r="1.35" /><circle cx="25" cy="75" r="1.35" /><circle cx="75" cy="75" r="1.35" /></svg>
-						<ol>{board.papers.map((paper, index) => <ProcurementPaper key={paper.id} paper={paper} index={index} />)}</ol>
+				<div className="procurement-caseboard-frame">
+					<div className="procurement-caseboard-fasteners" aria-hidden="true"><i /><i /><i /><i /></div>
+					<div className="procurement-caseboard-felt">
+						<div className="procurement-caseboard-label"><span>ASUMI · BUYING FILE</span><span>{board.number} / ۰۵</span></div>
+						<div className="procurement-paper-grid">
+							<svg className="procurement-paper-threads" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M75 25 C60 12 40 12 25 25 C11 41 11 59 25 75 C40 88 60 88 75 75" /><circle cx="75" cy="25" r="1.35" /><circle cx="25" cy="25" r="1.35" /><circle cx="25" cy="75" r="1.35" /><circle cx="75" cy="75" r="1.35" /></svg>
+							<ol>{board.papers.map((paper, index) => <ProcurementPaper key={paper.id} paper={paper} index={index} />)}</ol>
+						</div>
 					</div>
 				</div>
 			</section>

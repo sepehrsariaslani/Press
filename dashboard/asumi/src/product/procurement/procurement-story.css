@@ -1,4 +1,9 @@
 .procurement-story {
+	--purchase-frame: #242020;
+	--purchase-frame-edge: #413737;
+	--purchase-felt: #171414;
+	--purchase-paper-light: #e9e5dc;
+	--purchase-paper-shadow: #cfc9be;
 	direction: rtl;
 	min-height: 100vh;
 	min-height: 100svh;
@@ -215,22 +220,31 @@
 .procurement-board-wall-note { display: flex; align-items: center; gap: 10px; margin: 0 0 22px; color: #675f57; font-size: 13px; line-height: 1.8; }
 .procurement-board-wall-note > span { width: 11px; height: 11px; flex: 0 0 auto; border: 1px solid #791a25; border-radius: 50%; background: #c5303d; box-shadow: 0 1px 2px #35222070; }
 .procurement-board-sequence-item { display: grid; justify-items: center; }
-.procurement-caseboard { width: 100%; padding: 10px; border: 1px solid #a98d69; background: linear-gradient(145deg, #ddc9aa 0%, #c7a984 44%, #a78965 100%); box-shadow: 0 14px 30px #2d21131c, inset 0 0 0 3px #e5d3b6, inset 0 0 0 5px #b08f68; scroll-margin-top: 22px; }
+.procurement-caseboard { width: 100%; padding: 10px; border: 1px solid var(--purchase-frame-edge); background: var(--purchase-frame); box-shadow: 0 14px 30px #0c0a0a38, inset 0 0 0 3px var(--purchase-felt); scroll-margin-top: 22px; }
 .procurement-caseboard-header { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 10px 13px 15px; }
 .procurement-caseboard-number { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #8f2630; border-radius: 50%; background: #a92532; color: #fffaf4; font-size: 14px; font-weight: 700; box-shadow: 0 2px 5px #351b1d55; }
-.procurement-caseboard-header p { margin: 0 0 3px; color: #76232c; font-size: 11px; font-weight: 700; }
-.procurement-caseboard-header h3 { margin: 0; color: #2e2823; font-size: 21px; font-weight: 700; line-height: 1.55; }
-.procurement-caseboard-header > div > span { display: block; margin-top: 3px; color: #5f5144; font-size: 13px; line-height: 1.8; }
-.procurement-caseboard-code { align-self: start; padding: 6px 8px; border: 1px solid #a68b68; background: #f6ebd9; color: #685644; font: 10px ui-monospace, monospace; white-space: nowrap; }
-.procurement-corkboard { position: relative; padding: 12px 15px 15px; border: 1px solid #755938; background-color: #b58d64; background-image: radial-gradient(ellipse at 16% 20%, #e2c49a55, transparent 40%), radial-gradient(ellipse at 83% 78%, #79553530, transparent 43%), repeating-linear-gradient(8deg, #60452c0b 0, #60452c0b 1px, transparent 1px, transparent 6px), repeating-linear-gradient(98deg, #f0d7ad0a 0, #f0d7ad0a 1px, transparent 1px, transparent 8px); box-shadow: inset 0 0 0 2px #d1b18a, inset 0 0 22px #4e382442; }
-.procurement-corkboard-label { display: flex; justify-content: space-between; gap: 12px; padding: 3px 2px 10px; color: #573e28; font: 10px/1.6 ui-monospace, monospace; }
+.procurement-caseboard-header p { margin: 0 0 3px; color: var(--case-accent); font-size: 11px; font-weight: 700; }
+.procurement-caseboard-header h3 { margin: 0; color: #ede9e4; font-size: 21px; font-weight: 700; line-height: 1.55; }
+.procurement-caseboard-header > div > span { display: block; margin-top: 3px; color: #a9a3a0; font-size: 13px; line-height: 1.8; }
+.procurement-caseboard-code { align-self: start; padding: 6px 8px; border: 1px solid #ffffff24; background: #141212; color: #a9a3a0; font: 10px ui-monospace, monospace; white-space: nowrap; }
+.procurement-caseboard-frame { position: relative; padding: 15px; border: 1px solid var(--purchase-frame-edge); background: var(--purchase-frame); box-shadow: inset 0 0 0 3px var(--purchase-felt); }
+.procurement-caseboard-fasteners { position: absolute; z-index: 3; inset: 4px; pointer-events: none; }
+.procurement-caseboard-fasteners i { position: absolute; width: 8px; height: 8px; border: 1px solid #5a5050; border-radius: 50%; background: #2e2929; }
+.procurement-caseboard-fasteners i::after { position: absolute; top: 3px; left: 1px; width: 4px; height: 1px; background: #080808; content: ''; transform: rotate(-42deg); }
+.procurement-caseboard-fasteners i:nth-child(1) { top: 0; left: 0; }
+.procurement-caseboard-fasteners i:nth-child(2) { top: 0; right: 0; }
+.procurement-caseboard-fasteners i:nth-child(3) { bottom: 0; left: 0; }
+.procurement-caseboard-fasteners i:nth-child(4) { right: 0; bottom: 0; }
+.procurement-caseboard-felt { position: relative; padding: 12px 15px 15px; border: 1px solid #050404; background-color: var(--purchase-felt); background-image: repeating-linear-gradient(45deg, #b2aaa406 0, #b2aaa406 1px, transparent 1px, transparent 7px); box-shadow: inset 0 0 0 2px var(--purchase-frame); }
+.procurement-caseboard-label { display: flex; justify-content: space-between; gap: 12px; padding: 3px 2px 10px; color: #98908d; font: 10px/1.6 ui-monospace, monospace; }
 .procurement-paper-grid { position: relative; }
 .procurement-paper-grid > ol { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; margin: 0; padding: 8px 8px 12px; list-style: none; }
 .procurement-paper-threads { position: absolute; z-index: 0; inset: 8px; width: calc(100% - 16px); height: calc(100% - 20px); overflow: visible; }
-.procurement-paper-threads path { fill: none; stroke: #7f1723; stroke-width: .9; stroke-linecap: round; filter: drop-shadow(.15px .3px .2px #231710aa); }
-.procurement-paper-threads circle { fill: #bb2533; stroke: #72151e; stroke-width: .45; }
+.procurement-paper-threads path { fill: none; stroke: #c72b3b; stroke-width: .9; stroke-linecap: round; filter: drop-shadow(1px 2px 1px #00000090); }
+.procurement-paper-threads circle { fill: #d93442; stroke: #6d111b; stroke-width: .45; }
 .procurement-paper-slot { position: relative; min-width: 0; }
-.procurement-feature-paper { position: relative; display: flex; min-height: 218px; height: 100%; flex-direction: column; align-items: stretch; padding: 21px 18px 13px; border: 1px solid #d4cbbd; background-color: #fffdf8; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 30px, #d8d2c838 31px, #d8d2c838 32px); box-shadow: 0 5px 10px #251a1033, 0 1px 1px #2b201233; color: #302a26; text-decoration: none; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.procurement-feature-paper { position: relative; display: flex; min-height: 218px; height: 100%; flex-direction: column; align-items: stretch; padding: 21px 18px 13px; border: 1px solid #f4eee329; background: linear-gradient(180deg, var(--purchase-paper-light), var(--purchase-paper-shadow)); box-shadow: 3px 8px 5px #00000080; color: var(--case-paper-ink); text-decoration: none; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.procurement-feature-paper::after { position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; border-top: 1px solid #d5cfc5; background: linear-gradient(225deg, transparent 49%, #a7a197 50%); content: ''; }
 .procurement-paper-slot:nth-child(1) .procurement-feature-paper { transform: rotate(.35deg); }
 .procurement-paper-slot:nth-child(2) .procurement-feature-paper { transform: rotate(-.3deg); }
 .procurement-paper-slot:nth-child(3) .procurement-feature-paper { transform: rotate(-.25deg); }
@@ -242,14 +256,14 @@
 .procurement-feature-pin::after { position: absolute; top: 13px; left: 8px; width: 3px; height: 8px; background: #4e4035; content: ''; transform: rotate(-16deg); }
 .procurement-paper-topline { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #71685e; font-size: 9px; }
 .procurement-paper-topline small { overflow: hidden; font-family: ui-monospace, monospace; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.procurement-feature-paper h4 { margin: 16px 0 7px; color: #2e2823; font-size: 16px; font-weight: 700; line-height: 1.55; }
-.procurement-feature-paper > p { margin: 0; color: #625950; font-size: 12px; line-height: 1.85; }
-.procurement-feature-paper dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin: 15px 0 0; padding-top: 10px; border-top: 1px solid #cfc6b9; }
+.procurement-feature-paper h4 { margin: 16px 0 7px; color: var(--case-paper-ink); font-size: 16px; font-weight: 700; line-height: 1.55; }
+.procurement-feature-paper > p { margin: 0; color: #47413d; font-size: 12px; line-height: 1.85; }
+.procurement-feature-paper dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin: 15px 0 0; padding-top: 10px; border-top: 1px solid #a6a098; }
 .procurement-feature-paper dl > div { min-width: 0; }
-.procurement-feature-paper dt { margin: 0 0 3px; color: #8a8177; font-size: 8px; }
-.procurement-feature-paper dd { overflow: hidden; margin: 0; color: #39332e; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.procurement-feature-stamp { align-self: flex-start; margin-top: auto; padding: 4px 7px; border: 1px solid #a9253280; color: #a92532; font-size: 9px; }
-.procurement-paper-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; color: #8b2832; font-size: 10px; }
+.procurement-feature-paper dt { margin: 0 0 3px; color: #5d5652; font-size: 8px; }
+.procurement-feature-paper dd { overflow: hidden; margin: 0; color: var(--case-paper-ink); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.procurement-feature-stamp { align-self: flex-start; margin-top: auto; padding: 4px 7px; border: 1px solid #ae334080; color: #9d2834; font-size: 9px; }
+.procurement-paper-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; color: #9d2834; font-size: 10px; }
 .procurement-paper-action > span { font-size: 15px; }
 .procurement-board-bridge { display: grid; justify-items: center; max-width: 700px; padding: 0 18px; }
 .procurement-board-bridge svg { width: 76px; height: 45px; overflow: visible; }
@@ -375,7 +389,8 @@
 	.procurement-caseboard-header > div > span { font-size: 11px; }
 	.procurement-caseboard-header p { font-size: 10px; }
 	.procurement-caseboard-code { display: none; }
-	.procurement-corkboard { padding: 10px 7px 9px; }
+	.procurement-caseboard-frame { padding: 9px; }
+	.procurement-caseboard-felt { padding: 10px 7px 9px; }
 	.procurement-paper-grid > ol { gap: 16px 12px; padding: 6px 4px 10px; }
 	.procurement-feature-paper { min-height: 244px; padding: 17px 12px 11px; }
 	.procurement-feature-paper h4 { margin-top: 14px; font-size: 14px; }
