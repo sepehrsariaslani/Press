@@ -44,7 +44,7 @@ export function ProcurementProductGuide({ onOpenModule, onNavigateToSection, onR
 				<p className="procurement-boundary"><span className="procurement-boundary-pin" aria-hidden="true" /><strong>خرید و تدارکات</strong><span>{details.boundary} سندهای اصلی ERPNext مبنای گردش کار هستند؛ این صفحه مسیر و ارتباط آن‌ها را برای معرفی محصول نشان می‌دهد.</span></p>
 			</section>
 
-			<p className="procurement-handoff-note">عددها و وضعیت‌های صحنه، نمونه‌ی نمایشی‌اند و داده‌ی زنده‌ی شرکت شما نیستند. قابلیت‌های در دسترس به ماژول‌های نصب‌شده، پیکربندی، اتصال سرویس‌ها و مجوز کاربر بستگی دارد.</p>
+			<p className="procurement-handoff-note">عددها و وضعیت‌های روایت بالاتر نمونه‌ی معرفی‌اند؛ قاب داشبورد خودِ برنامه‌ی Accounts است و اطلاعات واقعی را مطابق ورود، پیکربندی و مجوز کاربر نشان می‌دهد.</p>
 			<footer className="procurement-handoff-footer">
 				<nav className="procurement-related-modules" aria-label="ماژول‌های مرتبط با خرید">
 					{relatedModules.map(module => <a href={`#module/${module.id}`} key={module.id} onClick={event => { event.preventDefault(); onOpenModule(module.id); }}>{module.title}<span aria-hidden="true">←</span></a>)}

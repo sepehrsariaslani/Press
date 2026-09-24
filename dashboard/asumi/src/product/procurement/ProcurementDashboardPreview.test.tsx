@@ -1,19 +1,22 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { expect, test } from 'vitest';
-import { ProcurementDashboardPreview } from './ProcurementDashboardPreview';
+import { getAccountsPreviewHref, ProcurementDashboardPreview } from './ProcurementDashboardPreview';
 
-test('shows an interactive, clearly labeled purchase-dashboard preview and links to the real workspace', () => {
-	const { container } = render(<ProcurementDashboardPreview entryHref="/hesab/modules/procurement" />);
+test('embeds the real Accounts procurement dashboard and offers a full-page route', () => {
+	render(<ProcurementDashboardPreview entryHref="/hesab/modules/procurement" />);
 
-	expect(screen.getByRole('heading', { name: 'داشبورد خرید، از نزدیک.' })).toBeInTheDocument();
-	expect(screen.getByText(/عددها و پرونده‌ها نمونه‌اند/)).toBeInTheDocument();
-	expect(screen.getByRole('link', { name: /ورود به داشبورد واقعی/ })).toHaveAttribute('href', '/hesab/modules/procurement');
-	expect(container.querySelectorAll('.procurement-preview-kpi')).toHaveLength(4);
+	const expectedHref = '/hesab/modules/procurement';
 
-	fireEvent.click(screen.getByRole('button', { name: 'سفارش‌ها' }));
-	expect(screen.getByRole('heading', { name: 'سفارش‌ها' })).toBeInTheDocument();
-	expect(screen.getByRole('heading', { name: 'سفارش‌های خرید معلق' })).toBeInTheDocument();
+	expect(screen.getByRole('heading', { name: 'داشبورد خرید در Accounts' })).toBeInTheDocument();
+	expect(screen.getByTitle('پیش‌نمایش زنده‌ی داشبورد خرید در برنامه‌ی Accounts')).toHaveAttribute('src', expectedHref);
+	expect(screen.getByRole('link', { name: /بازکردن در صفحه‌ی کامل/ })).toHaveAttribute('href', expectedHref);
+	expect(screen.getByText(/داده‌های شرکت، باید در Accounts وارد شده باشید/)).toBeInTheDocument();
+	expect(document.querySelector('.procurement-preview-kpi')).not.toBeInTheDocument();
+});
 
-	fireEvent.click(screen.getByRole('button', { name: 'سه‌ماهه' }));
-	expect(container.querySelector('.procurement-preview-kpi strong')).toHaveTextContent('۳۴');
+test('routes the local site preview to the real Accounts bench while production stays same-origin', () => {
+	expect(getAccountsPreviewHref('/hesab/modules/procurement', '/assets/press/asumi_site/index.html'))
+		.toBe('http://asumi:8000/hesab/modules/procurement');
+	expect(getAccountsPreviewHref('/hesab/modules/procurement', '/asumi'))
+		.toBe('/hesab/modules/procurement');
 });
