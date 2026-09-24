@@ -11,6 +11,6 @@ test('keeps the sample quotation and advance payment arithmetically consistent',
 test('provides six distinct scroll chapters and the connected order signals', () => {
 	expect(salesChapters).toHaveLength(6);
 	expect(new Set(salesChapters.map(chapter => chapter.id)).size).toBe(6);
-	expect(salesFlow.map(item => item.id)).toEqual(['inventory', 'delivery', 'finance', 'follow-up']);
+	expect(salesFlow.map(item => item.id)).toEqual(['inventory', 'delivery', 'shipment', 'finance']);
 	expect(salesSignals.map(item => item.id)).toEqual(['follow-up', 'repeat-sales', 'late-orders']);
 });

@@ -74,28 +74,33 @@ test('opens finance as a separate Persian financial story with a direct route in
   expect(screen.getAllByRole('link', { name: /ورود به مرکز مالی/ })[0]).toHaveAttribute('href', '/hesab/modules/finance');
 });
 
-test('opens the sales story as a distinct request-to-order journey with a real center entry', () => {
+test('opens the sales story in the homepage case-board style with a request-to-order journey', () => {
   window.history.replaceState(null, '', '#module/sales');
   const { container } = render(<AsumiApp />);
-  expect(screen.getByRole('heading', { level: 1, name: 'این درخواست، به فروش می‌رسد؟' })).toBeInTheDocument();
-  expect(screen.getByRole('group', { name: 'نمای تصویری: درخواست' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1, name: 'یک درخواست تازه.' })).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: /پرونده‌ی فروش آسومی/ })).toBeInTheDocument();
   expect(container.querySelector('.sales-story')).toHaveAttribute('data-chapter', '0');
   expect(container.querySelector('.sales-story')).toHaveAttribute('aria-labelledby', 'sales-request-title');
-  expect(container.querySelectorAll('.sales-stage-button')).toHaveLength(6);
-  expect(container.querySelector('.sales-request-card')).toHaveTextContent('۱۲۰');
-  expect(container.querySelector('.sales-request-card')).toHaveTextContent('قیمت می‌خواستم');
+  expect(container.querySelectorAll('.sales-chapter-nav a')).toHaveLength(6);
+  expect(container.querySelector('[data-sales-item="request"]')).toHaveTextContent('۱۲۰ عدد');
+  expect(container.querySelector('[data-sales-item="request"]')).toHaveTextContent('از کد A قیمت می‌خواستم');
+  expect(container.querySelector('[data-sales-item="quote"]')).toHaveTextContent('پیش‌فاکتور');
   expect(screen.getAllByRole('link', { name: /ورود به مرکز فروش/ })[0]).toHaveAttribute('href', '/hesab/modules/sales');
   expect(container.querySelector('.finance-story')).not.toBeInTheDocument();
 });
 
-test('shows connected sales operations, a sample Sales Order and clear illustrative-data disclosure', () => {
+test('shows the accepted quotation, four order obligations and clear illustrative-data disclosure', () => {
   window.history.replaceState(null, '', '#module/sales');
   const { container } = render(<AsumiApp />);
-  expect(container.querySelector('.sales-quote-card')).toHaveTextContent('۲۷۳٬۶۰۰٬۰۰۰ تومان');
-  expect(container.querySelector('.sales-connected-list')).toHaveTextContent('۱۲۰ عدد آماده‌ی تحویل');
-  expect(container.querySelector('.sales-connected-list')).toHaveTextContent('۴۰٪ پیش‌پرداخت');
-  expect(container.querySelector('.sales-order-preview')).toHaveTextContent('SO-1405-00291');
-  expect(container.querySelector('.sales-dashboard-preview')).toHaveTextContent('۲۳');
+  expect(container.querySelector('[data-quote-total]')).toHaveTextContent('۲۷۳٬۶۰۰٬۰۰۰ تومان');
+  expect(container.querySelector('[data-quote-sent]')).toHaveTextContent('پیشنهاد ارسال شد');
+  expect(container.querySelector('[data-accepted-stamp]')).toHaveTextContent('تأیید شد');
+  expect(container.querySelector('[data-order-number]')).toHaveTextContent('SO-1405-00291');
+  expect(container.querySelector('[data-obligation="inventory"]')).toHaveTextContent('۱۲۰ عدد آماده');
+  expect(container.querySelector('[data-obligation="delivery"]')).toHaveTextContent('پنج‌شنبه · ۱۰:۳۰');
+  expect(container.querySelector('[data-obligation="shipment"]')).toHaveTextContent('آماده‌ی ثبت');
+  expect(container.querySelector('[data-obligation="finance"]')).toHaveTextContent('۴۰٪ پیش‌پرداخت');
+  expect(container.querySelectorAll('[data-sales-thread]')).toHaveLength(5);
   expect(container.querySelector('.sales-handoff-note')).toHaveTextContent('اعداد و وضعیت‌ها، اطلاعات زنده‌ی شرکت شما نیستند');
   expect(screen.getByRole('link', { name: /بازکردن قیف CRM/ })).toHaveAttribute('href', '/hesab/crm/pipeline');
   expect(screen.getAllByRole('link', { name: /ورود به مرکز فروش/ })[0]).toHaveAttribute('href', '/hesab/modules/sales');
