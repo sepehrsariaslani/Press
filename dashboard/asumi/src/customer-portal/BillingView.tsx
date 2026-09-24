@@ -72,7 +72,7 @@ export function BillingView({ currency, onAskSupport }: Props) {
 				{showTopUp && <CreditTopUpPanel currency={currency} onSuccess={() => { setTopUpNotice('پرداخت ثبت شد؛ اعتبار پس از تأیید Stripe به‌روزرسانی می‌شود.'); setReloadToken(value => value + 1); }} />}
 				<div className="customer-portal-billing-summary">
 					<article><span>اعتبار حساب</span><strong>{upcoming?.available_credits || '—'}</strong><small>بر اساس موجودی فعلی تیم</small></article>
-					<article><span>فاکتور بعدی</span><strong>{upcoming?.upcoming_invoice ? formatCurrency(upcoming.upcoming_invoice.total, upcoming.upcoming_invoice.currency) : 'فعلاً ندارد'}</strong><small>{upcoming?.upcoming_invoice?.due_date ? `موعد ${formatDate(upcoming.upcoming_invoice.due_date)}` : 'هزینه با چرخهٔ صورتحساب حساب محاسبه می‌شود'}</small></article>
+					<article><span>فاکتور بعدی</span><strong>{upcoming?.upcoming_invoice ? formatCurrency(upcoming.upcoming_invoice.amount_due_with_tax ?? upcoming.upcoming_invoice.total, upcoming.upcoming_invoice.currency) : 'فعلاً ندارد'}</strong><small>{upcoming?.upcoming_invoice?.due_date ? `موعد ${formatDate(upcoming.upcoming_invoice.due_date)}` : 'هزینه با چرخهٔ صورتحساب حساب محاسبه می‌شود'}</small></article>
 					<article><span>پرداخت‌نشده</span><strong>{new Intl.NumberFormat('fa-IR').format(invoices.filter(invoice => invoice.status === 'Unpaid' && Number(invoice.amount_due) > 0).length)}</strong><small>فاکتورهای نیازمند اقدام</small></article>
 				</div>
 				<div className="customer-portal-panel-heading customer-portal-invoice-heading"><div><p>تاریخچهٔ مالی</p><h3>فاکتورها</h3></div><span>{new Intl.NumberFormat('fa-IR').format(invoices.length)} فاکتور</span></div>

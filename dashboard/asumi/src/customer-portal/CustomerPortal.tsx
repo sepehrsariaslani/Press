@@ -7,7 +7,7 @@ import { PortalAdmin } from './PortalAdmin';
 import { PurchasesView } from './PurchasesView';
 import { SupportView } from './SupportView';
 import { TeamView } from './TeamView';
-import { getCustomerPortalData, type CustomerPortalData, type Invoice, type PortalSite, type PortalSubscription } from './portalApi';
+import { getCustomerPortalData, getUpcomingInvoice, type CustomerPortalData, type Invoice, type PortalSite, type PortalSubscription } from './portalApi';
 import './customer-portal.css';
 
 type CustomerPortalProps = {
@@ -50,6 +50,8 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 	const [view, setView] = useState<PortalView>(() => intent.moduleIds.length ? 'support' : 'overview');
 	const [selectedSite, setSelectedSite] = useState(readSelectedSite);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+	const [upcomingInvoice, setUpcomingInvoice] = useState<Invoice | null>(null);
+	const [upcomingInvoiceLoaded, setUpcomingInvoiceLoaded] = useState(false);
 	const activeSubscriptionCount = useMemo(() => (data?.subscriptions || []).filter(item => ['Active', 'Provisioning'].includes(item.status)).length, [data]);
 	const inactiveSubscriptionCount = data?.subscriptions.filter(item => ['Inactive', 'Disabled', 'Cancellation Pending'].includes(item.status)).length || 0;
 
@@ -73,6 +75,22 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 		void refreshPortal(controller.signal);
 		return () => controller.abort();
 	}, [refreshPortal]);
+
+	useEffect(() => {
+		if (!data?.can_manage_billing) {
+			setUpcomingInvoice(null);
+			setUpcomingInvoiceLoaded(true);
+			return;
+		}
+		const controller = new AbortController();
+		setUpcomingInvoiceLoaded(false);
+		getUpcomingInvoice(controller.signal).then(result => setUpcomingInvoice(result.upcoming_invoice)).catch(() => {
+			if (!controller.signal.aborted) setUpcomingInvoice(null);
+		}).finally(() => {
+			if (!controller.signal.aborted) setUpcomingInvoiceLoaded(true);
+		});
+		return () => controller.abort();
+	}, [data?.can_manage_billing, data?.team.name, updatedAt]);
 
 	useEffect(() => {
 		try { window.localStorage.removeItem('asumi-portal-intent'); } catch { /* The route is already open; storage cleanup is optional. */ }
@@ -162,21 +180,28 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 						<div className="customer-portal-site-switcher"><label htmlFor="portal-current-site">سایت فعال</label><select id="portal-current-site" value={selectedSite} onChange={event => selectSite(event.target.value)}><option value="">انتخاب سایت</option>{data.sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatus[site.status] || site.status}</option>)}</select></div>
 						{updatedAt && <small>آخرین بررسی: {formatDateTime(updatedAt)}</small>}
 					</div>
-					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} onOpenView={setView} />}
-					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onRefresh={refreshPortalFromChild} />}
-					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onOpenBilling={() => setView('billing')} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
+					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} upcomingInvoice={upcomingInvoice} upcomingInvoiceLoaded={upcomingInvoiceLoaded} onOpenView={setView} />}
+					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestSupport={(subject, context, site) => openSupportRequest('Technical', subject, context, site)} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onRefresh={refreshPortalFromChild} />}
+					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onOpenBilling={() => setView('billing')} onRequestInstallationSupport={(site, siteLabel, app, status) => openSupportRequest('Technical', `پیگیری نصب ${app}`, `نصب ماژول «${app}» برای سایت ${siteLabel} با وضعیت «${status}» کامل نشده است. لطفاً علت را بررسی و راهنمایی کنید.`, site)} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
 					{view === 'billing' && data.can_manage_billing && <BillingView currency={data.team.currency} onAskSupport={askBillingSupport} />}
 					{view === 'team' && <TeamView />}
 					{view === 'support' && <SupportView key={`${intent.moduleIds.join(',')}:${intent.category || ''}:${intent.subject || ''}:${intent.site || ''}:${intent.context}`} sites={data.sites} selectedSite={selectedSite} initialPurchaseModuleIds={intent.moduleIds} initialContext={intent.context} initialCategory={intent.category} initialSubject={intent.subject} initialSite={intent.site} />}
 					{view === 'admin' && canSeeAdmin && <PortalAdmin canManageCatalog={data.can_manage_catalog} canManageSupport={data.can_manage_support} />}
 				</> : null}
 		</div>
-		<SiteFooter />
+		<SiteFooter customerPortal />
 	</main>;
 }
 
-function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, canManageBilling, onOpenView }: { data: CustomerPortalData; activeSubscriptionCount: number; inactiveSubscriptionCount: number; canManageBilling: boolean; onOpenView: (view: PortalView) => void }) {
+function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, canManageBilling, upcomingInvoice, upcomingInvoiceLoaded, onOpenView }: { data: CustomerPortalData; activeSubscriptionCount: number; inactiveSubscriptionCount: number; canManageBilling: boolean; upcomingInvoice: Invoice | null; upcomingInvoiceLoaded: boolean; onOpenView: (view: PortalView) => void }) {
 	const activeSubscriptions = data.subscriptions.filter(item => ['Active', 'Provisioning'].includes(item.status));
+	const nextRenewal = activeSubscriptions.map(item => item.end_date).filter((date): date is string => Boolean(date)).sort()[0] || null;
+	const upcomingLabel = canManageBilling
+		? upcomingInvoice ? formatCurrency(upcomingInvoice.amount_due_with_tax ?? upcomingInvoice.amount_due ?? upcomingInvoice.total, upcomingInvoice.currency) : upcomingInvoiceLoaded ? 'فعلاً صورتحسابی ثبت نشده' : 'در حال دریافت…'
+		: nextRenewal ? formatDate(nextRenewal) : 'اشتراک فعالی نیست';
+	const upcomingDetail = upcomingInvoice?.due_date
+		? `موعد پرداخت: ${formatDate(upcomingInvoice.due_date)}${nextRenewal ? ` · تمدید نزدیک: ${formatDate(nextRenewal)}` : ''}`
+		: nextRenewal ? `تمدید نزدیک: ${formatDate(nextRenewal)}` : 'بر اساس چرخهٔ مالی حساب';
 	const attentionCount = data.sites.filter(site => ['Broken', 'Suspended', 'Pending', 'Installing'].includes(site.status)).length + inactiveSubscriptionCount + data.subscriptions.filter(item => item.status === 'Needs Attention' || item.payment_status === 'Unpaid').length;
 	return <>
 		<section className="customer-portal-metrics" aria-label="وضعیت فعلی">
@@ -185,6 +210,10 @@ function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, ca
 			<Metric label="خریدها و اشتراک‌ها" value={toPersian(data.subscriptions.length)} detail="ثبت‌شده برای تیم" />
 			<Metric label="موارد نیازمند توجه" value={toPersian(attentionCount)} detail={attentionCount ? 'وضعیت سایت یا اشتراک را بررسی کن' : 'همه‌چیز به‌روز است'} />
 		</section>
+		{(canManageBilling || nextRenewal) && <section className="customer-portal-upcoming-invoice" aria-label="صورتحساب و تمدید بعدی">
+			<div><span>{canManageBilling ? 'صورتحساب پیش‌رو' : 'تمدید اشتراک'}</span><strong>{upcomingLabel}</strong><small>{upcomingDetail}</small></div>
+			{canManageBilling && <button type="button" onClick={() => onOpenView('billing')}>فاکتورها و پرداخت‌ها</button>}
+		</section>}
 
 		<div className="customer-portal-content-grid">
 			<section className="customer-portal-panel" aria-labelledby="portal-sites-title"><div className="customer-portal-panel-heading"><div><p>سرویس‌های میزبانی</p><h2 id="portal-sites-title">سایت‌های تو</h2></div><button type="button" onClick={() => onOpenView('modules')}>مدیریت ماژول‌ها</button></div>

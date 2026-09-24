@@ -11,6 +11,8 @@
 .asumi-site-actions { flex: 0 0 auto; gap: 13px; }
 .asumi-site-menu-toggle { display: none; min-height: 44px; align-items: center; gap: 7px; border: 1px solid var(--case-line, #ded9d1); padding: 0 10px; background: transparent; color: inherit; font: inherit; font-size: 11px; cursor: pointer; }
 .asumi-site-footer { position: relative; z-index: 2; padding: 34px max(5vw, calc((100vw - 1240px) / 2)) 15px; border-top: 1px solid #ded9d1; background: #f3f0e9; color: #28231f; }
+.asumi-site-footer--portal { padding-top: 18px; }
+.asumi-site-footer--portal .asumi-site-footer-main { grid-template-columns: 1fr; padding-bottom: 12px; }
 .asumi-site-footer-main { display: grid; grid-template-columns: minmax(190px, .9fr) minmax(220px, 1.2fr) minmax(250px, 1.4fr) auto; align-items: center; gap: 22px; padding-bottom: 25px; }
 .asumi-footer-brand { display: flex; align-items: center; gap: 10px; }
 .asumi-footer-brand .brand-signal { height: 28px; }

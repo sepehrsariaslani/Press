@@ -661,6 +661,17 @@ def installation_history(name: str):
 		order_by="creation desc",
 		limit=30,
 	)
+	app_slugs = list({activity.reason for activity in activities if activity.reason})
+	marketplace_titles = {}
+	if app_slugs:
+		marketplace_titles = {
+			app.app: app.title
+			for app in frappe.get_all(
+				"Marketplace App",
+				filters={"app": ("in", app_slugs)},
+				fields=["app", "title"],
+			)
+		}
 	job_names = list({activity.job for activity in activities if activity.job})
 	jobs = {
 		job.name: job
@@ -674,6 +685,7 @@ def installation_history(name: str):
 		{
 			"name": activity.name,
 			"app": activity.reason,
+			"app_title": marketplace_titles.get(activity.reason),
 			"action": activity.action,
 			"job": activity.job,
 			"status": jobs.get(activity.job, {}).get("status", "Unknown"),

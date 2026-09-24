@@ -36,6 +36,11 @@
 .customer-portal-metric > span { color: var(--portal-muted); font-size: 10px; }
 .customer-portal-metric > strong { color: var(--portal-red); font-size: 25px; font-weight: 700; }
 .customer-portal-metric > small { color: #8b837a; font-size: 9px; }
+.customer-portal-upcoming-invoice { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; padding: 12px 15px; border: 1px solid #e8e2da; border-right: 2px solid var(--portal-red); background: var(--portal-card); }
+.customer-portal-upcoming-invoice > div { display: grid; gap: 3px; }
+.customer-portal-upcoming-invoice span, .customer-portal-upcoming-invoice small { color: var(--portal-muted); font-size: 9px; }
+.customer-portal-upcoming-invoice strong { color: var(--portal-red); font-size: 16px; }
+.customer-portal-upcoming-invoice button, .customer-portal-inline-status--action button { min-height: 40px; border: 1px solid var(--portal-line); padding: 0 11px; background: #fffefa; color: var(--portal-red); font: inherit; font-size: 10px; cursor: pointer; }
 .customer-portal-content-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; gap: 13px; margin-top: 14px; }
 .customer-portal-panel { min-width: 0; padding: 17px; border: 1px solid var(--portal-line); background: var(--portal-card); }
 .customer-portal-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
@@ -153,6 +158,7 @@
 .customer-portal-inline-error button { min-height: 34px; border: 1px solid #d8b1ae; padding: 0 10px; background: white; color: #8b3033; font: inherit; font-size: 9px; cursor: pointer; }
 .customer-portal-inline-error > div { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 6px; }
 .customer-portal-inline-status { border-right: 2px solid #4f7b5d; background: #f0f6ef; color: #376347; }
+.customer-portal-inline-status--action { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .customer-portal-install-progress { display: flex; align-items: center; gap: 11px; margin: 8px 0; padding: 12px; border: 1px solid #e4d9ce; background: #fffdfa; }
 .customer-portal-install-progress strong { font-size: 10px; }
 .customer-portal-install-progress p { margin: 3px 0 0; color: var(--portal-muted); font-size: 9px; }
@@ -270,6 +276,8 @@
 	.customer-portal-team-line > div { align-items: flex-start; flex-direction: column; gap: 2px; }
 	.customer-portal-metric { min-height: 90px; padding: 11px; }
 	.customer-portal-metric > strong { font-size: 21px; }
+	.customer-portal-upcoming-invoice { align-items: flex-start; flex-direction: column; }
+	.customer-portal-upcoming-invoice button { width: 100%; }
 	.customer-portal-panel { padding: 12px; }
 	.customer-portal-panel-heading h2 { font-size: 15px; }
 	.customer-portal-note { align-items: flex-start; flex-direction: column; }

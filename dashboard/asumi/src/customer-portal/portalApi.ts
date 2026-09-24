@@ -87,6 +87,7 @@ export type Invoice = {
 	name: string;
 	total: number;
 	amount_due: number;
+	amount_due_with_tax?: number;
 	status: string;
 	type: string;
 	stripe_invoice_url: string | null;
@@ -213,7 +214,7 @@ export async function changeMarketplacePlan(subscription: string, newPlan: strin
 }
 
 export async function getInstallHistory(site: string, signal?: AbortSignal) {
-	return frappeCall<Array<{ name: string; app: string; action: string; job: string | null; status: string; creation: string }>>(
+	return frappeCall<Array<{ name: string; app: string; app_title: string | null; action: string; job: string | null; status: string; creation: string }>>(
 		'press.api.customer_portal.installation_history', { params: { name: site }, signal },
 	);
 }

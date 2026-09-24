@@ -8,6 +8,7 @@ type Props = {
 	canManageBilling: boolean;
 	onOpenModules: () => void;
 	onOpenBilling: () => void;
+	onRequestInstallationSupport: (site: string, siteLabel: string, app: string, status: string) => void;
 	onRequestCancellation: (subscription: PortalSubscription) => void;
 	onRequestPeriodReview: (subscription: PortalSubscription) => void;
 	onRefresh: () => void;
@@ -20,6 +21,7 @@ type AppActivity = {
 	job: string | null;
 	status: string;
 	creation: string;
+	app_title: string | null;
 	site: string;
 	siteLabel: string;
 };
@@ -33,7 +35,7 @@ const statusLabels: Record<string, string> = {
 };
 const intervalLabel: Record<string, string> = { Hourly: 'ساعتی', Monthly: 'ماهانه', Annual: 'سالانه', Annually: 'سالانه', Daily: 'روزانه با نرخ ماهانه' };
 
-export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenModules, onOpenBilling, onRequestCancellation, onRequestPeriodReview, onRefresh }: Props) {
+export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenModules, onOpenBilling, onRequestInstallationSupport, onRequestCancellation, onRequestPeriodReview, onRefresh }: Props) {
 	const [history, setHistory] = useState<AppActivity[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
@@ -58,7 +60,7 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 			const events = groups.flat().sort((a, b) => b.creation.localeCompare(a.creation));
 			setHistory(events);
 			const pending = events.find(event => event.action === 'Uninstall App' && event.job && ['Pending', 'Running'].includes(event.status));
-			if (pending?.job) setPendingRemoval(current => current || { site: pending.site, app: pending.app, title: appTitle(pending.app), job: pending.job as string });
+			if (pending?.job) setPendingRemoval(current => current || { site: pending.site, app: pending.app, title: appTitle(pending.app, pending.app_title), job: pending.job as string });
 		}).finally(() => { if (!controller.signal.aborted) setLoading(false); });
 		return () => controller.abort();
 	}, [sites, reloadToken]);
@@ -95,8 +97,8 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 	}
 
 	async function retryRemoval(item: AppActivity) {
-		if (!window.confirm(`حذف «${appTitle(item.app)}» از سایت ${item.siteLabel} دوباره اجرا شود؟`)) return;
-		await removeApp(item.site, item.app, appTitle(item.app));
+		if (!window.confirm(`حذف «${appTitle(item.app, item.app_title)}» از سایت ${item.siteLabel} دوباره اجرا شود؟`)) return;
+		await removeApp(item.site, item.app, appTitle(item.app, item.app_title));
 	}
 
 	async function removeApp(site: string, app: string, title: string) {
@@ -123,7 +125,7 @@ export function PurchasesView({ subscriptions, sites, canManageBilling, onOpenMo
 		<section className="customer-portal-panel" aria-labelledby="portal-install-history-title">
 			<div className="customer-portal-panel-heading"><div><p>پیگیری عملیات</p><h2 id="portal-install-history-title">تاریخچهٔ نصب و حذف</h2></div><span>{new Intl.NumberFormat('fa-IR').format(history.length)} مورد</span></div>
 			<p className="customer-portal-help-copy">وضعیت نصب یا حذف ماژول‌ها را ببین؛ اگر حذف ناموفق بود، از همین‌جا دوباره تلاش کن.</p>
-			{loading ? <div className="customer-portal-inline-state" role="status">در حال دریافت سابقهٔ عملیات…</div> : history.length ? <div className="customer-portal-install-history">{history.map(item => <article className="customer-portal-install-row" key={`${item.site}:${item.name}`}><div><strong>{item.action === 'Uninstall App' ? 'حذف' : 'نصب'} · {appTitle(item.app)}</strong><small>{item.siteLabel} · {formatDateTime(item.creation)}</small></div><span className="customer-portal-status" data-status={item.status.toLowerCase().replaceAll(' ', '-')}>{statusLabels[item.status] || item.status}</span>{canManageBilling && item.action === 'Uninstall App' && ['Failure', 'Delivery Failure'].includes(item.status) && <button type="button" className="customer-portal-text-button" disabled={busyApp === item.app} onClick={() => void retryRemoval(item)}>تلاش دوباره</button>}{item.action === 'Install App' && ['Failure', 'Delivery Failure'].includes(item.status) && <button type="button" className="customer-portal-text-button" onClick={onOpenModules}>بازکردن کاتالوگ</button>}</article>)}</div> : <div className="customer-portal-inline-state">برای سایت‌های این تیم سابقهٔ نصب یا حذف پیدا نشد.</div>}
+			{loading ? <div className="customer-portal-inline-state" role="status">در حال دریافت سابقهٔ عملیات…</div> : history.length ? <div className="customer-portal-install-history">{history.map(item => <article className="customer-portal-install-row" key={`${item.site}:${item.name}`}><div><strong>{item.action === 'Uninstall App' ? 'حذف' : 'نصب'} · {appTitle(item.app, item.app_title)}</strong><small>{item.siteLabel} · {formatDateTime(item.creation)}</small></div><span className="customer-portal-status" data-status={item.status.toLowerCase().replaceAll(' ', '-')}>{statusLabels[item.status] || item.status}</span>{canManageBilling && item.action === 'Uninstall App' && ['Failure', 'Delivery Failure'].includes(item.status) && <button type="button" className="customer-portal-text-button" disabled={busyApp === item.app} onClick={() => void retryRemoval(item)}>تلاش دوباره</button>}{item.action === 'Install App' && ['Failure', 'Delivery Failure'].includes(item.status) && <><button type="button" className="customer-portal-text-button" onClick={onOpenModules}>بازکردن کاتالوگ برای تلاش دوباره</button><button type="button" className="customer-portal-text-button" onClick={() => onRequestInstallationSupport(item.site, item.siteLabel, appTitle(item.app, item.app_title), statusLabels[item.status] || item.status)}>پیگیری با پشتیبانی</button></>}</article>)}</div> : <div className="customer-portal-inline-state">برای سایت‌های این تیم سابقهٔ نصب یا حذف پیدا نشد.</div>}
 		</section>
 	</div>;
 }
@@ -139,7 +141,7 @@ function SubscriptionItem({ subscription, canManageBilling, onOpenBilling, busy,
 	</article>;
 }
 
-function appTitle(slug: string) { return productModules.find(module => module.id === slug)?.title || slug; }
+function appTitle(slug: string, title?: string | null) { return productModules.find(module => module.id === slug)?.title || title || 'افزونهٔ سایت'; }
 function formatDate(value: string | null) { if (!value) return '—'; const date = new Date(`${value}T00:00:00`); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: 'short', day: 'numeric' }).format(date); }
 function formatDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('fa-IR-u-ca-persian', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date); }
 function messageOf(error: unknown, fallback: string) { return error instanceof Error ? error.message : fallback; }
