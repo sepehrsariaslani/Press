@@ -2,6 +2,16 @@ import frappe
 from frappe.website.path_resolver import resolve_path as default_resolve_path
 
 ASUMI_HOSTS = {"asumi", "asumi.ir", "www.asumi.ir"}
+ASUMI_PASSTHROUGH_ROUTES = {
+	"login",
+	"logout",
+	"update-password",
+	"complete_signup",
+	"favicon.ico",
+	"robots.txt",
+	"manifest.json",
+}
+ASUMI_PASSTHROUGH_PREFIXES = ("api/", "assets/", "files/", "private/files/", "socket.io/")
 
 
 def get_request_host() -> str:
@@ -10,13 +20,21 @@ def get_request_host() -> str:
 
 
 def resolve_path(path: str):
-	"""Route only the Asumi public root and delegate all other paths to Frappe.
+	"""Serve the Asumi app on customer-facing page routes for Asumi hosts.
 
-	Press routes such as Desk, Dashboard, API, and assets remain under Frappe's
-	default resolver even when they are requested from the Asumi domain.
+	Keep API, asset, file, and authentication endpoints available to the app while
+	preventing customer page URLs from opening Press's dashboard or Desk.
 	"""
 	route = (path or "").strip("/ ")
-	if get_request_host() in ASUMI_HOSTS and not route:
+	if get_request_host() in ASUMI_HOSTS:
+		if not route:
+			return "asumi"
+		normalized_route = route.lower()
+		if (
+			normalized_route in ASUMI_PASSTHROUGH_ROUTES
+			or normalized_route.startswith(ASUMI_PASSTHROUGH_PREFIXES)
+		):
+			return default_resolve_path(path)
 		return "asumi"
 
 	return default_resolve_path(path)

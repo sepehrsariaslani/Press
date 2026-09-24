@@ -21,13 +21,13 @@ function scrollToCurrentSection() {
 export function useModuleNavigation() {
   const [activeModuleId, setActiveModuleId] = useState(readModuleId);
   const [showPricing, setShowPricing] = useState(() => window.location.hash === '#pricing');
-  const [showPortal, setShowPortal] = useState(() => window.location.hash === '#portal');
+  const [showPortal, setShowPortal] = useState(() => window.location.hash === '#portal' || window.location.pathname !== '/');
 
   useEffect(() => {
     const syncRoute = () => {
       setActiveModuleId(readModuleId());
       setShowPricing(window.location.hash === '#pricing');
-      setShowPortal(window.location.hash === '#portal');
+      setShowPortal(window.location.hash === '#portal' || window.location.pathname !== '/');
       scrollToCurrentSection();
     };
     window.addEventListener('hashchange', syncRoute);
@@ -70,10 +70,11 @@ export function useModuleNavigation() {
   }
 
   function returnToModules() {
+    const rootPath = window.location.pathname === '/' ? '' : '/';
     try {
       if (window.localStorage.getItem('asumi-pricing-from-portal') === '1') {
         window.localStorage.removeItem('asumi-pricing-from-portal');
-        window.history.replaceState(null, '', '#portal');
+        window.history.replaceState(null, '', `${rootPath}#portal`);
         setActiveModuleId(null);
         setShowPricing(false);
         setShowPortal(true);
@@ -82,7 +83,7 @@ export function useModuleNavigation() {
         return;
       }
     } catch { /* Fall through to the public module overview. */ }
-    window.history.replaceState(null, '', '#modules');
+    window.history.replaceState(null, '', `${rootPath}#modules`);
     setActiveModuleId(null);
     setShowPricing(false);
     setShowPortal(false);
