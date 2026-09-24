@@ -145,6 +145,7 @@ def _validate_catalog_prerequisites(module_id, prerequisites, published):
 def dashboard():
 	"""Return the current team's sites and native Marketplace subscriptions."""
 	team = get_current_team(get_doc=True)
+	asumi_app_ids = _asumi_marketplace_app_ids()
 	sites = frappe.get_all(
 		"Site",
 		filters={"team": team.name},
@@ -172,6 +173,7 @@ def dashboard():
 		fields=["name", "document_name", "site", "enabled", "interval", "plan", "creation"],
 		order_by="modified desc",
 	)
+	subscriptions = [subscription for subscription in subscriptions if subscription.document_name in asumi_app_ids]
 	pending_marketplace_invoices = _pending_marketplace_invoice_lines(team.name, sites_by_name)
 	app_names = list({subscription.document_name for subscription in subscriptions})
 	apps = {}
@@ -296,6 +298,7 @@ def dashboard():
 			"title": team.team_title or team.name,
 			"currency": team.currency,
 		},
+		"teams": _customer_team_options(team),
 		"sites": [serialize_site(site, site_plans.get(site.plan), team.currency) for site in sites],
 		"included_module_ids": [mapping.module_id for mapping in _catalog_mappings() if mapping.mode == "Included"],
 		"subscriptions": serialized_subscriptions,
@@ -304,6 +307,44 @@ def dashboard():
 		"can_manage_catalog": _is_catalog_admin(),
 		"can_manage_support": _is_support_agent(),
 	}
+
+
+def _customer_team_options(current_team):
+	from press.utils import get_valid_teams_for_user
+
+	team_names = {item.name for item in get_valid_teams_for_user(frappe.session.user)}
+	owned_team = frappe.db.get_value(
+		"Team", {"user": frappe.session.user, "enabled": 1, "parent_team": ("is", "not set")}, "name"
+	)
+	if owned_team:
+		team_names.add(owned_team)
+	team_names.add(current_team.name)
+
+	return [
+		{"name": team.name, "title": team.team_title or team.user}
+		for team in frappe.get_all(
+			"Team",
+			filters={"name": ("in", list(team_names)), "enabled": 1},
+			fields=["name", "team_title", "user"],
+			order_by="team_title asc, name asc",
+		)
+	]
+
+
+def _asumi_marketplace_app_ids():
+	mapped_names = {
+		mapping.marketplace_app
+		for mapping in _catalog_mappings(include_unpublished=True)
+		if mapping.marketplace_app
+	}
+	if not mapped_names:
+		return set()
+	apps = frappe.get_all(
+		"Marketplace App",
+		filters={"name": ("in", list(mapped_names))},
+		fields=["name", "app"],
+	)
+	return {identifier for app in apps for identifier in (app.name, app.app) if identifier}
 
 
 def _pending_marketplace_invoice_lines(team: str, sites_by_name: dict) -> dict:
@@ -402,12 +443,16 @@ def catalog():
 	all_mappings = _catalog_mappings(include_unpublished=True)
 	mappings = [mapping for mapping in all_mappings if mapping.published]
 	hidden_module_ids = [mapping.module_id for mapping in all_mappings if not mapping.published]
-	visible_marketplace_names = {mapping.marketplace_app for mapping in mappings if mapping.marketplace_app}
+	visible_marketplace_names = {
+		mapping.marketplace_app
+		for mapping in mappings
+		if mapping.mode == "Marketplace app" and mapping.marketplace_app
+	}
 	apps = [app for app in apps if app.name in visible_marketplace_names]
 	app_by_name = {app.name: app for app in apps}
 	public_mappings = []
 	for mapping in mappings:
-		app = app_by_name.get(mapping.marketplace_app)
+		app = app_by_name.get(mapping.marketplace_app) if mapping.mode == "Marketplace app" else None
 		public_mappings.append(
 			{
 				"module_id": mapping.module_id,
@@ -429,6 +474,23 @@ def catalog_admin():
 
 	mappings = _catalog_mappings(include_unpublished=True)
 	return {"apps": get_marketplace_pricing_catalog(), "mappings": mappings}
+
+
+@frappe.whitelist(methods=["GET"])
+def site_app_state(name: str):
+	team = get_current_team()
+	if not frappe.db.exists("Site", {"name": name, "team": team}):
+		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
+
+	app_ids = _asumi_marketplace_app_ids()
+	if not app_ids:
+		return {"installed": [], "available": []}
+	installed = frappe.call("press.api.site.installed_apps", name=name)
+	available = frappe.call("press.api.site.available_apps", name=name)
+	return {
+		"installed": [app for app in installed if app.app in app_ids],
+		"available": [app for app in available if app.app in app_ids],
+	}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -525,7 +587,7 @@ def save_catalog_mapping(
 		frappe.throw("Choose a valid catalog type.")
 	if mode == "Marketplace app" and not marketplace_app:
 		frappe.throw("Choose a Marketplace app for this module.")
-	if marketplace_app and not frappe.db.exists("Marketplace App", marketplace_app):
+	if mode == "Marketplace app" and marketplace_app and not frappe.db.exists("Marketplace App", marketplace_app):
 		frappe.throw("The selected Marketplace app does not exist.")
 	description = (description or "").strip()
 	if len(description) > 2000:
@@ -539,7 +601,8 @@ def save_catalog_mapping(
 	doc = frappe.get_doc("Asumi Module Mapping", name) if name else frappe.new_doc("Asumi Module Mapping")
 	doc.module_id = module_id
 	doc.mode = mode
-	doc.marketplace_app = marketplace_app if mode == "Marketplace app" else None
+	if mode == "Marketplace app":
+		doc.marketplace_app = marketplace_app
 	doc.published = cint(published)
 	doc.description = description
 	doc.prerequisites = json.dumps(prerequisites)
@@ -801,9 +864,16 @@ def admin_update_support_request(name: str, status: str, response: str | None = 
 @frappe.whitelist(methods=["GET"])
 @protected("Site")
 def installation_history(name: str):
+	app_ids = _asumi_marketplace_app_ids()
+	if not app_ids:
+		return []
 	activities = frappe.get_all(
 		"Site Activity",
-		filters={"site": name, "action": ("in", ["Install App", "Uninstall App"])},
+		filters={
+			"site": name,
+			"reason": ("in", list(app_ids)),
+			"action": ("in", ["Install App", "Uninstall App"]),
+		},
 		fields=["name", "reason", "job", "action", "creation"],
 		order_by="creation desc",
 		limit=30,

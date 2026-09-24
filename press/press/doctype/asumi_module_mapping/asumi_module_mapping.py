@@ -47,6 +47,3 @@ class AsumiModuleMapping(Document):
 
 		if self.mode == "Marketplace app" and not self.marketplace_app:
 			frappe.throw(_("Choose a Marketplace app for this module."))
-
-		if self.mode != "Marketplace app":
-			self.marketplace_app = None

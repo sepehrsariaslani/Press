@@ -77,6 +77,7 @@ export type SupportRequest = {
 
 export type CustomerPortalData = {
 	team: { name: string; title: string; currency: string };
+	teams: Array<{ name: string; title: string }>;
 	sites: PortalSite[];
 	included_module_ids: string[];
 	subscriptions: PortalSubscription[];
@@ -191,11 +192,7 @@ export async function getMarketplaceCatalog(signal?: AbortSignal) {
 }
 
 export async function getSiteAppState(site: string, signal?: AbortSignal): Promise<SiteAppState> {
-	const [installed, available] = await Promise.all([
-		frappeCall<InstalledApp[]>('press.api.site.installed_apps', { params: { name: site }, signal }),
-		frappeCall<AppInstallOption[]>('press.api.site.available_apps', { params: { name: site }, signal }),
-	]);
-	return { installed, available };
+	return frappeCall<SiteAppState>('press.api.customer_portal.site_app_state', { params: { name: site }, signal });
 }
 
 export async function installMarketplaceApp(site: string, app: string, plan?: string) {

@@ -77,7 +77,7 @@ export function PortalAdmin({ canManageCatalog, canManageSupport }: { canManageC
 	}, [canManageCatalog, canManageSupport]);
 
 	const currentMapping = catalog?.mappings.find(item => item.module_id === selectedModuleId);
-	const mappedAppNames = useMemo(() => new Set(catalog?.mappings.map(item => item.marketplace_app).filter((value): value is string => Boolean(value))), [catalog]);
+	const mappedAppNames = useMemo(() => new Set(catalog?.mappings.filter(item => item.mode === 'Marketplace app').map(item => item.marketplace_app).filter((value): value is string => Boolean(value))), [catalog]);
 	const managedApps = (catalog?.apps || []).filter(item => mappedAppNames.has(item.name));
 
 	useEffect(() => {

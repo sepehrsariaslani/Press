@@ -21,7 +21,7 @@ type PortalIntent = { moduleIds: string[]; context: string; category?: string; s
 const subscriptionStatus: Record<string, string> = { Active: 'فعال', Inactive: 'متوقف', Disabled: 'غیرفعال', Provisioning: 'در حال نصب', 'Cancellation Pending': 'در حال لغو', 'Needs Attention': 'نیازمند پیگیری' };
 const siteStatus: Record<string, string> = { Active: 'فعال', Inactive: 'غیرفعال', Pending: 'در صف آماده‌سازی', Installing: 'در حال نصب', Suspended: 'متوقف', Broken: 'نیازمند پیگیری', Archived: 'بایگانی‌شده' };
 const viewLabels: Record<PortalView, string> = {
-	overview: 'نمای کلی', modules: 'ماژول‌ها', purchases: 'خریدها و اشتراک‌ها', billing: 'فاکتورها', team: 'اعضا و دسترسی', support: 'پشتیبانی', admin: 'مدیریت آسومی',
+	overview: 'نمای کلی', modules: 'ماژول‌ها', purchases: 'خریدها و اشتراک‌ها', billing: 'فاکتورها و پرداخت‌ها', team: 'اعضا و دسترسی', support: 'پشتیبانی', admin: 'مدیریت آسومی',
 };
 
 function readPortalIntent(): PortalIntent {
@@ -50,6 +50,7 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 	const [intent, setIntent] = useState(readPortalIntent);
 	const [view, setView] = useState<PortalView>(() => intent.moduleIds.length ? 'modules' : 'overview');
 	const [selectedSite, setSelectedSite] = useState(readSelectedSite);
+	const [switchingTeam, setSwitchingTeam] = useState(false);
 	const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 	const [upcomingInvoice, setUpcomingInvoice] = useState<Invoice | null>(null);
 	const [upcomingInvoiceLoaded, setUpcomingInvoiceLoaded] = useState(false);
@@ -123,6 +124,29 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 		} catch { /* Site selection still works for the current visit. */ }
 	}
 
+	async function selectTeam(teamName: string) {
+		if (!data || switchingTeam || teamName === data.team.name) return;
+		const previousTeam = data.team.name;
+		setSwitchingTeam(true);
+		setLoading(true);
+		setError('');
+		try {
+			window.localStorage.setItem('current_team', teamName);
+			window.localStorage.removeItem('asumi-portal-site');
+			setSelectedSite('');
+			const next = await getCustomerPortalData();
+			if (next.team.name !== teamName) throw new Error('به این فضای کاری دسترسی نداری.');
+			setData(next);
+			setUpdatedAt(new Date());
+		} catch (caught) {
+			window.localStorage.setItem('current_team', previousTeam);
+			setError(caught instanceof Error ? caught.message : 'تغییر فضای کاری انجام نشد.');
+		} finally {
+			setLoading(false);
+			setSwitchingTeam(false);
+		}
+	}
+
 	function openSupportRequest(category: string, subject: string, context: string, site?: string) {
 		setIntent({ moduleIds: [], category, subject, context, site });
 		setView('support');
@@ -157,6 +181,7 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 	const selectedSiteData = data?.sites.find(site => site.name === selectedSite) || null;
 	const canSeeAdmin = Boolean(data?.can_manage_catalog || data?.can_manage_support);
 	const isAdminView = view === 'admin' && canSeeAdmin;
+	const loginRequired = error === 'برای ادامه وارد حساب آسومی شو.';
 
 	return <main className={`customer-portal${isAdminView ? ' customer-portal--admin' : ''}`} dir="rtl" aria-labelledby="customer-portal-title">
 		<SiteHeader variant="paper" onReturnToModules={onReturnToModules} showSiteNavigation={false} showEntryLink={false} actions={<span className="customer-portal-header-label">{isAdminView ? 'مدیریت پلتفرم آسومی' : 'پنل مشتری آسومی'}</span>} />
@@ -175,11 +200,12 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 				{canSeeAdmin && <button className="customer-portal-admin-tab" type="button" aria-current={view === 'admin' ? 'page' : undefined} onClick={() => setView('admin')}>مدیریت آسومی</button>}
 			</nav>}
 
-			{error ? <section className="customer-portal-state customer-portal-state--error" role="alert"><h2>برای دیدن خدماتت وارد حساب آسومی شو</h2><p>{error}</p><div className="customer-portal-state-actions"><a className="customer-portal-primary" href="/hesab">ورود به حساب</a><button type="button" onClick={() => void refreshPortal()}>تلاش دوباره</button></div></section>
+			{error ? <section className="customer-portal-state customer-portal-state--error" role="alert"><h2>{loginRequired ? 'برای دیدن خدماتت وارد حساب آسومی شو' : 'اطلاعات پنل دریافت نشد'}</h2><p>{error}</p><div className="customer-portal-state-actions">{loginRequired && <a className="customer-portal-primary" href="/hesab">ورود به حساب آسومی</a>}<button type="button" onClick={() => void refreshPortal()}>تلاش دوباره</button></div></section>
 				: loading && !data ? <section className="customer-portal-state" aria-live="polite">در حال دریافت اطلاعات سرویس‌ها…</section>
 				: data ? <>
 					{!isAdminView && <div className="customer-portal-team-line">
 						<div><span>فضای کاری</span><strong>{data.team?.title || 'حساب آسومی'}</strong></div>
+						{data.teams?.length > 1 && <label className="customer-portal-team-switcher"><span>تغییر تیم</span><select value={data.team.name} onChange={event => void selectTeam(event.target.value)} disabled={switchingTeam} aria-label="انتخاب تیم"><option value="" disabled>انتخاب تیم</option>{data.teams.map(team => <option key={team.name} value={team.name}>{team.title}</option>)}</select></label>}
 						<div className="customer-portal-site-switcher"><label htmlFor="portal-current-site">سایت فعال</label><select id="portal-current-site" value={selectedSite} onChange={event => selectSite(event.target.value)}><option value="">انتخاب سایت</option>{data.sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatus[site.status] || site.status}</option>)}</select></div>
 						{updatedAt && <small>آخرین بررسی: {formatDateTime(updatedAt)}</small>}
 					</div>}
