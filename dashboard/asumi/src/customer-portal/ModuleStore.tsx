@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { productModules } from '../product/modules';
 import { modulePrerequisites } from '../product/pricing/catalog';
+import { SelectionCheckout, type CheckoutSelectionEntry } from './SelectionCheckout';
 import {
 	changeMarketplacePlan,
 	getMarketplaceCatalog,
@@ -24,6 +25,7 @@ type ModuleMapping = {
 	marketplace_app_title: string | null;
 	published?: number;
 };
+type AsumiModuleId = (typeof productModules)[number]['id'];
 
 type Props = {
 	currency: string;
@@ -44,6 +46,8 @@ type Props = {
 
 type PendingJob = { site: string; job: string; app: string; title: string; status: string };
 type PricingFilter = 'all' | 'free' | 'paid' | 'unpriced';
+type PendingJobState = { teamName: string; jobs: PendingJob[] };
+type EstimateState = { teamName: string; selections: Record<string, string> };
 
 const pricingFilters: Array<{ value: PricingFilter; label: string }> = [
 	{ value: 'all', label: 'همه' },
@@ -61,16 +65,25 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	const [query, setQuery] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState('');
 	const [pricingFilter, setPricingFilter] = useState<PricingFilter>('all');
-	const [selectedApps, setSelectedApps] = useState<Record<string, string>>(() => readSelectedPlans(teamName));
+	const [estimateState, setEstimateState] = useState<EstimateState>(() => ({ teamName, selections: readSelectedPlans(teamName) }));
+	const selectedApps = estimateState.teamName === teamName ? estimateState.selections : {};
 	const [planChoices, setPlanChoices] = useState<Record<string, string>>({});
 	const [busyApp, setBusyApp] = useState('');
 	const [statusMessage, setStatusMessage] = useState('');
 	const [failedInstall, setFailedInstall] = useState<PendingJob | null>(null);
 	const [needsCreditTopUp, setNeedsCreditTopUp] = useState(false);
 	const [billingSupportContext, setBillingSupportContext] = useState('');
-	const [pendingJob, setPendingJob] = useState<PendingJob | null>(() => readPendingJob());
+	const [pendingJobState, setPendingJobState] = useState<PendingJobState>(() => ({ teamName, jobs: readPendingJobs(teamName) }));
+	const pendingJobs = pendingJobState.teamName === teamName ? pendingJobState.jobs : [];
+	const [checkoutBusy, setCheckoutBusy] = useState(false);
 	const appliedInitialSelection = useRef('');
 	const canBrowseCatalog = canManageApps || canManageBilling;
+	function setSelectedApps(update: SetStateAction<Record<string, string>>) {
+		setEstimateState(current => {
+			const selection = current.teamName === teamName ? current.selections : readSelectedPlans(teamName);
+			return { teamName, selections: typeof update === 'function' ? update(selection) : update };
+		});
+	}
 	const mappingByModule = useMemo(() => new Map((catalog?.mappings || []).map(mapping => [mapping.module_id, mapping])), [catalog]);
 	const mappedSlugs = useMemo(() => new Set((catalog?.mappings || []).map(mapping => mapping.marketplace_app_slug).filter((slug): slug is string => Boolean(slug))), [catalog]);
 	const categories = useMemo(() => [...new Set((catalog?.apps || []).flatMap(app => app.categories || []))].sort((a, b) => a.localeCompare(b)), [catalog]);
@@ -80,19 +93,38 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			const app = catalog?.apps.find(item => item.app === slug);
 			const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
 			const plan = findPlan(plansForApp(siteApp?.plans, app?.plans), planName);
-			const amount = plan ? planPrice(plan, currency) : null;
+			const amount = (siteApp?.team || app?.team) === teamName ? 0 : plan ? planPrice(plan, currency) : null;
 			if (amount === null) continue;
 			const period = planPeriodKey(plan?.interval);
 			totals[period] = (totals[period] || 0) + amount;
 		}
 		return totals;
-	}, [catalog, currency, selectedApps, siteApps]);
+	}, [catalog, currency, selectedApps, siteApps, teamName]);
 	const selectedUnpriced = Object.keys(selectedApps).filter(slug => {
 		const app = catalog?.apps.find(item => item.app === slug);
 		const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
+		if ((siteApp?.team || app?.team) === teamName) return false;
 		const plan = findPlan(plansForApp(siteApp?.plans, app?.plans), selectedApps[slug]);
 		return !plan || planPrice(plan, currency) === null;
 	}).length;
+	const checkoutEntries = Object.entries(selectedApps).map(([slug, planName]): CheckoutSelectionEntry => {
+		const app = catalog?.apps.find(item => item.app === slug);
+		const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
+		const installed = siteApps.installed.find(item => item.app === slug);
+		const available = siteApps.available.find(item => item.app === slug);
+		const plans = plansForApp(siteApp?.plans, app?.plans);
+		const plan = findPlan(plans, planName);
+		const internalApp = Boolean((siteApp?.team || app?.team) === teamName);
+		const amount = internalApp ? 0 : plan ? planPrice(plan, currency) : null;
+		const moduleId = productModules.find(module => catalog?.mappings.some(mapping => mapping.marketplace_app_slug === slug && mapping.module_id === module.id))?.id;
+		const missingDependencies = moduleId ? missingPrerequisiteTitles(moduleId) : [];
+		const ready = Boolean(app && plan && (internalApp || amount !== null) && !missingDependencies.length && (installed || (available && selectedSite && siteStatus === 'Active')));
+		const state = !app ? 'نیازمند اتصال' : !plan ? 'پلن در دسترس نیست' : missingDependencies.length ? `پیش‌نیاز: ${missingDependencies.join('، ')}` : installed ? !installed.subscription?.plan || installed.subscription.plan === plan.name ? 'فعال است' : 'تغییر پلن' : !selectedSite || siteStatus !== 'Active' ? 'سایت فعال انتخاب نشده' : !available ? 'با این سایت سازگار نیست' : 'آمادهٔ نصب';
+		return { slug, title: app?.title || slug, planTitle: plan?.title || 'پلن نامشخص', amount, interval: plan?.interval || 'Monthly', state, ready };
+	});
+	const unavailableSelectionCount = checkoutEntries.filter(entry => !entry.ready).length;
+	const activePendingJobs = pendingJobs.filter(job => job.site === selectedSite && !isTerminalJob(job.status));
+	const canCheckout = Boolean(selectedSite && siteStatus === 'Active' && !loadingCatalog && !loadingSiteApps && !error && !checkoutBusy && !activePendingJobs.length && !selectedUnpriced && !unavailableSelectionCount);
 
 	useEffect(() => {
 		const controller = new AbortController();
@@ -106,16 +138,31 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	}, []);
 
 	useEffect(() => {
+		setPendingJobState({ teamName, jobs: readPendingJobs(teamName) });
+	}, [teamName]);
+
+	useEffect(() => {
+		setEstimateState({ teamName, selections: readSelectedPlans(teamName) });
+		setPlanChoices({});
+		setError('');
+		setStatusMessage('');
+		setFailedInstall(null);
+	}, [teamName]);
+
+	useEffect(() => {
+		if (estimateState.teamName !== teamName) return;
 		const key = `asumi-module-estimate:${teamName}`;
 		try {
-			if (Object.keys(selectedApps).length) window.localStorage.setItem(key, JSON.stringify(selectedApps));
+			if (Object.keys(estimateState.selections).length) window.localStorage.setItem(key, JSON.stringify(estimateState.selections));
 			else window.localStorage.removeItem(key);
 		} catch { /* The estimate remains available for the current visit. */ }
-	}, [selectedApps, teamName]);
+	}, [estimateState, teamName]);
 
 	useEffect(() => {
 		if (!selectedSite) {
 			setSiteApps({ installed: [], available: [] });
+			setLoadingSiteApps(false);
+			setError('');
 			return;
 		}
 		const controller = new AbortController();
@@ -154,32 +201,44 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 	}, [catalog, currency, initialModuleIds, mappingByModule, siteApps]);
 
 	useEffect(() => {
-		if (!pendingJob || pendingJob.site !== selectedSite || isTerminalJob(pendingJob.status)) return;
+		const jobsToCheck = pendingJobs.filter(job => job.site === selectedSite && !isTerminalJob(job.status));
+		if (!jobsToCheck.length) return;
 		const timer = window.setTimeout(() => {
-			getInstallStatus(pendingJob.site, pendingJob.job).then(result => {
-				const next = { ...pendingJob, status: result.status };
-				if (isTerminalJob(result.status)) {
-					setPendingJob(null);
-					window.localStorage.removeItem('asumi-pending-install');
-					setFailedInstall(result.status === 'Success' ? null : { ...pendingJob, status: result.status });
-					setStatusMessage(result.status === 'Success' ? `افزونهٔ «${pendingJob.title}» با موفقیت نصب شد.` : `نصب «${pendingJob.title}» کامل نشد؛ از تاریخچهٔ خریدها دوباره تلاش کن یا با پشتیبانی در تماس باش.`);
+			void Promise.allSettled(jobsToCheck.map(async job => ({ job, result: await getInstallStatus(job.site, job.job) }))).then(results => {
+				const statuses = new Map(results.flatMap(result => result.status === 'fulfilled' ? [[result.value.job.job, result.value.result.status] as const] : []));
+				const finished = jobsToCheck.map(job => ({ ...job, status: statuses.get(job.job) || job.status })).filter(job => isTerminalJob(job.status));
+				setPendingJobState(current => {
+					const currentJobs = current.teamName === teamName ? current.jobs : readPendingJobs(teamName);
+					const next = currentJobs.map(job => ({ ...job, status: statuses.get(job.job) || job.status })).filter(job => !isTerminalJob(job.status));
+					persistPendingJobs(teamName, next);
+					return { teamName, jobs: next };
+				});
+				if (finished.length) {
+					const failed = finished.filter(job => job.status !== 'Success');
+					setFailedInstall(failed[failed.length - 1] || null);
+					const succeeded = finished.length - failed.length;
+					setStatusMessage(failed.length
+						? `${new Intl.NumberFormat('fa-IR').format(succeeded)} نصب کامل شد و ${new Intl.NumberFormat('fa-IR').format(failed.length)} مورد نیازمند پیگیری است؛ تاریخچهٔ خریدها را ببین.`
+						: `${new Intl.NumberFormat('fa-IR').format(succeeded)} ماژول با موفقیت فعال شد.`);
 					onRefresh();
 					void reloadSiteApps();
-				} else {
-					setPendingJob(next);
-					persistPendingJob(next);
 				}
-			}).catch(caught => {
-				setStatusMessage(messageOf(caught));
-				setPendingJob(current => current ? { ...current, status: 'Pending' } : null);
 			});
 		}, 6000);
 		return () => window.clearTimeout(timer);
-	}, [pendingJob, selectedSite, onRefresh]);
+	}, [pendingJobs, selectedSite, teamName, onRefresh]);
 
 	async function reloadSiteApps() {
 		if (!selectedSite) return;
 		try { setSiteApps(await getSiteAppState(selectedSite)); } catch (caught) { setError(messageOf(caught)); }
+	}
+
+	function updatePendingJobs(update: (current: PendingJob[]) => PendingJob[]) {
+		setPendingJobState(current => {
+			const jobs = update(current.teamName === teamName ? current.jobs : readPendingJobs(teamName));
+			persistPendingJobs(teamName, jobs);
+			return { teamName, jobs };
+		});
 	}
 
 	function appForModule(moduleId: string) {
@@ -193,7 +252,17 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		return mapping?.mode || (['finance', 'sales', 'crm', 'procurement', 'inventory', 'projects', 'quality', 'people', 'assets'].includes(moduleId) ? 'Included' : 'Purchase request');
 	}
 
-	function toggleEstimate(app: MarketplaceApp, plans: PortalPlan[]) {
+	function missingPrerequisiteTitles(moduleId: AsumiModuleId, selection: Record<string, string> = selectedApps) {
+		return modulePrerequisites[moduleId].filter(prerequisiteId => {
+			if (modeForModule(prerequisiteId) === 'Included') return false;
+			const mapping = mappingByModule.get(prerequisiteId);
+			if (mapping?.mode !== 'Marketplace app' || !mapping.marketplace_app_slug) return true;
+			const prerequisiteSlug = mapping.marketplace_app_slug;
+			return !selection[prerequisiteSlug] && !siteApps.installed.some(item => item.app === prerequisiteSlug);
+		}).map(prerequisiteId => productModules.find(module => module.id === prerequisiteId)?.title || prerequisiteId);
+	}
+
+	function toggleEstimate(app: MarketplaceApp, plans: PortalPlan[], moduleId?: AsumiModuleId) {
 		const installed = siteApps.installed.find(item => item.app === app.app);
 		const currentPlan = installed?.subscription?.plan;
 		const selected = selectedApps[app.app];
@@ -202,7 +271,31 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			return;
 		}
 		const chosen = findPlan(plans, planChoices[app.app] || '') || plans.find(plan => plan.name === currentPlan) || [...plans].sort((a, b) => (planPrice(a, currency) ?? Number.POSITIVE_INFINITY) - (planPrice(b, currency) ?? Number.POSITIVE_INFINITY))[0];
-		if (chosen) setSelectedApps(current => ({ ...current, [app.app]: chosen.name }));
+		if (!chosen) return;
+		const prerequisiteSelections: Record<string, string> = {};
+		const missingPrerequisites: string[] = [];
+		for (const prerequisiteId of moduleId ? modulePrerequisites[moduleId] : []) {
+			if (modeForModule(prerequisiteId) === 'Included') continue;
+			const mapping = mappingByModule.get(prerequisiteId);
+			if (mapping?.mode !== 'Marketplace app' || !mapping.marketplace_app_slug) {
+				missingPrerequisites.push(productModules.find(module => module.id === prerequisiteId)?.title || prerequisiteId);
+				continue;
+			}
+			const slug = mapping.marketplace_app_slug;
+			if (selectedApps[slug] || siteApps.installed.some(item => item.app === slug)) continue;
+			const prerequisiteApp = catalog?.apps.find(item => item.app === slug);
+			const siteApp = [...siteApps.available, ...siteApps.installed].find(item => item.app === slug);
+			const prerequisitePlans = plansForApp(siteApp?.plans, prerequisiteApp?.plans);
+			const selectedPlan = findPlan(prerequisitePlans, planChoices[slug] || '') || [...prerequisitePlans].sort((a, b) => (planPrice(a, currency) ?? Number.POSITIVE_INFINITY) - (planPrice(b, currency) ?? Number.POSITIVE_INFINITY))[0];
+			if (selectedPlan) prerequisiteSelections[slug] = selectedPlan.name;
+			else missingPrerequisites.push(productModules.find(module => module.id === prerequisiteId)?.title || prerequisiteId);
+		}
+		if (missingPrerequisites.length) {
+			setStatusMessage(`برای انتخاب «${productModules.find(module => module.id === moduleId)?.title || app.title}»، اول وضعیت این پیش‌نیازها را مشخص کن: ${missingPrerequisites.join('، ')}.`);
+			return;
+		}
+		setSelectedApps(current => ({ ...current, ...prerequisiteSelections, [app.app]: chosen.name }));
+		if (Object.keys(prerequisiteSelections).length) setStatusMessage('پلن کم‌هزینه‌ترِ پیش‌نیازها هم به برآورد اضافه شد؛ قبل از ثبت، همهٔ انتخاب‌ها را مرور کن.');
 	}
 
 	async function activateApp(app: MarketplaceApp, selectedPlan: PortalPlan | null) {
@@ -264,7 +357,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			return;
 		}
 		const installPlan = isExternalApp ? selectedPlan?.name : undefined;
-		if (installPlan && selectedPlanPrice !== null && selectedPlanPrice > 0 && !window.confirm(`افزونهٔ «${app.title}» با پلن «${selectedPlan.title}» و مبلغ ${formatPrice(selectedPlanPrice, currency)} در دورهٔ ${planPeriodLabel(selectedPlan.interval)} برای این سایت ثبت شود؟ این مبلغ در هر دوره تمدید می‌شود؛ با لغو اشتراک، تمدید متوقف و افزونه از سایت حذف می‌شود. مبلغ نهایی در فاکتور حساب نمایش داده می‌شود.`)) return;
+		if (installPlan && selectedPlan && selectedPlanPrice !== null && selectedPlanPrice > 0 && !window.confirm(`افزونهٔ «${app.title}» با پلن «${selectedPlan.title}» و مبلغ ${formatPrice(selectedPlanPrice, currency)} در دورهٔ ${planPeriodLabel(selectedPlan.interval)} برای این سایت ثبت شود؟ این مبلغ در هر دوره تمدید می‌شود؛ با لغو اشتراک، تمدید متوقف و افزونه از سایت حذف می‌شود. مبلغ نهایی در فاکتور حساب نمایش داده می‌شود.`)) return;
 		setBusyApp(slug);
 		setError('');
 		setNeedsCreditTopUp(false);
@@ -273,8 +366,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			const job = await installMarketplaceApp(selectedSite, slug, installPlan);
 			if (job) {
 				const pending = { site: selectedSite, job, app: slug, title: app.title, status: 'Pending' };
-				setPendingJob(pending);
-				persistPendingJob(pending);
+				updatePendingJobs(current => [...current.filter(item => item.job !== job), pending]);
 				setStatusMessage(`درخواست نصب «${app.title}» ثبت شد؛ وضعیت را همین‌جا پیگیری می‌کنیم.`);
 			} else {
 				setStatusMessage(`«${app.title}» از قبل نصب است.`);
@@ -283,6 +375,97 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 		} catch (caught) {
 			showActionError(caught);
 		} finally { setBusyApp(''); }
+	}
+
+	async function activateSelectedApps() {
+		if (!canManageBilling) {
+			setStatusMessage('برای ثبت خرید یا تغییر پلن، مدیر مالی تیم باید اقدام کند.');
+			return;
+		}
+		if (!canCheckout || !catalog || !selectedSite) {
+			setStatusMessage(unavailableSelectionCount ? 'موارد ناسازگار را از انتخاب‌ها بردار یا سایت دیگری انتخاب کن.' : 'برای ثبت انتخاب‌ها، یک سایت فعال و قیمت قابل‌محاسبه لازم است.');
+			return;
+		}
+		const siteLabel = sites.find(site => site.name === selectedSite)?.label || selectedSite;
+		const plannedEntries = checkoutEntries.filter(entry => entry.state !== 'فعال است');
+		if (!plannedEntries.length) {
+			setSelectedApps({});
+			setStatusMessage('همهٔ موارد انتخاب‌شده با همین پلن روی سایت فعال هستند.');
+			return;
+		}
+		const actionTotals = plannedEntries.reduce<Record<string, number>>((totals, entry) => {
+			if (entry.amount !== null) totals[planPeriodKey(entry.interval)] = (totals[planPeriodKey(entry.interval)] || 0) + entry.amount;
+			return totals;
+		}, {});
+		const totalLines = Object.entries(actionTotals).map(([period, total]) => `${formatPrice(total, currency)} در ${planPeriodLabel(period)}`).join('، ');
+		const itemLines = plannedEntries.map(entry => `${entry.title} · ${entry.planTitle}`).join('، ');
+		const confirmed = window.confirm(`${new Intl.NumberFormat('fa-IR').format(plannedEntries.length)} ماژول یا تغییر پلن برای سایت ${siteLabel} ثبت شود؟\n${itemLines}\n${totalLines}\nماژول‌ها به‌ترتیب و در اشتراک‌های اصلی خودشان ثبت می‌شوند؛ ممکن است مبلغ نهایی بر اساس اعتبار و روزهای فعال در صورتحساب تغییر کند.`);
+		if (!confirmed) return;
+
+		setCheckoutBusy(true);
+		setBusyApp('checkout');
+		setError('');
+		setFailedInstall(null);
+		setNeedsCreditTopUp(false);
+		setBillingSupportContext('');
+		setStatusMessage('');
+		const completedSlugs: string[] = [];
+		let installationsStarted = 0;
+		let plansChanged = 0;
+		let alreadyActive = 0;
+		let failure: { app: string; message: string } | null = null;
+		try {
+			for (const entry of checkoutEntries) {
+				const app = catalog.apps.find(item => item.app === entry.slug);
+				const installed = siteApps.installed.find(item => item.app === entry.slug);
+				const available = siteApps.available.find(item => item.app === entry.slug);
+				const plans = plansForApp(available?.plans, (installed as AppInstallOption | undefined)?.plans, app?.plans);
+				const plan = findPlan(plans, selectedApps[entry.slug] || '');
+				if (!app || !plan || !entry.ready) {
+					failure = { app: entry.title, message: 'سازگاری یا پلن یکی از انتخاب‌ها تغییر کرده است؛ فهرست را تازه‌سازی کن.' };
+					break;
+				}
+				if (installed && (!installed.subscription?.name || installed.subscription.plan === plan.name)) {
+					completedSlugs.push(entry.slug);
+					alreadyActive += 1;
+					continue;
+				}
+				try {
+					if (installed?.subscription?.name) {
+						await changeMarketplacePlan(installed.subscription.name, plan.name);
+						plansChanged += 1;
+					} else {
+						const appOwner = available?.team || app.team;
+						const job = await installMarketplaceApp(selectedSite, app.app, appOwner === teamName ? undefined : plan.name);
+						if (job) {
+							const pending = { site: selectedSite, job, app: app.app, title: app.title, status: 'Pending' };
+							updatePendingJobs(current => [...current.filter(item => item.job !== job), pending]);
+							installationsStarted += 1;
+						} else alreadyActive += 1;
+					}
+					completedSlugs.push(entry.slug);
+				} catch (caught) {
+					failure = { app: app.title, message: messageOf(caught) };
+					break;
+				}
+			}
+		} finally {
+			setCheckoutBusy(false);
+			setBusyApp('');
+		}
+
+		if (completedSlugs.length) setSelectedApps(current => Object.fromEntries(Object.entries(current).filter(([slug]) => !completedSlugs.includes(slug))));
+		if (failure) {
+			setError(`${failure.message} مورد مشکل‌دار: ${failure.app}. انتخاب‌های ثبت‌نشده در فهرست باقی ماندند.`);
+			setNeedsCreditTopUp(canManageBilling && /credit|balance|fund|اعتبار|مانده|پرداخت/i.test(failure.message));
+			setStatusMessage(completedSlugs.length ? `${new Intl.NumberFormat('fa-IR').format(completedSlugs.length)} مورد ثبت یا فعال بود؛ موارد بعد از خطا ثبت نشدند.` : 'هیچ موردی از انتخاب‌ها ثبت نشد.');
+		} else {
+			setStatusMessage(`${new Intl.NumberFormat('fa-IR').format(installationsStarted)} نصب ثبت شد، ${new Intl.NumberFormat('fa-IR').format(plansChanged)} پلن به‌روزرسانی شد و ${new Intl.NumberFormat('fa-IR').format(alreadyActive)} مورد از قبل فعال بود. وضعیت نصب را در همین صفحه یا خریدها ببین.`);
+		}
+		if (completedSlugs.length) {
+			onRefresh();
+			void reloadSiteApps();
+		}
 	}
 
 	function showActionError(caught: unknown) {
@@ -333,7 +516,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 			{loadingCatalog || loadingSiteApps ? <div className="customer-portal-inline-state" role="status">در حال بارگذاری کاتالوگ و سازگاری سایت…</div> : null}
 			{error && <div className="customer-portal-inline-error" role="alert"><span>{error}</span><div>{needsCreditTopUp && <button type="button" onClick={onOpenBilling}>افزایش اعتبار</button>}{billingSupportContext && <button type="button" onClick={() => onRequestBillingSupport('بررسی دورهٔ پرداخت اشتراک', billingSupportContext)}>درخواست بررسی دوره</button>}<button type="button" onClick={() => { setError(''); setNeedsCreditTopUp(false); setBillingSupportContext(''); void reloadSiteApps(); }}>تلاش دوباره</button></div></div>}
 			{statusMessage && <div className={`customer-portal-inline-status${failedInstall ? ' customer-portal-inline-status--action' : ''}`} role="status"><span>{statusMessage}</span>{failedInstall && <button type="button" onClick={() => onRequestSupport(`پیگیری نصب ${failedInstall.title}`, `نصب ماژول «${failedInstall.title}» برای سایت ${sites.find(site => site.name === failedInstall.site)?.label || failedInstall.site} با وضعیت «${installStatusLabel(failedInstall.status)}» کامل نشده است. لطفاً علت را بررسی و راهنمایی کنید.`, failedInstall.site)}>درخواست پشتیبانی نصب</button>}</div>}
-			{pendingJob?.site === selectedSite && <div className="customer-portal-install-progress" role="status"><span className="customer-portal-spinner" aria-hidden="true" /><div><strong>در حال نصب {pendingJob.title}</strong><p>پس از آماده‌شدن، نتیجه به‌صورت خودکار به‌روز می‌شود.</p></div></div>}
+			{activePendingJobs.map(job => <div className="customer-portal-install-progress" role="status" key={job.job}><span className="customer-portal-spinner" aria-hidden="true" /><div><strong>در حال آماده‌سازی {job.title}</strong><p>{installStatusLabel(job.status)} · نتیجه به‌صورت خودکار به‌روز می‌شود.</p></div></div>)}
 			<div className="customer-portal-module-grid">
 				{visibleModules.map(module => {
 					const mode = modeForModule(module.id);
@@ -341,6 +524,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 					const prerequisiteTitles = modulePrerequisites[module.id]
 						.map(id => productModules.find(item => item.id === id)?.title)
 						.filter((title): title is string => Boolean(title));
+					const missingDependencies = missingPrerequisiteTitles(module.id);
 					const app = appForModule(module.id);
 					const available = app ? siteApps.available.find(item => item.app === app.app) : undefined;
 					const installed = app ? siteApps.installed.find(item => item.app === app.app) : undefined;
@@ -352,6 +536,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 						<div className="customer-portal-module-card-head"><div><span className="customer-portal-module-icon" aria-hidden="true">{module.shortTitle.slice(0, 1)}</span><div><h3>{module.title}</h3><p>{module.description}</p></div></div><StatusPill label={installed ? 'فعال روی سایت' : mode === 'Included' ? 'شامل امکانات پایه' : mode === 'Marketplace app' ? 'افزونهٔ قابل خرید' : 'درخواست خرید'} status={installed ? 'Active' : mode === 'Included' ? 'Free' : 'Pending'} /></div>
 						<ul className="customer-portal-module-features">{module.features.map(feature => <li key={feature}>{feature}</li>)}</ul>
 						{(prerequisiteTitles.length > 0 || mapping?.description) && <div className="customer-portal-compatibility-note"><strong>پیش‌نیاز و سازگاری</strong><p>{[prerequisiteTitles.length ? `نیازمند: ${prerequisiteTitles.join('، ')}` : '', mapping?.description].filter(Boolean).join(' · ')}</p></div>}
+						{missingDependencies.length > 0 && <p className="customer-portal-card-hint">برای ثبت این ماژول، ابتدا این پیش‌نیازها را به انتخاب‌ها اضافه کن: {missingDependencies.join('، ')}.</p>}
 						{mode === 'Included' ? <div className="customer-portal-free-note">شامل امکانات پایهٔ آسومی است و هزینهٔ جداگانهٔ افزونه ندارد؛ هزینهٔ میزبانی یا پلن سایت جداست.</div>
 							: mode === 'Marketplace app' && app ? <>
 								<div className="customer-portal-linked-app">متصل به: <strong>{app.title}</strong>{installed && <span> · روی سایت نصب است</span>}</div>
@@ -362,9 +547,9 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 								{canBrowseCatalog && plan?.features?.length ? <PlanFeatures features={plan.features} /> : null}
 								{!selectedSite ? <p className="customer-portal-card-hint">برای نصب، ابتدا سایت مقصد را انتخاب کن.</p> : siteStatus !== 'Active' ? <p className="customer-portal-card-hint">بعد از فعال‌شدن سایت، امکان بررسی و نصب افزونه نمایش داده می‌شود.</p> : !available && !installed && !loadingSiteApps ? <p className="customer-portal-card-hint">این افزونه برای نسخه یا محیط سایت انتخاب‌شده در دسترس نیست.</p> : null}
 								{canBrowseCatalog && <div className="customer-portal-card-actions">
-									<button type="button" className="customer-portal-secondary-button" aria-pressed={Boolean(selectedApps[app.app])} onClick={() => toggleEstimate(app, plans)}>{selectedApps[app.app] ? 'حذف از برآورد' : 'افزودن به برآورد'}</button>
+									<button type="button" className="customer-portal-secondary-button" aria-pressed={Boolean(selectedApps[app.app])} onClick={() => toggleEstimate(app, plans, module.id)}>{selectedApps[app.app] ? 'حذف از برآورد' : 'افزودن به برآورد'}</button>
 									{missingCurrencyPrice && <button type="button" className="customer-portal-secondary-button" onClick={() => onRequestBillingSupport('استعلام تعرفهٔ افزونه', `تعرفهٔ پلن «${plan?.title}» برای افزونهٔ «${app.title}» با ارز ${currency} ثبت نشده است؛ لطفاً مبلغ و روش خرید را اعلام کنید.`)}>استعلام تعرفه</button>}
-									<button type="button" className="customer-portal-primary-button" disabled={!canManageBilling || Boolean(busyApp) || Boolean(pendingJob && !isTerminalJob(pendingJob.status)) || missingCurrencyPrice || (!installed && (!available || siteStatus !== 'Active')) || Boolean(installed && (!installed.subscription?.name || !plan || installed.subscription.plan === plan.name))} onClick={() => void activateApp(app, plan)}>{!canManageBilling ? 'فقط مدیر مالی می‌تواند ثبت کند' : busyApp === app.app ? 'در حال ثبت…' : installed?.subscription?.name && plan && installed.subscription.plan !== plan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
+									<button type="button" className="customer-portal-primary-button" disabled={!canManageBilling || Boolean(busyApp) || activePendingJobs.length > 0 || missingDependencies.length > 0 || missingCurrencyPrice || (!installed && (!available || siteStatus !== 'Active')) || Boolean(installed && (!installed.subscription?.name || !plan || installed.subscription.plan === plan.name))} onClick={() => void activateApp(app, plan)}>{!canManageBilling ? 'فقط مدیر مالی می‌تواند ثبت کند' : busyApp === app.app || checkoutBusy ? 'در حال ثبت…' : installed?.subscription?.name && plan && installed.subscription.plan !== plan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
 								</div>}
 							</> : mode === 'Marketplace app' ? <><p className="customer-portal-card-hint">این ماژول به افزونهٔ منتشرشدهٔ قابل نمایش در کاتالوگ متصل نیست؛ برای بررسی، درخواست بفرست.</p><div className="customer-portal-card-actions"><button type="button" className="customer-portal-secondary-button" onClick={() => onRequestPurchase([module.id])}>درخواست بررسی اتصال</button></div></>
 							: <div className="customer-portal-card-actions"><button type="button" className="customer-portal-secondary-button" onClick={() => onRequestPurchase([module.id])}>درخواست خرید این ماژول</button></div>}
@@ -392,16 +577,13 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 					{canBrowseCatalog && <div className="customer-portal-card-actions">
 						<button type="button" className="customer-portal-secondary-button" aria-pressed={Boolean(selectedApps[app.app])} onClick={() => toggleEstimate(app, plans)}>{selectedApps[app.app] ? 'حذف از برآورد' : 'افزودن به برآورد'}</button>
 						{missingCurrencyPrice && <button type="button" className="customer-portal-secondary-button" onClick={() => onRequestBillingSupport('استعلام تعرفهٔ افزونه', `تعرفهٔ پلن «${selectedPlan?.title}» برای افزونهٔ «${app.title}» با ارز ${currency} ثبت نشده است؛ لطفاً مبلغ و روش خرید را اعلام کنید.`)}>استعلام تعرفه</button>}
-						<button type="button" className="customer-portal-primary-button" disabled={!canManageBilling || Boolean(busyApp) || Boolean(pendingJob && !isTerminalJob(pendingJob.status)) || missingCurrencyPrice || (installed ? (!installed.subscription?.name || !selectedPlan || installed.subscription.plan === selectedPlan.name) : (!available || siteStatus !== 'Active'))} onClick={() => void activateApp(app, selectedPlan)}>{!canManageBilling ? 'فقط مدیر مالی می‌تواند ثبت کند' : installed?.subscription?.name && selectedPlan && installed.subscription.plan !== selectedPlan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
+						<button type="button" className="customer-portal-primary-button" disabled={!canManageBilling || Boolean(busyApp) || activePendingJobs.length > 0 || missingCurrencyPrice || (installed ? (!installed.subscription?.name || !selectedPlan || installed.subscription.plan === selectedPlan.name) : (!available || siteStatus !== 'Active'))} onClick={() => void activateApp(app, selectedPlan)}>{!canManageBilling ? 'فقط مدیر مالی می‌تواند ثبت کند' : installed?.subscription?.name && selectedPlan && installed.subscription.plan !== selectedPlan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
 					</div>}
 				</article>;
 			})}</div> : <div className="customer-portal-inline-state">افزونه‌ای مطابق جست‌وجوی تو پیدا نشد.</div>}
 		</section>}
 
-		{canBrowseCatalog && <aside className="customer-portal-estimate">
-			<div><span>برآورد پلن‌های افزونه</span>{Object.keys(selectedTotals).length ? <div className="customer-portal-estimate-totals">{Object.entries(selectedTotals).map(([period, total]) => <strong key={period}>{formatPrice(total, currency)} <small>/ {planPeriodLabel(period)}</small></strong>)}</div> : <strong>ماژولی انتخاب نشده</strong>}<p>{Object.keys(selectedApps).length} انتخاب · {selectedUnpriced} مورد بدون قیمت قابل‌محاسبه</p></div>
-			<p>این جمع نرخ مبنا را نشان می‌دهد. در پلن‌های روزشمار، مبلغ صورتحساب بر اساس روزهای فعال محاسبه می‌شود؛ میزبانی سایت و هزینه‌های احتمالی جداست.</p>
-		</aside>}
+		{canBrowseCatalog && <SelectionCheckout entries={checkoutEntries} totals={selectedTotals} currency={currency} unpricedCount={selectedUnpriced} unavailableCount={unavailableSelectionCount} canManageBilling={canManageBilling} canCheckout={canCheckout} busy={checkoutBusy || busyApp === 'checkout'} pendingCount={activePendingJobs.length} onClear={() => setSelectedApps({})} onCheckout={() => void activateSelectedApps()} />}
 	</div>;
 }
 
@@ -473,11 +655,15 @@ function installStatusLabel(status: string) {
 	return { Pending: 'در صف آماده‌سازی', Running: 'در حال آماده‌سازی', Failure: 'کامل نشد', 'Delivery Failure': 'در انتظار تکمیل اتصال' }[status] || 'نیازمند پیگیری';
 }
 
-function readPendingJob(): PendingJob | null {
+function readPendingJobs(teamName: string): PendingJob[] {
 	try {
-		const value = JSON.parse(window.localStorage.getItem('asumi-pending-install') || 'null') as PendingJob | null;
-		return value && value.site && value.job ? value : null;
-	} catch { return null; }
+		const key = `asumi-pending-install:${teamName}`;
+		const stored = window.localStorage.getItem(key);
+		const value = JSON.parse(stored || window.localStorage.getItem('asumi-pending-install') || 'null') as PendingJob | PendingJob[] | null;
+		const jobs = (Array.isArray(value) ? value : value ? [value] : []).filter(job => job.site && job.job && !isTerminalJob(job.status));
+		if (!stored && jobs.length) persistPendingJobs(teamName, jobs);
+		return jobs;
+	} catch { return []; }
 }
 
 function readSelectedPlans(teamName: string) {
@@ -487,8 +673,13 @@ function readSelectedPlans(teamName: string) {
 	} catch { return {}; }
 }
 
-function persistPendingJob(job: PendingJob) {
-	window.localStorage.setItem('asumi-pending-install', JSON.stringify(job));
+function persistPendingJobs(teamName: string, jobs: PendingJob[]) {
+	try {
+		const key = `asumi-pending-install:${teamName}`;
+		if (jobs.length) window.localStorage.setItem(key, JSON.stringify(jobs));
+		else window.localStorage.removeItem(key);
+		window.localStorage.removeItem('asumi-pending-install');
+	} catch { /* The server-side installation history remains authoritative. */ }
 }
 
 function messageOf(error: unknown) {

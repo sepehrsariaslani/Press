@@ -80,10 +80,23 @@ def dashboard():
 	sites = frappe.get_all(
 		"Site",
 		filters={"team": team.name},
-		fields=["name", "host_name", "status"],
+		fields=["name", "host_name", "status", "plan"],
 		order_by="creation desc",
 	)
 	sites_by_name = {site.name: site for site in sites}
+	site_plan_names = list({site.plan for site in sites if site.plan})
+	site_plans = (
+		{
+			plan.name: plan
+			for plan in frappe.get_all(
+				"Site Plan",
+				filters={"name": ("in", site_plan_names)},
+				fields=["name", "plan_title", "price_inr", "price_usd", "interval"],
+			)
+		}
+		if site_plan_names
+		else {}
+	)
 
 	subscriptions = frappe.get_all(
 		"Subscription",
@@ -215,7 +228,8 @@ def dashboard():
 			"title": team.team_title or team.name,
 			"currency": team.currency,
 		},
-		"sites": [serialize_site(site) for site in sites],
+		"sites": [serialize_site(site, site_plans.get(site.plan), team.currency) for site in sites],
+		"included_module_ids": [mapping.module_id for mapping in _catalog_mappings() if mapping.mode == "Included"],
 		"subscriptions": serialized_subscriptions,
 		"can_manage_billing": can_manage_billing(team),
 		"can_manage_apps": can_manage_apps(team),
@@ -254,11 +268,17 @@ def _pending_marketplace_invoice_lines(team: str, sites_by_name: dict) -> dict:
 	return pending
 
 
-def serialize_site(site):
+def serialize_site(site, plan=None, currency=None):
+	plan_price = None
+	if plan:
+		plan_price = plan.price_inr if currency == "INR" else plan.price_usd if currency == "USD" else None
 	return {
 		"name": site.name,
 		"label": site.host_name or site.name,
 		"status": site.status,
+		"plan_title": plan.plan_title if plan else None,
+		"plan_price": plan_price,
+		"plan_interval": plan.interval if plan else None,
 	}
 
 

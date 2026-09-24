@@ -26,7 +26,7 @@
 .customer-portal-refresh:disabled { opacity: .55; cursor: progress; }
 .customer-portal-tabs { display: flex; gap: 7px; margin: 18px 0; border-bottom: 1px solid var(--portal-line); }
 .customer-portal-tabs button { min-height: 44px; border: 0; border-bottom: 2px solid transparent; padding: 0 13px; background: transparent; color: var(--portal-muted); font: inherit; font-size: 11px; cursor: pointer; }
-.customer-portal-tabs button[aria-selected='true'] { border-bottom-color: var(--portal-red); color: var(--portal-red); font-weight: 650; }
+.customer-portal-tabs button[aria-current='page'] { border-bottom-color: var(--portal-red); color: var(--portal-red); font-weight: 650; }
 .customer-portal-team-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 14px; }
 .customer-portal-team-line > div { display: flex; align-items: center; gap: 10px; }
 .customer-portal-team-line > div span, .customer-portal-team-line small { color: var(--portal-muted); font-size: 10px; }
@@ -42,6 +42,10 @@
 .customer-portal-upcoming-invoice strong { color: var(--portal-red); font-size: 16px; }
 .customer-portal-upcoming-invoice button, .customer-portal-inline-status--action button { min-height: 40px; border: 1px solid var(--portal-line); padding: 0 11px; background: #fffefa; color: var(--portal-red); font: inherit; font-size: 10px; cursor: pointer; }
 .customer-portal-content-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; gap: 13px; margin-top: 14px; }
+.customer-portal-included-panel { margin-top: 14px; }
+.customer-portal-included-tags { margin-top: 10px; }
+.customer-portal--admin .customer-portal-heading { min-height: 170px; }
+.customer-portal--admin .customer-portal-inner { padding-bottom: 72px; }
 .customer-portal-panel { min-width: 0; padding: 17px; border: 1px solid var(--portal-line); background: var(--portal-card); }
 .customer-portal-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .customer-portal-panel-heading > div > p { margin: 0 0 3px; color: var(--portal-red); font-size: 9px; font-weight: 650; }
@@ -53,6 +57,7 @@
 .customer-portal-site > div { display: grid; gap: 2px; min-width: 0; }
 .customer-portal-site strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .customer-portal-site small { color: #8b837a; direction: ltr; font-size: 8px; text-align: right; }
+.customer-portal-site .customer-portal-site-plan { color: var(--portal-muted); direction: rtl; font-size: 8px; text-align: right; }
 .customer-portal-status { display: inline-flex; min-height: 25px; flex: 0 0 auto; align-items: center; padding: 0 8px; border: 1px solid #c9d8c9; background: #f0f6ef; color: #376347; font-size: 9px; }
 .customer-portal-status[data-status='suspended'], .customer-portal-status[data-status='disabled'] { border-color: #e4c8c4; background: #fff4f1; color: #992e33; }
 .customer-portal-status[data-status='inactive'] { border-color: #ddd5cb; background: #f6f3ee; color: #7b7167; }
@@ -94,7 +99,6 @@
 .customer-portal-state--error { color: var(--portal-muted); }
 .customer-portal-subscriptions { margin-top: 20px; }
 
-.customer-portal-tabs button[aria-current='page'] { border-bottom-color: var(--portal-red); color: var(--portal-red); font-weight: 700; }
 .customer-portal-tabs .customer-portal-admin-tab { margin-inline-start: auto; color: #65518b; }
 .customer-portal-tabs .customer-portal-admin-tab[aria-current='page'] { border-bottom-color: #65518b; color: #65518b; }
 .customer-portal-site-switcher { display: flex; align-items: center; gap: 8px; }
@@ -144,8 +148,9 @@
 .customer-portal-marketplace-card { grid-template-columns: minmax(0, 1fr) minmax(180px, .55fr) auto; align-items: center; }
 .customer-portal-marketplace-copy small { display: block; margin-top: 5px; color: #8b837a; font-size: 8px; }
 .customer-portal-marketplace-card .customer-portal-card-actions { flex-wrap: nowrap; }
-.customer-portal-estimate { position: sticky; bottom: 8px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 17px; border: 1px solid #e3d8c8; border-right: 2px solid var(--portal-red); background: #f5f1e9; box-shadow: 0 4px 16px #382d2214; }
+.customer-portal-estimate { position: sticky; bottom: 8px; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding: 15px 17px; border: 1px solid #e3d8c8; border-right: 2px solid var(--portal-red); background: #f5f1e9; box-shadow: 0 4px 16px #382d2214; }
 .customer-portal-estimate > div { display: grid; gap: 3px; }
+.customer-portal-estimate-main { min-width: 170px; }
 .customer-portal-estimate > div > span, .customer-portal-estimate > p { color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
 .customer-portal-estimate > div > strong { color: var(--portal-red); font-size: 18px; }
 .customer-portal-estimate > div > strong small { color: var(--portal-muted); font-size: 9px; font-weight: 400; }
@@ -153,6 +158,18 @@
 .customer-portal-estimate-totals strong { color: var(--portal-red); font-size: 18px; }
 .customer-portal-estimate > div > p { margin: 0; color: var(--portal-muted); font-size: 8px; }
 .customer-portal-estimate > p { max-width: 430px; margin: 0; }
+.customer-portal-estimate-details { min-width: 220px; flex: 1; }
+.customer-portal-estimate-details summary { color: var(--portal-red); font-size: 9px; cursor: pointer; }
+.customer-portal-estimate-details ul { display: grid; max-height: 150px; gap: 4px; overflow-y: auto; margin: 7px 0 0; padding: 0 13px 0 0; }
+.customer-portal-estimate-details li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 8px; }
+.customer-portal-estimate-details li > span { display: grid; gap: 2px; }
+.customer-portal-estimate-details li strong { font-size: 9px; }
+.customer-portal-estimate-details li small { color: var(--portal-muted); font-size: 8px; }
+.customer-portal-estimate-details li[data-ready='false'] { color: #976f2d; }
+.customer-portal-estimate-actions { display: grid; min-width: 190px; gap: 5px; justify-items: stretch; }
+.customer-portal-estimate-actions .customer-portal-primary-button { min-height: 40px; }
+.customer-portal-estimate-actions .customer-portal-text-button { min-height: 30px; }
+.customer-portal-estimate-note { flex-basis: 100%; max-width: none !important; }
 .customer-portal-inline-state, .customer-portal-inline-error, .customer-portal-inline-status { margin: 8px 0; padding: 11px 12px; background: #f7f4ee; color: var(--portal-muted); font-size: 9px; line-height: 1.8; }
 .customer-portal-inline-error { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-right: 2px solid #a92532; background: #fff4f1; color: #8b3033; }
 .customer-portal-inline-error button { min-height: 34px; border: 1px solid #d8b1ae; padding: 0 10px; background: white; color: #8b3033; font: inherit; font-size: 9px; cursor: pointer; }
@@ -286,7 +303,8 @@
 	.customer-portal-site-switcher select { width: 100%; }
 	.customer-portal-filter-row, .customer-portal-module-grid, .customer-portal-billing-summary, .customer-portal-form-columns, .customer-portal-admin-form { grid-template-columns: 1fr; }
 	.customer-portal-module-features { grid-template-columns: 1fr; }
-	.customer-portal-estimate { align-items: flex-start; flex-direction: column; }
+	.customer-portal-estimate { align-items: stretch; flex-direction: column; }
+	.customer-portal-estimate-main, .customer-portal-estimate-details, .customer-portal-estimate-actions { width: 100%; min-width: 0; }
 	.customer-portal-invoice { grid-template-columns: minmax(0, 1fr) auto; }
 	.customer-portal-invoice-total { grid-column: 1; }
 	.customer-portal-invoice > .customer-portal-status { grid-column: 2; grid-row: 1; }

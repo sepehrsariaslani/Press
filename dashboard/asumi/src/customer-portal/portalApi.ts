@@ -2,6 +2,9 @@ export type PortalSite = {
 	name: string;
 	label: string;
 	status: string;
+	plan_title: string | null;
+	plan_price: number | null;
+	plan_interval: string | null;
 };
 
 export type PortalPlan = {
@@ -75,6 +78,7 @@ export type SupportRequest = {
 export type CustomerPortalData = {
 	team: { name: string; title: string; currency: string };
 	sites: PortalSite[];
+	included_module_ids: string[];
 	subscriptions: PortalSubscription[];
 	can_manage_catalog: boolean;
 	can_manage_support: boolean;

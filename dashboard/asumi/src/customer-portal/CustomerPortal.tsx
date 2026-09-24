@@ -7,6 +7,7 @@ import { PortalAdmin } from './PortalAdmin';
 import { PurchasesView } from './PurchasesView';
 import { SupportView } from './SupportView';
 import { TeamView } from './TeamView';
+import { productModules } from '../product/modules';
 import { getCustomerPortalData, getUpcomingInvoice, type CustomerPortalData, type Invoice, type PortalSite, type PortalSubscription } from './portalApi';
 import './customer-portal.css';
 
@@ -155,20 +156,21 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 
 	const selectedSiteData = data?.sites.find(site => site.name === selectedSite) || null;
 	const canSeeAdmin = Boolean(data?.can_manage_catalog || data?.can_manage_support);
+	const isAdminView = view === 'admin' && canSeeAdmin;
 
-	return <main className="customer-portal" dir="rtl" aria-labelledby="customer-portal-title">
-		<SiteHeader variant="paper" onReturnToModules={onReturnToModules} showSiteNavigation={false} showEntryLink={false} actions={<span className="customer-portal-header-label">پنل مشتری آسومی</span>} />
+	return <main className={`customer-portal${isAdminView ? ' customer-portal--admin' : ''}`} dir="rtl" aria-labelledby="customer-portal-title">
+		<SiteHeader variant="paper" onReturnToModules={onReturnToModules} showSiteNavigation={false} showEntryLink={false} actions={<span className="customer-portal-header-label">{isAdminView ? 'مدیریت پلتفرم آسومی' : 'پنل مشتری آسومی'}</span>} />
 		<div className="customer-portal-inner">
 			<nav className="customer-portal-breadcrumb" aria-label="مسیر صفحه">
-				<button type="button" onClick={onReturnToModules}>معرفی آسومی</button><span aria-hidden="true">/</span><span aria-current="page">پنل مشتری</span>
+				{isAdminView ? <><button type="button" onClick={() => setView('overview')}>پنل مشتری</button><span aria-hidden="true">/</span><span aria-current="page">مدیریت پلتفرم</span></> : <><button type="button" onClick={onReturnToModules}>معرفی آسومی</button><span aria-hidden="true">/</span><span aria-current="page">پنل مشتری</span></>}
 			</nav>
 
 			<header className="customer-portal-heading">
-				<div><p className="customer-portal-eyebrow"><span aria-hidden="true" />فضای اختصاصی مشتری</p><h1 id="customer-portal-title">خدمات آسومی، <span>روشن و در دسترس.</span></h1><p>سایت، ماژول، اشتراک، فاکتور و دسترسی تیم را از همین‌جا مدیریت کن.</p></div>
-				<button className="customer-portal-refresh" type="button" onClick={() => void refreshPortal()} disabled={loading}>{loading ? 'در حال به‌روزرسانی…' : 'به‌روزرسانی وضعیت'}</button>
+				<div><p className="customer-portal-eyebrow"><span aria-hidden="true" />{isAdminView ? 'فضای داخلی تیم آسومی' : 'فضای اختصاصی مشتری'}</p><h1 id="customer-portal-title">{isAdminView ? <>مدیریت کاتالوگ، <span>پشتیبانی و دسترسی‌ها.</span></> : <>خدمات آسومی، <span>روشن و در دسترس.</span></>}</h1><p>{isAdminView ? 'ابزارهای مدیریتی و صف درخواست‌های مشتریان را در محیط داخلی خودت اداره کن.' : 'سایت، ماژول، اشتراک، فاکتور و دسترسی تیم را از همین‌جا مدیریت کن.'}</p></div>
+				{isAdminView ? <button className="customer-portal-refresh" type="button" onClick={() => setView('overview')}>بازگشت به پنل مشتری</button> : <button className="customer-portal-refresh" type="button" onClick={() => void refreshPortal()} disabled={loading}>{loading ? 'در حال به‌روزرسانی…' : 'به‌روزرسانی وضعیت'}</button>}
 			</header>
 
-			{!error && <nav className="customer-portal-tabs" aria-label="بخش‌های پنل">
+			{!error && !isAdminView && <nav className="customer-portal-tabs" aria-label="بخش‌های پنل">
 				{(['overview', 'modules', 'purchases', ...(data?.can_manage_billing ? ['billing' as const] : []), 'team', 'support'] as PortalView[]).map(item => <button key={item} type="button" aria-current={view === item ? 'page' : undefined} onClick={() => { if (item === 'support' && view !== 'support') setIntent({ moduleIds: [], context: '' }); setView(item); }}>{viewLabels[item]}</button>)}
 				{canSeeAdmin && <button className="customer-portal-admin-tab" type="button" aria-current={view === 'admin' ? 'page' : undefined} onClick={() => setView('admin')}>مدیریت آسومی</button>}
 			</nav>}
@@ -176,14 +178,14 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 			{error ? <section className="customer-portal-state customer-portal-state--error" role="alert"><h2>برای دیدن خدماتت وارد حساب آسومی شو</h2><p>{error}</p><div className="customer-portal-state-actions"><a className="customer-portal-primary" href="/hesab">ورود به حساب</a><button type="button" onClick={() => void refreshPortal()}>تلاش دوباره</button></div></section>
 				: loading && !data ? <section className="customer-portal-state" aria-live="polite">در حال دریافت اطلاعات سرویس‌ها…</section>
 				: data ? <>
-					<div className="customer-portal-team-line">
+					{!isAdminView && <div className="customer-portal-team-line">
 						<div><span>فضای کاری</span><strong>{data.team?.title || 'حساب آسومی'}</strong></div>
 						<div className="customer-portal-site-switcher"><label htmlFor="portal-current-site">سایت فعال</label><select id="portal-current-site" value={selectedSite} onChange={event => selectSite(event.target.value)}><option value="">انتخاب سایت</option>{data.sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatus[site.status] || site.status}</option>)}</select></div>
 						{updatedAt && <small>آخرین بررسی: {formatDateTime(updatedAt)}</small>}
-					</div>
+					</div>}
 					{view === 'overview' && <Overview data={data} activeSubscriptionCount={activeSubscriptionCount} inactiveSubscriptionCount={inactiveSubscriptionCount} canManageBilling={data.can_manage_billing} upcomingInvoice={upcomingInvoice} upcomingInvoiceLoaded={upcomingInvoiceLoaded} onOpenView={setView} />}
 					{view === 'modules' && <ModuleStore currency={data.team.currency} teamName={data.team.name} sites={data.sites} selectedSite={selectedSite} siteStatus={selectedSiteData?.status || null} initialModuleIds={intent.moduleIds} canManageApps={data.can_manage_apps} canManageBilling={data.can_manage_billing} onSelectSite={selectSite} onRequestPurchase={moduleIds => { setIntent({ moduleIds, context: '' }); setView('support'); }} onRequestSupport={(subject, context, site) => openSupportRequest('Technical', subject, context, site)} onRequestBillingSupport={(subject, context) => openSupportRequest('Billing', subject, context, selectedSite || undefined)} onOpenBilling={() => setView('billing')} onRefresh={refreshPortalFromChild} />}
-					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onOpenBilling={() => setView('billing')} onRequestInstallationSupport={(site, siteLabel, app, status) => openSupportRequest('Technical', `پیگیری نصب ${app}`, `نصب ماژول «${app}» برای سایت ${siteLabel} با وضعیت «${status}» کامل نشده است. لطفاً علت را بررسی و راهنمایی کنید.`, site)} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
+					{view === 'purchases' && <PurchasesView subscriptions={data.subscriptions} sites={data.sites} canManageBilling={data.can_manage_billing} onOpenModules={() => setView('modules')} onOpenBilling={() => setView('billing')} onRequestInstallationSupport={(site, siteLabel, app, status, attemptedAt) => openSupportRequest('Technical', `پیگیری نصب ${app}`, `نصب ماژول «${app}» برای سایت ${siteLabel} با وضعیت «${status}» کامل نشده است. زمان ثبت این تلاش: ${formatDateTime(new Date(attemptedAt))}. لطفاً علت را بررسی و راهنمایی کنید.`, site)} onRequestCancellation={requestCancellation} onRequestPeriodReview={requestPeriodReview} onRefresh={refreshPortalFromChild} />}
 					{view === 'billing' && data.can_manage_billing && <BillingView currency={data.team.currency} onAskSupport={askBillingSupport} />}
 					{view === 'team' && <TeamView />}
 					{view === 'support' && <SupportView key={`${intent.moduleIds.join(',')}:${intent.category || ''}:${intent.subject || ''}:${intent.site || ''}:${intent.context}`} sites={data.sites} selectedSite={selectedSite} initialPurchaseModuleIds={intent.moduleIds} initialContext={intent.context} initialCategory={intent.category} initialSubject={intent.subject} initialSite={intent.site} />}
@@ -218,13 +220,18 @@ function Overview({ data, activeSubscriptionCount, inactiveSubscriptionCount, ca
 
 		<div className="customer-portal-content-grid">
 			<section className="customer-portal-panel" aria-labelledby="portal-sites-title"><div className="customer-portal-panel-heading"><div><p>سرویس‌های میزبانی</p><h2 id="portal-sites-title">سایت‌های تو</h2></div><button type="button" onClick={() => onOpenView('modules')}>مدیریت ماژول‌ها</button></div>
-				{data.sites.length ? <div className="customer-portal-site-list">{data.sites.slice(0, 5).map(site => <article className="customer-portal-site" key={site.name}><div><strong>{site.label}</strong><small>{site.name}</small></div><StatusPill status={site.status} label={siteStatus[site.status] || 'در حال آماده‌سازی'} /></article>)}</div> : <EmptyState title="هنوز سایتی متصل نیست" description="بعد از ثبت سایت، وضعیت میزبانی‌اش را همین‌جا می‌بینی." />}
+				{data.sites.length ? <div className="customer-portal-site-list">{data.sites.slice(0, 5).map(site => <article className="customer-portal-site" key={site.name}><div><strong>{site.label}</strong><small>{site.name}</small><small className="customer-portal-site-plan">پلن سایت: {site.plan_title || 'ثبت نشده'}{site.plan_price !== null ? ` · ${formatCurrency(site.plan_price, data.team.currency)} / ${intervalName(site.plan_interval)}` : ''}</small></div><StatusPill status={site.status} label={siteStatus[site.status] || 'در حال آماده‌سازی'} /></article>)}</div> : <EmptyState title="هنوز سایتی متصل نیست" description="بعد از ثبت سایت، وضعیت میزبانی‌اش را همین‌جا می‌بینی." />}
 			</section>
 
 			<section className="customer-portal-panel" aria-labelledby="portal-modules-title"><div className="customer-portal-panel-heading"><div><p>اشتراک و دسترسی</p><h2 id="portal-modules-title">افزونه‌های متصل</h2></div><button type="button" onClick={() => onOpenView('purchases')}>مشاهده همه</button></div>
 				{activeSubscriptions.length ? <div className="customer-portal-subscription-preview">{activeSubscriptions.slice(0, 3).map(subscription => <SubscriptionCard key={subscription.name} subscription={subscription} />)}</div> : <EmptyState title="هنوز افزونه‌ای متصل نیست" description="ماژول‌ها را ببین و موارد سازگار با سایتت را انتخاب کن." actionLabel="دیدن ماژول‌ها" onAction={() => onOpenView('modules')} />}
 			</section>
 		</div>
+
+		<section className="customer-portal-panel customer-portal-included-panel" aria-labelledby="portal-included-title">
+			<div className="customer-portal-panel-heading"><div><p>جزو امکانات پایه</p><h2 id="portal-included-title">ماژول‌های شامل حساب تو</h2></div><button type="button" onClick={() => onOpenView('modules')}>دیدن جزئیات</button></div>
+			{data.included_module_ids?.length ? <><p className="customer-portal-help-copy">این ماژول‌ها در تنظیمات فعلی آسومی برای حسابت شامل شده‌اند و اشتراک افزونهٔ جداگانه ندارند.</p><div className="customer-portal-module-tags customer-portal-included-tags">{productModules.filter(module => data.included_module_ids.includes(module.id)).map(module => <span key={module.id}>{module.title}</span>)}</div></> : <EmptyState title="امکانات پایه برای این حساب تعریف نشده‌اند" description="اگر انتظار داشتی ماژول‌هایی شامل حسابت باشند، از تیم آسومی بخواه تنظیمات پلن را بررسی کند." />}
+		</section>
 
 		<section className="customer-portal-quick-actions" aria-label="کارهای سریع"><div><p>از کجا شروع کنیم؟</p><h2>سرویس‌هایت را در چند قدم مدیریت کن</h2></div><button type="button" onClick={() => onOpenView('modules')}>نصب یا تغییر ماژول</button>{canManageBilling && <button type="button" onClick={() => onOpenView('billing')}>دیدن فاکتورها</button>}<button type="button" onClick={() => onOpenView('team')}>دعوت همکار</button><button type="button" onClick={() => onOpenView('modules')}>برآورد تعرفه</button></section>
 		<aside className="customer-portal-note"><div><strong>امکانات پایه و پلن‌های افزونه</strong><p>هزینهٔ میزبانی سایت جداست؛ مبلغ نهایی افزونهٔ خریداری‌شده در پلن و فاکتور حساب ثبت می‌شود.</p></div><button type="button" onClick={() => onOpenView('modules')}>دیدن ماژول‌ها و تعرفه‌ها</button></aside>
