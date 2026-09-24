@@ -200,7 +200,7 @@ export function CustomerPortal({ onReturnToModules }: CustomerPortalProps) {
 				{canSeeAdmin && <button className="customer-portal-admin-tab" type="button" aria-current={view === 'admin' ? 'page' : undefined} onClick={() => setView('admin')}>مدیریت آسومی</button>}
 			</nav>}
 
-			{error ? <section className="customer-portal-state customer-portal-state--error" role="alert"><h2>{loginRequired ? 'برای دیدن خدماتت وارد حساب آسومی شو' : 'اطلاعات پنل دریافت نشد'}</h2><p>{error}</p><div className="customer-portal-state-actions">{loginRequired && <a className="customer-portal-primary" href="/hesab">ورود به حساب آسومی</a>}<button type="button" onClick={() => void refreshPortal()}>تلاش دوباره</button></div></section>
+			{error ? <section className="customer-portal-state customer-portal-state--error" role="alert"><h2>{loginRequired ? 'برای دیدن خدماتت وارد حساب آسومی شو' : 'اطلاعات پنل دریافت نشد'}</h2><p>{error}</p><div className="customer-portal-state-actions">{loginRequired && <a className="customer-portal-primary" href="/login?redirect-to=%2Fasumi%23portal">ورود به حساب آسومی</a>}<button type="button" onClick={() => void refreshPortal()}>تلاش دوباره</button></div></section>
 				: loading && !data ? <section className="customer-portal-state" aria-live="polite">در حال دریافت اطلاعات سرویس‌ها…</section>
 				: data ? <>
 					{!isAdminView && <div className="customer-portal-team-line">
