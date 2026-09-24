@@ -592,8 +592,11 @@ def save_catalog_mapping(
 		frappe.throw("Choose a Marketplace app for this module.")
 	if mode == "Marketplace app" and marketplace_app and not frappe.db.exists("Marketplace App", marketplace_app):
 		frappe.throw("The selected Marketplace app does not exist.")
-	customer_description = (customer_description if customer_description is not None else description) or ""
-	customer_description = customer_description.strip()
+	# Keep accepting `description` for cached portal bundles; it remains internal.
+	description = (description or "").strip()
+	customer_description = (customer_description or "").strip()
+	if len(description) > 2000:
+		frappe.throw("Internal notes cannot exceed 2000 characters.")
 	if len(customer_description) > 2000:
 		frappe.throw("Compatibility notes cannot exceed 2000 characters.")
 	prerequisites = _parse_module_prerequisites(prerequisites)
