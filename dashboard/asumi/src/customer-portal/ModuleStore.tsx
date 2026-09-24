@@ -29,6 +29,7 @@ type Props = {
 	sites: PortalSite[];
 	selectedSite: string;
 	siteStatus: string | null;
+	canManageBilling: boolean;
 	onSelectSite: (site: string) => void;
 	onRequestPurchase: (moduleIds: string[]) => void;
 	onOpenPricing: () => void;
@@ -37,7 +38,7 @@ type Props = {
 
 type PendingJob = { site: string; job: string; app: string; title: string; status: string };
 
-export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, onSelectSite, onRequestPurchase, onOpenPricing, onRefresh }: Props) {
+export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatus, canManageBilling, onSelectSite, onRequestPurchase, onOpenPricing, onRefresh }: Props) {
 	const [catalog, setCatalog] = useState<{ apps: MarketplaceApp[]; mappings: ModuleMapping[] } | null>(null);
 	const [siteApps, setSiteApps] = useState<SiteAppState>({ installed: [], available: [] });
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -150,6 +151,10 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 
 	async function activateApp(app: MarketplaceApp, selectedPlan: PortalPlan | null) {
 		const slug = app.app;
+		if (!canManageBilling) {
+			setStatusMessage('برای ثبت خرید یا تغییر پلن، از مدیر مالی تیم بخواه این کار را انجام دهد.');
+			return;
+		}
 		const installed = siteApps.installed.find(item => item.app === slug);
 		const available = siteApps.available.find(item => item.app === slug);
 		if (!selectedSite) {
@@ -220,7 +225,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 				<div><p>کاتالوگ و خرید</p><h2 id="portal-store-title">ماژول‌ها و افزونه‌ها</h2></div>
 				<span>{selectedSite ? `سایت مقصد: ${sites.find(site => site.name === selectedSite)?.label || selectedSite}` : 'سایت مقصد انتخاب نشده'}</span>
 			</div>
-			<p className="customer-portal-help-copy">ماژول‌های پایهٔ ERPNext جدا از افزونه‌های قابل خرید نشان داده می‌شوند. قیمت افزونه‌ها از پلن‌های فعال حساب می‌آید و هزینهٔ میزبانی جداگانه است.</p>
+			<p className="customer-portal-help-copy">ماژول‌های پایهٔ ERPNext جدا از افزونه‌های قابل خرید نشان داده می‌شوند. قیمت افزونه‌ها از پلن‌های فعال حساب می‌آید و هزینهٔ میزبانی جداگانه است.{!canManageBilling ? ' برآورد برای همهٔ اعضا در دسترس است؛ ثبت خرید را مدیر مالی تیم انجام می‌دهد.' : ''}</p>
 			<div className="customer-portal-filter-row">
 				<label className="customer-portal-search"><span>جست‌وجو</span><input value={query} onChange={event => setQuery(event.target.value)} type="search" placeholder="نام ماژول یا افزونه" /></label>
 				<label className="customer-portal-search"><span>سایت مقصد</span><select value={selectedSite} onChange={event => onSelectSite(event.target.value)}><option value="">انتخاب سایت</option>{sites.map(site => <option key={site.name} value={site.name}>{site.label} · {siteStatusLabel(site.status)}</option>)}</select></label>
@@ -249,10 +254,10 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 								{!selectedSite ? <p className="customer-portal-card-hint">برای نصب، ابتدا سایت مقصد را انتخاب کن.</p> : !available && !installed ? <p className="customer-portal-card-hint">این افزونه در نسخهٔ فعلی سایت در دسترس نیست.</p> : null}
 								<div className="customer-portal-card-actions">
 									<button type="button" className="customer-portal-secondary-button" aria-pressed={Boolean(selectedApps[app.app])} onClick={() => toggleEstimate(app, plans)}>{selectedApps[app.app] ? 'حذف از برآورد' : 'افزودن به برآورد'}</button>
-									<button type="button" className="customer-portal-primary-button" disabled={Boolean(busyApp) || Boolean(pendingJob && !isTerminalJob(pendingJob.status)) || (!installed && (!available || siteStatus !== 'Active')) || Boolean(installed && (!installed.subscription?.name || !plan || installed.subscription.plan === plan.name))} onClick={() => void activateApp(app, plan)}>{busyApp === app.app ? 'در حال ثبت…' : installed?.subscription?.name && plan && installed.subscription.plan !== plan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
+									<button type="button" className="customer-portal-primary-button" disabled={!canManageBilling || Boolean(busyApp) || Boolean(pendingJob && !isTerminalJob(pendingJob.status)) || (!installed && (!available || siteStatus !== 'Active')) || Boolean(installed && (!installed.subscription?.name || !plan || installed.subscription.plan === plan.name))} onClick={() => void activateApp(app, plan)}>{!canManageBilling ? 'فقط مدیر مالی می‌تواند ثبت کند' : busyApp === app.app ? 'در حال ثبت…' : installed?.subscription?.name && plan && installed.subscription.plan !== plan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
 								</div>
 							</> : mode === 'Marketplace app' ? <><p className="customer-portal-card-hint">این ماژول به افزونهٔ منتشرشدهٔ قابل نمایش در کاتالوگ متصل نیست؛ برای بررسی، درخواست بفرست.</p><div className="customer-portal-card-actions"><button type="button" className="customer-portal-secondary-button" onClick={() => onRequestPurchase([module.id])}>درخواست بررسی اتصال</button></div></>
-								: <div className="customer-portal-card-actions"><button type="button" className="customer-portal-secondary-button" onClick={() => onRequestPurchase([module.id])}>درخواست خرید این ماژول</button></div>}
+							: <div className="customer-portal-card-actions"><button type="button" className="customer-portal-secondary-button" onClick={() => onRequestPurchase([module.id])}>درخواست خرید این ماژول</button></div>}
 					</article>;
 				})}
 			</div>
@@ -270,7 +275,7 @@ export function ModuleStore({ currency, teamName, sites, selectedSite, siteStatu
 						{plans.length ? <label className="customer-portal-plan-select"><span>پلن</span><select value={selectedPlan?.name || ''} onChange={event => { const next = event.target.value; setPlanChoices(current => ({ ...current, [app.app]: next })); setSelectedApps(current => current[app.app] ? { ...current, [app.app]: next } : current); }}>{plans.map(plan => <option key={plan.name} value={plan.name}>{plan.title} · {formatPrice(planPrice(plan, currency), currency)}</option>)}</select></label> : <span className="customer-portal-price">قیمت اعلام نشده</span>}
 					<div className="customer-portal-card-actions">
 						<button type="button" className="customer-portal-secondary-button" aria-pressed={Boolean(selectedApps[app.app])} onClick={() => toggleEstimate(app, plans)}>{selectedApps[app.app] ? 'حذف از برآورد' : 'افزودن به برآورد'}</button>
-						<button type="button" className="customer-portal-primary-button" disabled={Boolean(busyApp) || Boolean(pendingJob && !isTerminalJob(pendingJob.status)) || (installed ? (!installed.subscription?.name || !selectedPlan || installed.subscription.plan === selectedPlan.name) : (!available || siteStatus !== 'Active'))} onClick={() => void activateApp(app, selectedPlan)}>{installed?.subscription?.name && selectedPlan && installed.subscription.plan !== selectedPlan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
+						<button type="button" className="customer-portal-primary-button" disabled={!canManageBilling || Boolean(busyApp) || Boolean(pendingJob && !isTerminalJob(pendingJob.status)) || (installed ? (!installed.subscription?.name || !selectedPlan || installed.subscription.plan === selectedPlan.name) : (!available || siteStatus !== 'Active'))} onClick={() => void activateApp(app, selectedPlan)}>{!canManageBilling ? 'فقط مدیر مالی می‌تواند ثبت کند' : installed?.subscription?.name && selectedPlan && installed.subscription.plan !== selectedPlan.name ? 'تغییر پلن' : installed ? 'فعال روی سایت' : 'خرید و نصب'}</button>
 					</div>
 				</article>;
 			})}</div> : <div className="customer-portal-inline-state">افزونه‌ای مطابق جست‌وجوی تو پیدا نشد.</div>}
