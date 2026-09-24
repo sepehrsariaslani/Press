@@ -28,6 +28,10 @@ def _is_support_agent():
 	return bool({"System Manager", "Press Support Agent"}.intersection(frappe.get_roles()))
 
 
+def normalize_install_job_status(status: str | None) -> str:
+	return "Pending" if status == "Undelivered" else status or "Unknown"
+
+
 def _require_catalog_admin():
 	if not _is_catalog_admin():
 		frappe.throw("Not permitted to manage the Asumi catalog.", frappe.PermissionError)

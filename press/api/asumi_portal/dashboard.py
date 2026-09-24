@@ -14,6 +14,7 @@ from .common import (
 	_marketplace_plan_requires_billing,
 	_pending_marketplace_invoice_lines,
 	_customer_team_options,
+	normalize_install_job_status,
 	serialize_plan,
 	serialize_site,
 )
@@ -92,6 +93,7 @@ def dashboard():
 			if job_names
 			else {}
 		)
+		jobs = {name: normalize_install_job_status(status) for name, status in jobs.items()}
 		for activity in activities:
 			key = (activity.site, activity.reason)
 			if key not in latest_app_activity:

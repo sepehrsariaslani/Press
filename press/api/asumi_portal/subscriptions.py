@@ -10,6 +10,7 @@ from .common import (
 	_marketplace_plan_requires_billing,
 	_require_asumi_marketplace_app,
 	_validate_marketplace_plan_currency,
+	normalize_install_job_status,
 )
 
 
@@ -174,7 +175,7 @@ def installation_history(name: str):
 			"app_title": marketplace_titles.get(activity.reason),
 			"action": activity.action,
 			"job": activity.job,
-			"status": jobs.get(activity.job, {}).get("status", "Unknown"),
+			"status": normalize_install_job_status(jobs.get(activity.job, {}).get("status")),
 			"creation": activity.creation,
 		}
 		for activity in activities
@@ -187,4 +188,9 @@ def installation_status(name: str, job: str):
 	job_doc = frappe.get_doc("Agent Job", job)
 	if job_doc.site != name:
 		frappe.throw("Not permitted to view this installation.", frappe.PermissionError)
-	return {"name": job_doc.name, "status": job_doc.status, "start": job_doc.start, "end": job_doc.end}
+	return {
+		"name": job_doc.name,
+		"status": normalize_install_job_status(job_doc.status),
+		"start": job_doc.start,
+		"end": job_doc.end,
+	}
