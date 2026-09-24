@@ -166,6 +166,11 @@
 .customer-portal-member-avatar, .customer-portal-member-photo { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid #e4d9ce; border-radius: 50%; background: #fffdfa; color: var(--portal-red); font-size: 12px; object-fit: cover; }
 .customer-portal-role-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-inline-start: auto; }
 .customer-portal-role-tags span { padding: 4px 6px; background: white; color: #625a52; font-size: 8px; }
+.customer-portal-member-role-editor { flex-basis: 100%; margin-inline-start: 44px; border-top: 1px solid #e8e2da; padding-top: 7px; }
+.customer-portal-member-role-editor summary { width: fit-content; color: var(--portal-red); font-size: 9px; cursor: pointer; }
+.customer-portal-member-role-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin: 8px 0; }
+.customer-portal-member-role-options label { display: flex; min-width: 0; align-items: center; gap: 6px; color: var(--portal-ink); font-size: 9px; }
+.customer-portal-member-role-options input { accent-color: var(--portal-red); }
 .customer-portal-text-button { min-height: 34px; border: 1px solid #e4c8c4; padding: 0 9px; background: white; color: #992e33; font: inherit; font-size: 9px; cursor: pointer; }
 .customer-portal-invite-form, .customer-portal-support-form { display: grid; gap: 11px; }
 .customer-portal-form-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
@@ -266,6 +271,8 @@
 	.customer-portal-invoice-actions { grid-column: 1 / -1; }
 	.customer-portal-member { flex-wrap: wrap; }
 	.customer-portal-role-tags { margin-inline-start: 0; }
+	.customer-portal-member-role-editor { margin-inline-start: 0; }
+	.customer-portal-member-role-options { grid-template-columns: 1fr; }
 	.customer-portal-admin-plan { grid-template-columns: 1fr 1fr; }
 	.customer-portal-admin-plan > div:first-child { grid-column: 1 / -1; }
 	.customer-portal-admin-plan > button { grid-column: 1 / -1; }

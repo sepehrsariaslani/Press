@@ -77,6 +77,7 @@ export type CustomerPortalData = {
 	can_manage_catalog: boolean;
 	can_manage_support: boolean;
 	can_manage_billing: boolean;
+	can_manage_apps: boolean;
 };
 
 export type SiteAppState = { installed: InstalledApp[]; available: AppInstallOption[] };
@@ -142,7 +143,7 @@ export type TeamMember = {
 	email: string;
 	user_name: string;
 	user_image?: string | null;
-	roles: Array<{ name: string; title: string; admin_access: boolean }>;
+	roles: Array<{ name: string; title: string; admin_access: boolean; allow_apps: boolean; allow_billing: boolean }>;
 	has_admin_access?: boolean;
 	status?: string;
 };
@@ -313,6 +314,12 @@ export async function cancelTeamInvitation(email: string) {
 export async function removeTeamMember(email: string) {
 	return frappeCall<{ email: string; status: string }>('press.api.customer_portal.remove_team_member', {
 		method: 'POST', params: { email },
+	});
+}
+
+export async function updateTeamMemberRoles(email: string, roles: string[]) {
+	return frappeCall<{ email: string; roles: string[]; status: string }>('press.api.customer_portal.update_team_member_roles', {
+		method: 'POST', params: { email, roles },
 	});
 }
 
