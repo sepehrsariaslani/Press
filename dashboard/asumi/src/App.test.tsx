@@ -74,6 +74,33 @@ test('opens finance as a separate Persian financial story with a direct route in
   expect(screen.getAllByRole('link', { name: /ورود به مرکز مالی/ })[0]).toHaveAttribute('href', '/hesab/modules/finance');
 });
 
+test('opens the sales story as a distinct request-to-order journey with a real center entry', () => {
+  window.history.replaceState(null, '', '#module/sales');
+  const { container } = render(<AsumiApp />);
+  expect(screen.getByRole('heading', { level: 1, name: 'این درخواست، به فروش می‌رسد؟' })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'نمای تصویری: درخواست' })).toBeInTheDocument();
+  expect(container.querySelector('.sales-story')).toHaveAttribute('data-chapter', '0');
+  expect(container.querySelector('.sales-story')).toHaveAttribute('aria-labelledby', 'sales-request-title');
+  expect(container.querySelectorAll('.sales-stage-button')).toHaveLength(6);
+  expect(container.querySelector('.sales-request-card')).toHaveTextContent('۱۲۰');
+  expect(container.querySelector('.sales-request-card')).toHaveTextContent('قیمت می‌خواستم');
+  expect(screen.getAllByRole('link', { name: /ورود به مرکز فروش/ })[0]).toHaveAttribute('href', '/hesab/modules/sales');
+  expect(container.querySelector('.finance-story')).not.toBeInTheDocument();
+});
+
+test('shows connected sales operations, a sample Sales Order and clear illustrative-data disclosure', () => {
+  window.history.replaceState(null, '', '#module/sales');
+  const { container } = render(<AsumiApp />);
+  expect(container.querySelector('.sales-quote-card')).toHaveTextContent('۲۷۳٬۶۰۰٬۰۰۰ تومان');
+  expect(container.querySelector('.sales-connected-list')).toHaveTextContent('۱۲۰ عدد آماده‌ی تحویل');
+  expect(container.querySelector('.sales-connected-list')).toHaveTextContent('۴۰٪ پیش‌پرداخت');
+  expect(container.querySelector('.sales-order-preview')).toHaveTextContent('SO-1405-00291');
+  expect(container.querySelector('.sales-dashboard-preview')).toHaveTextContent('۲۳');
+  expect(container.querySelector('.sales-handoff-note')).toHaveTextContent('اعداد و وضعیت‌ها، اطلاعات زنده‌ی شرکت شما نیستند');
+  expect(screen.getByRole('link', { name: /بازکردن قیف CRM/ })).toHaveAttribute('href', '/hesab/crm/pipeline');
+  expect(screen.getAllByRole('link', { name: /ورود به مرکز فروش/ })[0]).toHaveAttribute('href', '/hesab/modules/sales');
+});
+
 test('moves the flashlight with the pointer while keeping scroll and links available', async () => {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
     top: 0, left: 0, right: 1000, bottom: 800, width: 1000, height: 800, x: 0, y: 0, toJSON: () => ({}),
