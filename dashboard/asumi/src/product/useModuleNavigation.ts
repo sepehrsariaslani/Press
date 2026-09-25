@@ -21,15 +21,17 @@ function scrollToCurrentSection() {
 export function useModuleNavigation() {
   const [activeModuleId, setActiveModuleId] = useState(readModuleId);
   const [showPricing, setShowPricing] = useState(() => window.location.hash === '#pricing');
+  const [showWebsiteDesign, setShowWebsiteDesign] = useState(() => window.location.hash === '#website-design');
   const [showAdmin, setShowAdmin] = useState(() => window.location.hash === '#admin');
-  const [showPortal, setShowPortal] = useState(() => window.location.hash === '#portal' || (window.location.pathname !== '/' && window.location.hash !== '#admin'));
+  const [showPortal, setShowPortal] = useState(() => window.location.hash === '#portal' || (window.location.pathname !== '/' && window.location.hash !== '#admin' && window.location.hash !== '#website-design'));
 
   useEffect(() => {
     const syncRoute = () => {
       setActiveModuleId(readModuleId());
       setShowPricing(window.location.hash === '#pricing');
+      setShowWebsiteDesign(window.location.hash === '#website-design');
       setShowAdmin(window.location.hash === '#admin');
-      setShowPortal(window.location.hash === '#portal' || (window.location.pathname !== '/' && window.location.hash !== '#admin'));
+      setShowPortal(window.location.hash === '#portal' || (window.location.pathname !== '/' && window.location.hash !== '#admin' && window.location.hash !== '#website-design'));
       scrollToCurrentSection();
     };
     window.addEventListener('hashchange', syncRoute);
@@ -46,6 +48,7 @@ export function useModuleNavigation() {
     window.history.pushState({ asumiModule: true }, '', `#module/${resolvedModuleId}`);
     setActiveModuleId(resolvedModuleId);
     setShowPricing(false);
+    setShowWebsiteDesign(false);
     setShowPortal(false);
     setShowAdmin(false);
     document.documentElement.scrollTop = 0;
@@ -56,6 +59,7 @@ export function useModuleNavigation() {
     window.history.pushState({ asumiPricing: true }, '', '#pricing');
     setActiveModuleId(null);
     setShowPricing(true);
+    setShowWebsiteDesign(false);
     setShowPortal(false);
     setShowAdmin(false);
     document.documentElement.scrollTop = 0;
@@ -68,6 +72,7 @@ export function useModuleNavigation() {
     window.history.pushState({ asumiPortal: true }, '', '#portal');
     setActiveModuleId(null);
     setShowPricing(false);
+    setShowWebsiteDesign(false);
     setShowPortal(true);
     setShowAdmin(false);
     document.documentElement.scrollTop = 0;
@@ -78,6 +83,7 @@ export function useModuleNavigation() {
     window.history.pushState({ asumiAdmin: true }, '', '#admin');
     setActiveModuleId(null);
     setShowPricing(false);
+    setShowWebsiteDesign(false);
     setShowPortal(false);
     setShowAdmin(true);
     document.documentElement.scrollTop = 0;
@@ -88,6 +94,7 @@ export function useModuleNavigation() {
     window.history.pushState({ asumiPortal: true }, '', '#portal');
     setActiveModuleId(null);
     setShowPricing(false);
+    setShowWebsiteDesign(false);
     setShowPortal(true);
     setShowAdmin(false);
     document.documentElement.scrollTop = 0;
@@ -102,6 +109,7 @@ export function useModuleNavigation() {
         window.history.replaceState(null, '', `${rootPath}#portal`);
         setActiveModuleId(null);
         setShowPricing(false);
+        setShowWebsiteDesign(false);
         setShowPortal(true);
         setShowAdmin(false);
         document.documentElement.scrollTop = 0;
@@ -112,6 +120,7 @@ export function useModuleNavigation() {
     window.history.replaceState(null, '', `${rootPath}#modules`);
     setActiveModuleId(null);
     setShowPricing(false);
+    setShowWebsiteDesign(false);
     setShowPortal(false);
     setShowAdmin(false);
     window.requestAnimationFrame(() => {
@@ -119,5 +128,5 @@ export function useModuleNavigation() {
     });
   }
 
-  return { activeModuleId, openModule, openPricing, openPortalPurchase, openPortalAdmin, openCustomerPortal, returnToModules, showAdmin, showPortal, showPricing };
+  return { activeModuleId, openModule, openPricing, openPortalPurchase, openPortalAdmin, openCustomerPortal, returnToModules, showAdmin, showPortal, showPricing, showWebsiteDesign };
 }

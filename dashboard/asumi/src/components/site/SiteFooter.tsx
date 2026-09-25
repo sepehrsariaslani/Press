@@ -10,6 +10,7 @@ export function SiteFooter({ customerPortal = false, label = 'پنل مشتری'
 				<a href="#modules">ماژول‌ها</a>
 				<a href="#industries">صنایع</a>
 				<a href="#pricing">تعرفه‌ها</a>
+				<a href="#website-design">طراحی سایت</a>
 			</nav>
 			<a className="asumi-footer-entry" href="/hesab">ورود به آسومی <span aria-hidden="true">↗</span></a>
 		</div>}

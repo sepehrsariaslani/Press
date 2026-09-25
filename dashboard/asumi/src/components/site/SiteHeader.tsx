@@ -20,6 +20,7 @@ const siteLinks = [
 	{ href: '#roles', label: 'داشبوردها' },
 	{ href: '#modules', label: 'ماژول‌ها' },
 	{ href: '#industries', label: 'صنایع' },
+	{ href: '#website-design', label: 'طراحی سایت' },
 	{ href: '#portal', label: 'پنل مشتری' },
 ];
 

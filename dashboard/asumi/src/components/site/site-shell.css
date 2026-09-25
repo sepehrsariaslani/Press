@@ -44,6 +44,17 @@
 	.asumi-footer-entry { justify-self: start; }
 }
 
+@media (max-width: 900px) and (min-width: 701px) {
+	.asumi-site-header { position: sticky; }
+	.asumi-site-menu-toggle { display: inline-flex; margin-inline-start: auto; }
+	.asumi-site-navigation { position: absolute; top: calc(100% - 1px); right: 18px; left: 18px; z-index: 25; display: none; align-items: stretch; flex-direction: column; gap: 0; margin: 0; padding: 6px; border: 1px solid #d8cec4; background: #fffefa; box-shadow: 0 12px 26px #30271c16; }
+	.asumi-site-navigation[data-open='true'] { display: flex; }
+	.asumi-site-navigation a,
+	.asumi-site-navigation button { min-height: 46px; justify-content: flex-start; border-bottom: 1px solid #eee9e2; padding-inline: 12px; color: #3b342e; text-align: right; }
+	.asumi-site-navigation > :last-child { border-bottom: 0; }
+	.asumi-site-actions { gap: 8px; margin-right: 0; }
+}
+
 @media (max-width: 700px) {
 	.asumi-site-header { min-height: 66px; gap: 9px; }
 	.asumi-site-header .story-brand,
