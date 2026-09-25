@@ -57,20 +57,22 @@ export function CustomerPortal({ onOpenAdmin, onReturnToModules }: CustomerPorta
 	const activeSubscriptionCount = useMemo(() => (data?.subscriptions || []).filter(item => ['Active', 'Provisioning'].includes(item.status)).length, [data]);
 	const inactiveSubscriptionCount = data?.subscriptions.filter(item => ['Inactive', 'Disabled', 'Cancellation Pending'].includes(item.status)).length || 0;
 
-	const refreshPortal = useCallback(async (signal?: AbortSignal) => {
+	const refreshPortal = useCallback(async (signal?: AbortSignal): Promise<CustomerPortalData | null> => {
 		setLoading(true);
 		setError('');
 		try {
 			const next = await getCustomerPortalData(signal);
 			setData(next);
 			setUpdatedAt(new Date());
+			return next;
 		} catch (caught) {
 			if (!signal?.aborted) setError(caught instanceof Error ? caught.message : 'اطلاعات پنل دریافت نشد.');
+			return null;
 		} finally {
 			if (!signal?.aborted) setLoading(false);
 		}
 	}, []);
-	const refreshPortalFromChild = useCallback(() => { void refreshPortal(); }, [refreshPortal]);
+	const refreshPortalFromChild = useCallback(async () => (await refreshPortal())?.sites, [refreshPortal]);
 
 	useEffect(() => {
 		const controller = new AbortController();

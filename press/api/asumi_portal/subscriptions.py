@@ -6,12 +6,44 @@ from press.api.site import protected
 from press.utils import get_current_team
 
 from .common import (
+	_catalog_mappings,
 	_asumi_marketplace_app_ids,
 	_marketplace_plan_requires_billing,
 	_require_asumi_marketplace_app,
 	_validate_marketplace_plan_currency,
 	normalize_install_job_status,
 )
+
+
+def _require_installed_module_prerequisites(site, app: str):
+	mappings = _catalog_mappings(include_unpublished=True)
+	module_by_id = {mapping.module_id: mapping for mapping in mappings}
+	module_apps = {}
+	target = None
+	for mapping in mappings:
+		if mapping.mode != "Marketplace app" or not mapping.marketplace_app:
+			continue
+		app_slug = frappe.db.get_value("Marketplace App", mapping.marketplace_app, "app")
+		if app_slug:
+			module_apps[mapping.module_id] = app_slug
+			if app_slug == app:
+				target = mapping
+	if not target:
+		return
+
+	installed_apps = {row.app for row in site.apps}
+	missing = []
+	for module_id in target.prerequisites or []:
+		prerequisite = module_by_id.get(module_id)
+		if prerequisite and prerequisite.mode == "Included":
+			continue
+		if prerequisite and prerequisite.mode == "Marketplace app" and module_apps.get(module_id) in installed_apps:
+			continue
+		missing.append(module_id)
+	if missing:
+		frappe.throw(
+			"Required Asumi module prerequisites are not installed: " + ", ".join(missing) + "."
+		)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -39,6 +71,7 @@ def install_marketplace_app(name: str, app: str, plan: str | None = None):
 	site = frappe.get_doc("Site", name)
 	if site.team != team.name:
 		frappe.throw("The selected site does not belong to this team.", frappe.PermissionError)
+	_require_installed_module_prerequisites(site, app)
 	if plan:
 		_validate_marketplace_plan_currency(team, app, plan)
 		if _marketplace_plan_requires_billing(team, app, plan):

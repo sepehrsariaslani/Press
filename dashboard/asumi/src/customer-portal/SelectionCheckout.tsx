@@ -18,12 +18,13 @@ type Props = {
 	canManageBilling: boolean;
 	canCheckout: boolean;
 	busy: boolean;
+	locked?: boolean;
 	pendingCount: number;
 	onClear: () => void;
 	onCheckout: () => void;
 };
 
-export function SelectionCheckout({ entries, totals, currency, unpricedCount, unavailableCount, canManageApps, canManageBilling, canCheckout, busy, pendingCount, onClear, onCheckout }: Props) {
+export function SelectionCheckout({ entries, totals, currency, unpricedCount, unavailableCount, canManageApps, canManageBilling, canCheckout, busy, locked = false, pendingCount, onClear, onCheckout }: Props) {
 	const count = entries.length;
 	const plannedEntries = entries.filter(entry => entry.state !== 'فعال است');
 	const needsBilling = plannedEntries.some(entry => entry.state === 'تغییر پلن' || (entry.amount ?? 0) > 0);
@@ -50,13 +51,13 @@ export function SelectionCheckout({ entries, totals, currency, unpricedCount, un
 			</li>)}</ul>
 		</details>}
 		<div className="customer-portal-estimate-actions">
-			<button type="button" className="customer-portal-primary-button" disabled={!hasRequiredPermission || !canCheckout || busy || plannedEntries.length === 0} onClick={onCheckout}>
-				{busy ? 'در حال ثبت انتخاب‌ها…' : pendingCount ? 'فعال‌سازی در حال انجام است' : plannedEntries.length === 0 ? 'همهٔ انتخاب‌ها فعال هستند' : !hasRequiredPermission ? needsBilling && needsAppAccess ? 'هماهنگی با مدیران تیم' : needsBilling ? 'ثبت خرید با مدیر مالی' : 'ثبت با مدیر ماژول' : 'ثبت انتخاب‌ها و فعال‌سازی'}
+			<button type="button" className="customer-portal-primary-button" disabled={!hasRequiredPermission || !canCheckout || busy || locked || plannedEntries.length === 0} onClick={onCheckout}>
+				{busy ? 'در حال ثبت انتخاب‌ها…' : locked ? 'خرید در صف فعال‌سازی است' : pendingCount ? 'فعال‌سازی در حال انجام است' : plannedEntries.length === 0 ? 'همهٔ انتخاب‌ها فعال هستند' : !hasRequiredPermission ? needsBilling && needsAppAccess ? 'هماهنگی با مدیران تیم' : needsBilling ? 'ثبت خرید با مدیر مالی' : 'ثبت با مدیر ماژول' : 'ثبت انتخاب‌ها و فعال‌سازی'}
 			</button>
-			<button type="button" className="customer-portal-text-button" disabled={count === 0 || busy} onClick={onClear}>پاک‌کردن انتخاب‌ها</button>
+			<button type="button" className="customer-portal-text-button" disabled={count === 0 || busy || locked} onClick={onClear}>پاک‌کردن انتخاب‌ها</button>
 		</div>
 		<p className="customer-portal-estimate-note">
-			{!hasRequiredPermission ? permissionMessage : plannedEntries.length === 0 && count > 0 ? 'این ماژول‌ها با همین پلن روی سایت فعال هستند و هزینهٔ تازه‌ای ثبت نمی‌شود.' : unavailableCount ? `${new Intl.NumberFormat('fa-IR').format(unavailableCount)} مورد با سایت انتخاب‌شده آمادهٔ نصب نیست؛ قبل از ثبت، جزئیات هر مورد را بررسی کن.` : unpricedCount ? `${new Intl.NumberFormat('fa-IR').format(unpricedCount)} پلن برای ارز حساب قیمت ندارد؛ از گزینهٔ استعلام تعرفه در کارت ماژول استفاده کن.` : 'این جمع بر اساس قیمت پلن‌هاست؛ مالیات احتمالی و اعتبار حساب در فاکتور نهایی محاسبه می‌شود. هر ماژول اشتراک و تمدید خودش را دارد.'}
+			{locked ? 'انتخاب‌ها قفل شده‌اند تا فعال‌سازی به‌ترتیب کامل شود. وضعیت هر مرحله همین‌جا نمایش داده می‌شود.' : !hasRequiredPermission ? permissionMessage : plannedEntries.length === 0 && count > 0 ? 'این ماژول‌ها با همین پلن روی سایت فعال هستند و هزینهٔ تازه‌ای ثبت نمی‌شود.' : unavailableCount ? `${new Intl.NumberFormat('fa-IR').format(unavailableCount)} مورد با سایت انتخاب‌شده آمادهٔ نصب نیست؛ قبل از ثبت، جزئیات هر مورد را بررسی کن.` : unpricedCount ? `${new Intl.NumberFormat('fa-IR').format(unpricedCount)} پلن برای ارز حساب قیمت ندارد؛ از گزینهٔ استعلام تعرفه در کارت ماژول استفاده کن.` : 'این جمع بر اساس قیمت پلن‌هاست؛ مالیات احتمالی و اعتبار حساب در فاکتور نهایی محاسبه می‌شود. هر ماژول اشتراک و تمدید خودش را دارد.'}
 		</p>
 	</aside>;
 }

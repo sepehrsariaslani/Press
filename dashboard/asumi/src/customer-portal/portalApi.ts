@@ -444,6 +444,7 @@ function errorMessage(payload: FrappeResponse<unknown>, status: number) {
 	if (/available credits|add credits|free credits|cannot install a paid app|paid app.*credit/.test(normalized)) return 'برای خرید این پلن، مدیر مالی باید روش پرداخت را تنظیم یا اعتبار حساب را افزایش دهد.';
 	if (/billing currency|currency.*plan|not available.*currency|quote/.test(normalized)) return 'این پلن برای ارز حساب قابل خرید نیست؛ برای دریافت تعرفه با پشتیبانی آسومی تماس بگیر.';
 	if (/billing period|payment period|usage record|billing interval/.test(normalized)) return 'تغییر دورهٔ پرداخت به بررسی تیم پشتیبانی نیاز دارد.';
+	if (/required asumi module prerequisites are not installed/.test(normalized)) return 'پیش‌نیازهای این ماژول هنوز روی سایت فعال نشده‌اند. ابتدا ماژول‌های پیش‌نیاز را نصب کن.';
 	if (/choose an app plan|choose an enabled plan|choose a valid plan/.test(normalized)) return 'یک پلن معتبر برای این افزونه انتخاب کن.';
 	if (/plan is already in use|cannot update the plan/.test(normalized)) return 'این پلن اشتراک فعال دارد و قیمتش قابل‌تغییر نیست؛ برای قیمت تازه یک پلن جدید بساز تا اشتراک‌های فعلی دست‌نخورده بمانند.';
 	if (/not available for the selected site|not compatible|site.*installable/.test(normalized)) return 'این افزونه با نسخه یا وضعیت سایت انتخاب‌شده سازگار نیست.';
