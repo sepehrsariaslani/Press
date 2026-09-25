@@ -48,6 +48,7 @@ def invite_team_member(email: str, role: str | None = None):
 @frappe.whitelist(methods=["POST"])
 def cancel_team_invitation(email: str):
 	team = get_current_team(get_doc=True)
+	_require_team_member_manager(team)
 	team.cancel_invitation(email)
 	return {"email": email, "status": "Cancelled"}
 
