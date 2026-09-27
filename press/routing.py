@@ -3,6 +3,7 @@ from frappe.website.path_resolver import resolve_path as default_resolve_path
 
 ASUMI_HOSTS = {"asumi", "asumi.ir", "www.asumi.ir"}
 ASUMI_PASSTHROUGH_ROUTES = {
+	"hesab",
 	"login",
 	"logout",
 	"update-password",
@@ -11,7 +12,14 @@ ASUMI_PASSTHROUGH_ROUTES = {
 	"robots.txt",
 	"manifest.json",
 }
-ASUMI_PASSTHROUGH_PREFIXES = ("api/", "assets/", "files/", "private/files/", "socket.io/")
+ASUMI_PASSTHROUGH_PREFIXES = (
+	"api/",
+	"assets/",
+	"files/",
+	"private/files/",
+	"socket.io/",
+	"hesab/",
+)
 
 
 def get_request_host() -> str:
@@ -30,6 +38,7 @@ def resolve_path(path: str):
 		if not route:
 			return "asumi"
 		normalized_route = route.lower()
+		# Accounts owns /hesab; /hesabyar and other customer pages stay on Asumi.
 		if (
 			normalized_route in ASUMI_PASSTHROUGH_ROUTES
 			or normalized_route.startswith(ASUMI_PASSTHROUGH_PREFIXES)
