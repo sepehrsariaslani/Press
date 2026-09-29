@@ -56,7 +56,7 @@ export function ModuleChooser({ selectedIds, selectedAddonIds, total, status, ac
 				...selectedIds.map(id => productModules.find(module => module.id === id)?.shortTitle).filter(Boolean),
 				...selectedAddonIds.map(id => id === 'restaurantMenu' ? 'مدیریت منو' : id),
 			].join(' · ')}</div>
-			<div className="pricing-estimate-total"><span>جمع ماهانهٔ پیشنهادی</span><strong>{formatToman(total)}</strong></div>
+			<div className="pricing-estimate-total"><span>جمع تعرفهٔ ماهانه</span><strong>{formatToman(total)}</strong></div>
 			<p>{selectedIds.length} ماژول · بدون محدودیت تعداد کاربر و شرکت</p>
 			<button className="pricing-save-button" type="button" onClick={onSave}>{saved ? 'ترکیب ذخیره شد ✓' : 'ذخیره‌ی ترکیب انتخابی'}</button>
 			<button className="pricing-request-button" type="button" onClick={onRequestPurchase} disabled={!selectedIds.length}>ادامه برای درخواست این ترکیب</button>

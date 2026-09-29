@@ -4,7 +4,7 @@ export type ModuleId = ProductModule['id'];
 export type PricingAddonId = 'restaurantMenu';
 
 export type PricingPreset = {
-	id: 'restaurant' | 'restaurantPurchasing' | 'complete';
+	id: 'restaurant' | 'restaurantPurchasing' | 'completeWithoutMenu' | 'complete';
 	title: string;
 	description: string;
 	moduleIds: readonly ModuleId[];
@@ -44,12 +44,16 @@ export const pricingPresets: readonly PricingPreset[] = [
 		moduleIds: ['restaurant', 'procurement'], addonIds: [],
 	},
 	{
+		id: 'completeWithoutMenu', title: 'همهٔ ماژول‌ها بدون مدیریت منو', description: 'تمام ۱۵ ماژول، بدون افزونهٔ منو',
+		moduleIds: productModules.map(module => module.id), addonIds: [], badge: 'بدون افزونهٔ منو',
+	},
+	{
 		id: 'complete', title: 'همهٔ امکانات', description: 'تمام ۱۵ ماژول به‌همراه مدیریت منو',
 		moduleIds: productModules.map(module => module.id), addonIds: ['restaurantMenu'], badge: '۵۰ میلیون تومان در ماه',
 	},
 ];
 
-export const pricingNotice = 'هر ماژول و افزونه جداگانه انتخاب می‌شود. قیمت‌ها برآورد پیشنهادی ماهانه و به تومان هستند؛ تعداد کاربران و شرکت‌ها در این برآورد محدودیتی ندارد. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. مبلغ نهایی پس از بررسی درخواست اعلام می‌شود.';
+export const pricingNotice = 'هر ماژول و افزونه با تعرفهٔ ماهانهٔ مشخص و به تومان جداگانه انتخاب می‌شود؛ تعداد کاربران و شرکت‌ها محدودیتی ندارد. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. ثبت درخواست خرید، فاکتور یا پرداخت نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.';
 
 export const modulePrerequisites: Readonly<Record<ModuleId, readonly ModuleId[]>> = {
 	finance: [], sales: [], crm: [], procurement: [], inventory: [], projects: [],

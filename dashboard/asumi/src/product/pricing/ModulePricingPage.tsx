@@ -141,7 +141,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 		const moduleNames = selectedIds.map(moduleTitle).join('، ');
 		const addonNames = selectedAddonIds.map(id => id === 'restaurantMenu' ? 'مدیریت منو و کاتالوگ' : id).join('، ') || 'بدون افزونه';
 		const amount = new Intl.NumberFormat('fa-IR').format(total);
-		onRequestPurchase(selectedIds, `ماژول‌های انتخاب‌شده: ${moduleNames}\nافزونه‌ها: ${addonNames}\nبرآورد پیشنهادی: ${amount} تومان در ماه\nتعداد کاربر و شرکت محدودیتی ندارد. این مبلغ برآورد پیشنهادی است؛ مبلغ و شرایط پرداخت پس از بررسی درخواست اعلام می‌شود.`);
+		onRequestPurchase(selectedIds, `ماژول‌های انتخاب‌شده: ${moduleNames}\nافزونه‌ها: ${addonNames}\nتعرفهٔ ماهانه: ${amount} تومان\nتعداد کاربر و شرکت محدودیتی ندارد. مالیات، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. این درخواست سفارش مالی یا فعال‌سازی خودکار نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.`);
 	}
 
 	return <main className="module-pricing-page" dir="rtl" aria-labelledby="module-pricing-title">
@@ -169,7 +169,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 				<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
 			</section>
 
-			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} جمع کل ۱۵ ماژول و افزونهٔ مدیریت منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان در ماه است. این برآورد فاکتور یا پرداخت نیست و درخواست خرید پس از بررسی تیم آسومی نهایی می‌شود.</p></aside>
+			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} تعرفهٔ کامل شامل ۱۵ ماژول و افزونهٔ مدیریت منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان در ماه است؛ در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
 		</div>
 		<SiteFooter />
 	</main>;
