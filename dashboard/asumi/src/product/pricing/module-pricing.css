@@ -126,6 +126,8 @@
 .pricing-estimate-line, .pricing-estimate-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 10px; }
 .pricing-estimate-line { min-height: 24px; color: var(--product-muted); }
 .pricing-estimate-line strong { color: var(--product-ink); font-size: 10px; font-weight: 600; }
+.pricing-estimate-discount { color: #276b52; }
+.pricing-estimate-discount strong { color: #276b52; }
 .pricing-selected-modules { max-height: 51px; overflow: auto; margin-top: 6px; color: #8b837a; font-size: 9px; line-height: 1.8; scrollbar-width: thin; }
 .pricing-estimate-total { margin-top: 8px; padding-top: 11px; border-top: 1px solid var(--product-line); color: var(--product-ink); font-size: 11px; }
 .pricing-estimate-total strong { color: var(--product-red); font-size: 16px; font-weight: 750; }

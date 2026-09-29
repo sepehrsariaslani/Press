@@ -1,7 +1,25 @@
 import { productModules, type ProductModule } from '../modules';
 
 export type ModuleId = ProductModule['id'];
-export type PricingAddonId = 'restaurantMenu';
+export type PricingAddon = {
+	id: string;
+	moduleId: ModuleId;
+	title: string;
+	description: string;
+	monthlyPrice: number;
+};
+
+export const pricingAddons = [
+	{
+		id: 'restaurantMenu',
+		moduleId: 'restaurant',
+		title: 'مدیریت منو و کاتالوگ',
+		description: 'ساخت و نگهداری منو و فهرست محصولات',
+		monthlyPrice: 2_500_000,
+	},
+] as const satisfies readonly PricingAddon[];
+
+export type PricingAddonId = (typeof pricingAddons)[number]['id'];
 
 export type PricingPreset = {
 	id: 'restaurant' | 'restaurantPurchasing' | 'completeWithoutMenu' | 'complete';
@@ -13,26 +31,26 @@ export type PricingPreset = {
 };
 
 export const moduleAddonPrices: Readonly<Record<ModuleId, number>> = {
-	finance: 5_000_000,
-	sales: 5_000_000,
-	crm: 1_800_000,
-	procurement: 5_000_000,
-	inventory: 5_000_000,
-	projects: 2_500_000,
-	manufacturing: 4_700_000,
-	quality: 1_800_000,
-	people: 2_900_000,
-	assets: 2_500_000,
-	fleet: 2_500_000,
-	pricing: 2_200_000,
-	growth: 2_500_000,
-	business: 2_900_000,
-	restaurant: 2_200_000,
+	finance: 5_500_000,
+	sales: 5_500_000,
+	crm: 2_500_000,
+	procurement: 6_000_000,
+	inventory: 6_000_000,
+	projects: 3_200_000,
+	manufacturing: 5_500_000,
+	quality: 2_500_000,
+	people: 3_600_000,
+	assets: 3_200_000,
+	fleet: 3_200_000,
+	pricing: 3_000_000,
+	growth: 3_500_000,
+	business: 3_800_000,
+	restaurant: 6_500_000,
 };
 
-export const pricingAddonPrices: Readonly<Record<PricingAddonId, number>> = {
-	restaurantMenu: 1_500_000,
-};
+export const pricingAddonPrices = Object.fromEntries(pricingAddons.map(addon => [addon.id, addon.monthlyPrice])) as Record<PricingAddonId, number>;
+
+export const completeModulesPackagePrice = 47_500_000;
 
 export const pricingPresets: readonly PricingPreset[] = [
 	{
@@ -53,7 +71,7 @@ export const pricingPresets: readonly PricingPreset[] = [
 	},
 ];
 
-export const pricingNotice = 'هر ماژول و افزونه با تعرفهٔ ماهانهٔ مشخص و به تومان جداگانه انتخاب می‌شود؛ تعداد کاربران و شرکت‌ها محدودیتی ندارد. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. ثبت درخواست خرید، فاکتور یا پرداخت نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.';
+export const pricingNotice = 'قیمت هر ماژول و افزونه ماهانه و جداگانه محاسبه می‌شود؛ تعداد کاربران و شرکت‌ها محدودیتی ندارد. برای ترکیب همهٔ ماژول‌ها تخفیف بستهٔ کامل اعمال می‌شود. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. ثبت درخواست خرید، فاکتور یا پرداخت نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.';
 
 export const modulePrerequisites: Readonly<Record<ModuleId, readonly ModuleId[]>> = {
 	finance: [], sales: [], crm: [], procurement: [], inventory: [], projects: [],

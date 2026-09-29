@@ -1,5 +1,6 @@
-import { moduleAddonPrices, pricingAddonPrices, pricingPresets, type PricingPreset } from './catalog';
+import { pricingPresets, type PricingPreset } from './catalog';
 import { productModules } from '../modules';
+import { estimateSelection } from './estimate';
 
 export function formatToman(amount: number) {
 	return `${new Intl.NumberFormat('fa-IR').format(amount)} تومان`;
@@ -11,9 +12,7 @@ type PricingPresetsProps = {
 };
 
 function monthlyEstimate(preset: PricingPreset) {
-	const modulesTotal = preset.moduleIds.reduce((total, id) => total + moduleAddonPrices[id], 0);
-	const addonsTotal = preset.addonIds.reduce((total, id) => total + pricingAddonPrices[id], 0);
-	return modulesTotal + addonsTotal;
+	return estimateSelection(preset.moduleIds, preset.addonIds).total;
 }
 
 export function PricingPresets({ selectedPresetId, onSelect }: PricingPresetsProps) {

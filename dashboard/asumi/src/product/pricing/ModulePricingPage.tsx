@@ -6,14 +6,14 @@ import { ModuleChooser } from './ModuleChooser';
 import { PricingPresets, formatToman } from './PricingPresets';
 import { SelectedModuleDetail } from './SelectedModuleDetail';
 import {
-	moduleAddonPrices,
-	pricingAddonPrices,
+	pricingAddons,
 	pricingNotice,
 	pricingPresets,
 	type PricingAddonId,
 	type PricingPreset,
 } from './catalog';
 import { addModule, removeModule, validSavedModules, type ModuleId } from './selection';
+import { estimateSelection } from './estimate';
 import './module-pricing.css';
 
 const storageKey = 'asumi-pricing-selection-v2';
@@ -24,7 +24,8 @@ function initialSelection(): SavedSelection {
 		const saved = JSON.parse(window.localStorage.getItem(storageKey) || 'null') as Partial<SavedSelection> | null;
 		let moduleIds: ModuleId[] = [];
 		for (const id of validSavedModules(saved?.moduleIds)) moduleIds = addModule(moduleIds, id).selected;
-		const addonIds = moduleIds.includes('restaurant') && saved?.addonIds?.includes('restaurantMenu') ? ['restaurantMenu' as const] : [];
+		const availableAddons = pricingAddons.filter(addon => moduleIds.includes(addon.moduleId)).map(addon => addon.id);
+		const addonIds = availableAddons.filter(id => saved?.addonIds?.includes(id));
 		return moduleIds.length ? { moduleIds, addonIds } : { moduleIds: ['restaurant'], addonIds: [] };
 	} catch {
 		return { moduleIds: ['restaurant'], addonIds: [] };
@@ -32,9 +33,7 @@ function initialSelection(): SavedSelection {
 }
 
 function getEstimate(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[]) {
-	const modulesTotal = moduleIds.reduce((sum, id) => sum + moduleAddonPrices[id], 0);
-	const addonsTotal = addonIds.reduce((sum, id) => sum + pricingAddonPrices[id], 0);
-	return modulesTotal + addonsTotal;
+	return estimateSelection(moduleIds, addonIds).total;
 }
 
 function matchingPreset(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[]) {
@@ -72,7 +71,10 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	function selectPreset(preset: PricingPreset) {
 		let moduleIds: ModuleId[] = [];
 		for (const id of preset.moduleIds) moduleIds = addModule(moduleIds, id).selected;
-		const addonIds = moduleIds.includes('restaurant') ? [...preset.addonIds] : [];
+		const addonIds = preset.addonIds.filter(id => {
+			const addon = pricingAddons.find(item => item.id === id);
+			return addon && moduleIds.includes(addon.moduleId);
+		});
 		setSelectedIds(moduleIds);
 		setSelectedAddonIds(addonIds);
 		setActiveId(moduleIds[0] || 'restaurant');
@@ -93,7 +95,11 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 			return;
 		}
 		setSelectedIds(result.selected);
-		if (moduleId === 'restaurant') setSelectedAddonIds([]);
+		const remainingModules = new Set(result.selected);
+		setSelectedAddonIds(current => current.filter(addonId => {
+			const addon = pricingAddons.find(item => item.id === addonId);
+			return addon && remainingModules.has(addon.moduleId);
+		}));
 		setStatus(`ماژول «${moduleTitle(moduleId)}» از ترکیبت حذف شد.`);
 		setSaved(false);
 	}
@@ -109,9 +115,10 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	}
 
 	function toggleAddon(addonId: PricingAddonId) {
-		if (!selectedIds.includes('restaurant')) return;
+		const addon = pricingAddons.find(item => item.id === addonId);
+		if (!addon || !selectedIds.includes(addon.moduleId)) return;
 		setSelectedAddonIds(current => current.includes(addonId) ? current.filter(id => id !== addonId) : [...current, addonId]);
-		setStatus(selectedAddonIds.includes(addonId) ? 'افزونهٔ مدیریت منو حذف شد.' : 'افزونهٔ مدیریت منو به ترکیبت اضافه شد.');
+		setStatus(selectedAddonIds.includes(addonId) ? `افزونهٔ «${addon.title}» حذف شد.` : `افزونهٔ «${addon.title}» به ترکیبت اضافه شد.`);
 		setSaved(false);
 	}
 
@@ -139,7 +146,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 			window.localStorage.setItem(storageKey, JSON.stringify({ moduleIds: selectedIds, addonIds: selectedAddonIds } satisfies SavedSelection));
 		} catch { /* The request can continue with the current selection. */ }
 		const moduleNames = selectedIds.map(moduleTitle).join('، ');
-		const addonNames = selectedAddonIds.map(id => id === 'restaurantMenu' ? 'مدیریت منو و کاتالوگ' : id).join('، ') || 'بدون افزونه';
+		const addonNames = selectedAddonIds.map(id => pricingAddons.find(addon => addon.id === id)?.title || id).join('، ') || 'بدون افزونه';
 		const amount = new Intl.NumberFormat('fa-IR').format(total);
 		onRequestPurchase(selectedIds, `ماژول‌های انتخاب‌شده: ${moduleNames}\nافزونه‌ها: ${addonNames}\nتعرفهٔ ماهانه: ${amount} تومان\nتعداد کاربر و شرکت محدودیتی ندارد. مالیات، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. این درخواست سفارش مالی یا فعال‌سازی خودکار نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.`);
 	}
@@ -154,7 +161,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 			<section className="pricing-page-intro">
 				<div><p className="pricing-eyebrow"><span aria-hidden="true" />تعرفهٔ آسومی · انتخاب آزاد ماژول‌ها</p>
 					<h1 id="module-pricing-title" ref={heading} tabIndex={-1}>فقط چیزهایی را بگیر<br /><span>که برای کارت لازم داری.</span></h1>
-					<p>ماژول‌ها و افزونه‌ها را جداگانه روشن یا خاموش کن. تعداد کاربرها و شرکت‌ها روی انتخابت محدودیت نمی‌گذارد؛ جمع هزینه همان لحظه به‌روزرسانی می‌شود.</p>
+					<p>ماژول‌ها و افزونه‌های هر بخش را جداگانه انتخاب کن. تعداد کاربرها و شرکت‌ها روی هزینه تأثیر ندارد؛ قیمت ترکیب همان لحظه محاسبه می‌شود.</p>
 				</div>
 				<div className="pricing-page-stamp"><span>{formatToman(50_000_000)}</span><small>برای تمام ماژول‌ها<br />و افزونهٔ مدیریت منو</small></div>
 			</section>
@@ -163,13 +170,13 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 
 			<section className="pricing-workspace" aria-label="انتخاب ماژول‌ها و افزونه‌ها">
 				<ModuleChooser
-					selectedIds={selectedIds} selectedAddonIds={selectedAddonIds} total={total} status={status} activeId={activeId}
+					selectedIds={selectedIds} selectedAddonIds={selectedAddonIds} status={status} activeId={activeId}
 					onActivate={setActiveId} onToggle={toggleModule} onClearAddons={clearSelection} onSave={saveSelection} onRequestPurchase={requestPurchase} saved={saved}
 				/>
 				<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
 			</section>
 
-			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} تعرفهٔ کامل شامل ۱۵ ماژول و افزونهٔ مدیریت منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان در ماه است؛ در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
+			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} بستهٔ همهٔ ماژول‌ها بدون افزونهٔ منو ماهانه ۴۷٬۵۰۰٬۰۰۰ تومان و با افزونهٔ منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان است. بستهٔ کامل تخفیف ترکیبی دارد؛ در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
 		</div>
 		<SiteFooter />
 	</main>;

@@ -1,7 +1,7 @@
 import { ModuleMark } from '../ModuleMark';
 import { productModuleDetails } from '../moduleDetails';
 import { productModules, type ProductModule } from '../modules';
-import { moduleAddonPrices, modulePrerequisites, pricingAddonPrices, type PricingAddonId } from './catalog';
+import { moduleAddonPrices, modulePrerequisites, pricingAddons, type PricingAddonId } from './catalog';
 import { formatToman } from './PricingPresets';
 import type { ModuleId } from './selection';
 
@@ -21,7 +21,7 @@ export function SelectedModuleDetail({ module, selected, selectedAddonIds, onTog
 	const details = productModuleDetails[module.id];
 	const prerequisites = modulePrerequisiteTitles(module.id);
 	const linkedModules = details.relatedIds.map(id => productModules.find(item => item.id === id)).filter((item): item is ProductModule => Boolean(item));
-	const menuAddonSelected = selectedAddonIds.includes('restaurantMenu');
+	const availableAddons = pricingAddons.filter(addon => addon.moduleId === module.id);
 	return <section className="pricing-module-detail" aria-labelledby="pricing-detail-title">
 		<div className="pricing-detail-topline"><span>امکانات و هزینهٔ ماهانه</span><span>{formatToman(moduleAddonPrices[module.id])}</span></div>
 		<header className="pricing-detail-heading">
@@ -30,13 +30,16 @@ export function SelectedModuleDetail({ module, selected, selectedAddonIds, onTog
 		</header>
 		<p className="pricing-detail-description">{module.description}</p>
 
-		{module.id === 'restaurant' && <section className="pricing-addon-option" aria-label="افزونه‌های رستوران">
-			<div><strong>مدیریت منو و کاتالوگ</strong><span>{formatToman(pricingAddonPrices.restaurantMenu)} در ماه</span><small>ساخت و نگهداری منو و فهرست محصولات</small></div>
-			<button type="button" aria-pressed={menuAddonSelected} disabled={!selected} onClick={() => onToggleAddon('restaurantMenu')}>
-				{menuAddonSelected ? 'افزونه فعال است ✓' : 'افزودن افزونه'}
-			</button>
-			{!selected && <p>برای انتخاب این افزونه، ابتدا ماژول رستوران را از فهرست روشن کن.</p>}
-		</section>}
+		{availableAddons.map(addon => {
+			const addonSelected = selectedAddonIds.includes(addon.id);
+			return <section className="pricing-addon-option" aria-label={`افزونه‌های ${module.shortTitle}`} key={addon.id}>
+				<div><strong>{addon.title}</strong><span>{formatToman(addon.monthlyPrice)} در ماه</span><small>{addon.description}</small></div>
+				<button type="button" aria-pressed={addonSelected} disabled={!selected} onClick={() => onToggleAddon(addon.id)}>
+					{addonSelected ? 'افزونه فعال است ✓' : 'افزودن افزونه'}
+				</button>
+				{!selected && <p>برای انتخاب این افزونه، ابتدا ماژول «{module.shortTitle}» را از فهرست روشن کن.</p>}
+			</section>;
+		})}
 
 		<div className="pricing-feature-board">
 			<div className="pricing-subheading"><span>۰۱</span><h3>چه کارهایی را پوشش می‌دهد؟</h3></div>
