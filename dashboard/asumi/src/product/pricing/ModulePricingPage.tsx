@@ -3,36 +3,46 @@ import { SiteFooter } from '../../components/site/SiteFooter';
 import { SiteHeader } from '../../components/site/SiteHeader';
 import { productModules } from '../modules';
 import { ModuleChooser } from './ModuleChooser';
-import { PricingTierCards } from './PricingTierCards';
+import { PricingPresets, formatToman } from './PricingPresets';
 import { SelectedModuleDetail } from './SelectedModuleDetail';
-import { moduleAddonPrices, pricingNotice, pricingTiers, type PricingTier } from './catalog';
+import {
+	moduleAddonPrices,
+	pricingAddonPrices,
+	pricingNotice,
+	pricingPresets,
+	type PricingAddonId,
+	type PricingPreset,
+} from './catalog';
 import { addModule, removeModule, validSavedModules, type ModuleId } from './selection';
 import './module-pricing.css';
 
-const storageKey = 'asumi-pricing-selection-v1';
+const storageKey = 'asumi-pricing-selection-v2';
+type SavedSelection = { moduleIds: ModuleId[]; addonIds: PricingAddonId[] };
 
-type SavedSelection = { tierId: PricingTier['id']; moduleIds: ModuleId[] };
-
-function findTier(tierId: unknown) {
-	return pricingTiers.find(tier => tier.id === tierId) || pricingTiers[0];
-}
-
-function initialSelection() {
-	const fallback = pricingTiers[0];
+function initialSelection(): SavedSelection {
 	try {
 		const saved = JSON.parse(window.localStorage.getItem(storageKey) || 'null') as Partial<SavedSelection> | null;
-		const tier = findTier(saved?.tierId);
-		let moduleIds = [...tier.includedModuleIds];
+		let moduleIds: ModuleId[] = [];
 		for (const id of validSavedModules(saved?.moduleIds)) moduleIds = addModule(moduleIds, id).selected;
-		return { tier, moduleIds };
+		const addonIds = moduleIds.includes('restaurant') && saved?.addonIds?.includes('restaurantMenu') ? ['restaurantMenu' as const] : [];
+		return moduleIds.length ? { moduleIds, addonIds } : { moduleIds: ['restaurant'], addonIds: [] };
 	} catch {
-		return { tier: fallback, moduleIds: [...fallback.includedModuleIds] };
+		return { moduleIds: ['restaurant'], addonIds: [] };
 	}
 }
 
-function getEstimate(tier: PricingTier, moduleIds: readonly ModuleId[]) {
-	return tier.monthlyPrice + moduleIds.reduce((sum, id) =>
-		tier.includedModuleIds.includes(id) ? sum : sum + moduleAddonPrices[id], 0);
+function getEstimate(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[]) {
+	const modulesTotal = moduleIds.reduce((sum, id) => sum + moduleAddonPrices[id], 0);
+	const addonsTotal = addonIds.reduce((sum, id) => sum + pricingAddonPrices[id], 0);
+	return modulesTotal + addonsTotal;
+}
+
+function matchingPreset(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[]) {
+	return pricingPresets.find(preset => sameItems(moduleIds, preset.moduleIds) && sameItems(addonIds, preset.addonIds))?.id || null;
+}
+
+function sameItems(left: readonly string[], right: readonly string[]) {
+	return left.length === right.length && left.every(id => right.includes(id));
 }
 
 function persianNumber(value: number) {
@@ -48,33 +58,30 @@ type ModulePricingPageProps = {
 export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPurchase }: ModulePricingPageProps) {
 	const heading = useRef<HTMLHeadingElement>(null);
 	const [initial] = useState(initialSelection);
-	const [tier, setTier] = useState(initial.tier);
 	const [selectedIds, setSelectedIds] = useState<ModuleId[]>(initial.moduleIds);
-	const [activeId, setActiveId] = useState<ModuleId>(initial.moduleIds[0] || 'finance');
+	const [selectedAddonIds, setSelectedAddonIds] = useState<PricingAddonId[]>(initial.addonIds);
+	const [activeId, setActiveId] = useState<ModuleId>(initial.moduleIds[0] || 'restaurant');
 	const [status, setStatus] = useState('');
 	const [saved, setSaved] = useState(false);
 	const activeModule = productModules.find(module => module.id === activeId) || productModules[0];
-	const total = getEstimate(tier, selectedIds);
+	const total = getEstimate(selectedIds, selectedAddonIds);
+	const selectedPresetId = matchingPreset(selectedIds, selectedAddonIds);
 
 	useEffect(() => heading.current?.focus({ preventScroll: true }), []);
 
-	function changeTier(nextTier: PricingTier) {
-		const previousAddons = selectedIds.filter(id => !tier.includedModuleIds.includes(id));
-		let nextIds = [...nextTier.includedModuleIds];
-		for (const id of previousAddons) nextIds = addModule(nextIds, id).selected;
-		setTier(nextTier);
-		setSelectedIds(nextIds);
-		if (!nextIds.includes(activeId)) setActiveId(nextIds[0] || 'finance');
-		setStatus(`بسته‌ی ${nextTier.title} انتخاب شد؛ افزونه‌های قبلی‌ات حفظ شدند.`);
+	function selectPreset(preset: PricingPreset) {
+		let moduleIds: ModuleId[] = [];
+		for (const id of preset.moduleIds) moduleIds = addModule(moduleIds, id).selected;
+		const addonIds = moduleIds.includes('restaurant') ? [...preset.addonIds] : [];
+		setSelectedIds(moduleIds);
+		setSelectedAddonIds(addonIds);
+		setActiveId(moduleIds[0] || 'restaurant');
+		setStatus(`ترکیب «${preset.title}» انتخاب شد؛ حالا می‌توانی هر ماژول یا افزونه‌ای را تغییر بدهی.`);
 		setSaved(false);
 	}
 
 	function toggleModule(moduleId: ModuleId) {
 		setActiveId(moduleId);
-		if (tier.includedModuleIds.includes(moduleId)) {
-			setStatus(`«${moduleTitle(moduleId)}» از قبل در بسته‌ی ${tier.title} قرار دارد.`);
-			return;
-		}
 		if (selectedIds.includes(moduleId)) return removeSelectedModule(moduleId);
 		addSelectedModule(moduleId);
 	}
@@ -82,49 +89,59 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	function removeSelectedModule(moduleId: ModuleId) {
 		const result = removeModule(selectedIds, moduleId);
 		if (result.blockedBy.length) {
-			setStatus(`برای حذف ${moduleTitle(moduleId)}، ابتدا این وابسته‌ها را حذف کن: ${result.blockedBy.map(moduleTitle).join('، ')}.`);
+			setStatus(`برای حذف ${moduleTitle(moduleId)}، ابتدا این ماژول‌های وابسته را حذف کن: ${result.blockedBy.map(moduleTitle).join('، ')}.`);
 			return;
 		}
 		setSelectedIds(result.selected);
-		setStatus(`افزونه‌ی «${moduleTitle(moduleId)}» از انتخابت حذف شد.`);
+		if (moduleId === 'restaurant') setSelectedAddonIds([]);
+		setStatus(`ماژول «${moduleTitle(moduleId)}» از ترکیبت حذف شد.`);
 		setSaved(false);
 	}
 
 	function addSelectedModule(moduleId: ModuleId) {
 		const result = addModule(selectedIds, moduleId);
 		setSelectedIds(result.selected);
-		const newlyAdded = result.added.filter(id => !tier.includedModuleIds.includes(id));
-		const prerequisiteNames = newlyAdded.filter(id => id !== moduleId).map(moduleTitle);
+		const prerequisiteNames = result.added.filter(id => id !== moduleId).map(moduleTitle);
 		setStatus(prerequisiteNames.length
 			? `برای ${moduleTitle(moduleId)}، پیش‌نیازش هم اضافه شد: ${prerequisiteNames.join('، ')}.`
-			: `افزونه‌ی «${moduleTitle(moduleId)}» به ترکیبت اضافه شد.`);
+			: `ماژول «${moduleTitle(moduleId)}» به ترکیبت اضافه شد.`);
 		setSaved(false);
 	}
 
-	function clearAddons() {
-		setSelectedIds([...tier.includedModuleIds]);
-		setActiveId(tier.includedModuleIds[0] || 'finance');
-		setStatus('افزونه‌ها حذف شدند؛ ماژول‌های اصلی بسته سر جایشان ماندند.');
+	function toggleAddon(addonId: PricingAddonId) {
+		if (!selectedIds.includes('restaurant')) return;
+		setSelectedAddonIds(current => current.includes(addonId) ? current.filter(id => id !== addonId) : [...current, addonId]);
+		setStatus(selectedAddonIds.includes(addonId) ? 'افزونهٔ مدیریت منو حذف شد.' : 'افزونهٔ مدیریت منو به ترکیبت اضافه شد.');
+		setSaved(false);
+	}
+
+	function clearSelection() {
+		setSelectedIds([]);
+		setSelectedAddonIds([]);
+		setStatus('انتخاب پاک شد؛ حالا فقط موارد موردنیازت را روشن کن.');
 		setSaved(false);
 	}
 
 	function saveSelection() {
 		try {
-			window.localStorage.setItem(storageKey, JSON.stringify({ tierId: tier.id, moduleIds: selectedIds } satisfies SavedSelection));
+			window.localStorage.setItem(storageKey, JSON.stringify({ moduleIds: selectedIds, addonIds: selectedAddonIds } satisfies SavedSelection));
 			setSaved(true);
 			setStatus('ترکیب انتخابی در همین مرورگر ذخیره شد و با بازگشت به صفحه باقی می‌ماند.');
 		} catch {
 			setSaved(false);
-			setStatus('ذخیره‌ی انتخاب در این مرورگر در دسترس نیست؛ انتخاب‌های فعلی همچنان روی صفحه فعال‌اند.');
+			setStatus('ذخیرهٔ انتخاب در این مرورگر در دسترس نیست؛ انتخاب‌های فعلی همچنان روی صفحه فعال‌اند.');
 		}
 	}
 
 	function requestPurchase() {
+		if (!selectedIds.length) return;
 		try {
-			window.localStorage.setItem(storageKey, JSON.stringify({ tierId: tier.id, moduleIds: selectedIds } satisfies SavedSelection));
-		} catch { /* The request can still continue with the current selection. */ }
+			window.localStorage.setItem(storageKey, JSON.stringify({ moduleIds: selectedIds, addonIds: selectedAddonIds } satisfies SavedSelection));
+		} catch { /* The request can continue with the current selection. */ }
 		const moduleNames = selectedIds.map(moduleTitle).join('، ');
-		onRequestPurchase(selectedIds, `بستهٔ انتخابی: ${tier.title}\nماژول‌ها: ${moduleNames}\nبرآورد صفحهٔ تعرفه: ${new Intl.NumberFormat('fa-IR').format(total)} تومان در ماه\nاین مبلغ برآورد پیشنهادی است؛ مبلغ و شرایط پرداخت پس از بررسی درخواست اعلام می‌شود.`);
+		const addonNames = selectedAddonIds.map(id => id === 'restaurantMenu' ? 'مدیریت منو و کاتالوگ' : id).join('، ') || 'بدون افزونه';
+		const amount = new Intl.NumberFormat('fa-IR').format(total);
+		onRequestPurchase(selectedIds, `ماژول‌های انتخاب‌شده: ${moduleNames}\nافزونه‌ها: ${addonNames}\nبرآورد پیشنهادی: ${amount} تومان در ماه\nتعداد کاربر و شرکت محدودیتی ندارد. این مبلغ برآورد پیشنهادی است؛ مبلغ و شرایط پرداخت پس از بررسی درخواست اعلام می‌شود.`);
 	}
 
 	return <main className="module-pricing-page" dir="rtl" aria-labelledby="module-pricing-title">
@@ -135,24 +152,24 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 				<button type="button" onClick={onReturnToModules}>همه‌ی ماژول‌ها</button><span aria-hidden="true">/</span><span aria-current="page">تعرفه و انتخاب ماژول</span>
 			</nav>
 			<section className="pricing-page-intro">
-				<div><p className="pricing-eyebrow"><span aria-hidden="true" />تعرفه‌ی آسومی · پیکربندی زنده</p>
-					<h1 id="module-pricing-title" ref={heading} tabIndex={-1}>سیستمی را انتخاب کن<br /><span>که اندازه‌ی کار توست.</span></h1>
-					<p>یک بسته را انتخاب کن، ماژول‌های دلخواهت را اضافه کن و اثر هر انتخاب را روی برآورد ماهانه ببین. پیش‌نیازها هم خودشان جلوی انتخاب ناقص را می‌گیرند.</p>
+				<div><p className="pricing-eyebrow"><span aria-hidden="true" />تعرفهٔ آسومی · انتخاب آزاد ماژول‌ها</p>
+					<h1 id="module-pricing-title" ref={heading} tabIndex={-1}>فقط چیزهایی را بگیر<br /><span>که برای کارت لازم داری.</span></h1>
+					<p>ماژول‌ها و افزونه‌ها را جداگانه روشن یا خاموش کن. تعداد کاربرها و شرکت‌ها روی انتخابت محدودیت نمی‌گذارد؛ جمع هزینه همان لحظه به‌روزرسانی می‌شود.</p>
 				</div>
-			<div className="pricing-page-stamp"><span>{persianNumber(productModules.length)}</span><small>ماژول متصل<br />در یک سیستم</small></div>
+				<div className="pricing-page-stamp"><span>{formatToman(50_000_000)}</span><small>برای تمام ماژول‌ها<br />و افزونهٔ مدیریت منو</small></div>
 			</section>
 
-			<PricingTierCards selectedTierId={tier.id} onSelect={changeTier} />
+			<PricingPresets selectedPresetId={selectedPresetId} onSelect={selectPreset} />
 
-			<section className="pricing-workspace" aria-label="انتخاب جزئیات بسته">
+			<section className="pricing-workspace" aria-label="انتخاب ماژول‌ها و افزونه‌ها">
 				<ModuleChooser
-					tier={tier} selectedIds={selectedIds} total={total} status={status} activeId={activeId}
-					onActivate={setActiveId} onToggle={toggleModule} onClearAddons={clearAddons} onSave={saveSelection} onRequestPurchase={requestPurchase} saved={saved}
+					selectedIds={selectedIds} selectedAddonIds={selectedAddonIds} total={total} status={status} activeId={activeId}
+					onActivate={setActiveId} onToggle={toggleModule} onClearAddons={clearSelection} onSave={saveSelection} onRequestPurchase={requestPurchase} saved={saved}
 				/>
-				<SelectedModuleDetail module={activeModule} tier={tier} onOpenModule={onOpenModule} />
+				<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
 			</section>
 
-			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} برای تیم‌های بزرگ‌تر یا استقرار اختصاصی، برآورد جداگانه ارائه می‌شود. اعداد این صفحه به‌تنهایی فاکتور یا پرداخت نیستند؛ مبلغ قابل خرید بعد از بررسی و اتصال به پلن معتبر اعلام می‌شود.</p></aside>
+			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} جمع کل ۱۵ ماژول و افزونهٔ مدیریت منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان در ماه است. این برآورد فاکتور یا پرداخت نیست و درخواست خرید پس از بررسی تیم آسومی نهایی می‌شود.</p></aside>
 		</div>
 		<SiteFooter />
 	</main>;

@@ -1,13 +1,15 @@
 import { ModuleMark } from '../ModuleMark';
 import { productModuleDetails } from '../moduleDetails';
 import { productModules, type ProductModule } from '../modules';
-import { moduleAddonPrices, modulePrerequisites, type PricingTier } from './catalog';
-import { formatToman } from './PricingTierCards';
+import { moduleAddonPrices, modulePrerequisites, pricingAddonPrices, type PricingAddonId } from './catalog';
+import { formatToman } from './PricingPresets';
 import type { ModuleId } from './selection';
 
 type SelectedModuleDetailProps = {
 	module: ProductModule;
-	tier: PricingTier;
+	selected: boolean;
+	selectedAddonIds: readonly PricingAddonId[];
+	onToggleAddon: (addonId: PricingAddonId) => void;
 	onOpenModule: (moduleId: string) => void;
 };
 
@@ -15,18 +17,26 @@ function toPersianNumber(value: number) {
 	return String(value).replace(/\d/g, number => '۰۱۲۳۴۵۶۷۸۹'[+number]);
 }
 
-export function SelectedModuleDetail({ module, tier, onOpenModule }: SelectedModuleDetailProps) {
+export function SelectedModuleDetail({ module, selected, selectedAddonIds, onToggleAddon, onOpenModule }: SelectedModuleDetailProps) {
 	const details = productModuleDetails[module.id];
 	const prerequisites = modulePrerequisiteTitles(module.id);
-	const included = tier.includedModuleIds.includes(module.id);
 	const linkedModules = details.relatedIds.map(id => productModules.find(item => item.id === id)).filter((item): item is ProductModule => Boolean(item));
+	const menuAddonSelected = selectedAddonIds.includes('restaurantMenu');
 	return <section className="pricing-module-detail" aria-labelledby="pricing-detail-title">
-		<div className="pricing-detail-topline"><span>پرونده‌ی قابلیت‌ها</span><span>{included ? `شامل بسته‌ی ${tier.title}` : `افزونه · ${formatToman(moduleAddonPrices[module.id])} / ماه`}</span></div>
+		<div className="pricing-detail-topline"><span>امکانات و هزینهٔ ماهانه</span><span>{formatToman(moduleAddonPrices[module.id])}</span></div>
 		<header className="pricing-detail-heading">
 			<span className="pricing-detail-mark"><ModuleMark icon={module.icon} /></span>
 			<div><p>ماژول آسومی</p><h2 id="pricing-detail-title">{module.title}</h2></div>
 		</header>
 		<p className="pricing-detail-description">{module.description}</p>
+
+		{module.id === 'restaurant' && <section className="pricing-addon-option" aria-label="افزونه‌های رستوران">
+			<div><strong>مدیریت منو و کاتالوگ</strong><span>{formatToman(pricingAddonPrices.restaurantMenu)} در ماه</span><small>ساخت و نگهداری منو و فهرست محصولات</small></div>
+			<button type="button" aria-pressed={menuAddonSelected} disabled={!selected} onClick={() => onToggleAddon('restaurantMenu')}>
+				{menuAddonSelected ? 'افزونه فعال است ✓' : 'افزودن افزونه'}
+			</button>
+			{!selected && <p>برای انتخاب این افزونه، ابتدا ماژول رستوران را از فهرست روشن کن.</p>}
+		</section>}
 
 		<div className="pricing-feature-board">
 			<div className="pricing-subheading"><span>۰۱</span><h3>چه کارهایی را پوشش می‌دهد؟</h3></div>

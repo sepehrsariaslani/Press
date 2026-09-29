@@ -1,45 +1,57 @@
 import { productModules, type ProductModule } from '../modules';
 
-export type PricingTierId = 'starter' | 'professional' | 'enterprise';
+export type ModuleId = ProductModule['id'];
+export type PricingAddonId = 'restaurantMenu';
 
-export type PricingTier = {
-	id: PricingTierId;
+export type PricingPreset = {
+	id: 'restaurant' | 'restaurantPurchasing' | 'complete';
 	title: string;
-	fit: string;
-	monthlyPrice: number;
-	userLimit: number;
-	includedModuleIds: readonly ProductModule['id'][];
-	perks: readonly string[];
-	recommended?: boolean;
+	description: string;
+	moduleIds: readonly ModuleId[];
+	addonIds: readonly PricingAddonId[];
+	badge?: string;
 };
 
-export const pricingTiers: readonly PricingTier[] = [
+export const moduleAddonPrices: Readonly<Record<ModuleId, number>> = {
+	finance: 5_000_000,
+	sales: 5_000_000,
+	crm: 1_800_000,
+	procurement: 5_000_000,
+	inventory: 5_000_000,
+	projects: 2_500_000,
+	manufacturing: 4_700_000,
+	quality: 1_800_000,
+	people: 2_900_000,
+	assets: 2_500_000,
+	fleet: 2_500_000,
+	pricing: 2_200_000,
+	growth: 2_500_000,
+	business: 2_900_000,
+	restaurant: 2_200_000,
+};
+
+export const pricingAddonPrices: Readonly<Record<PricingAddonId, number>> = {
+	restaurantMenu: 1_500_000,
+};
+
+export const pricingPresets: readonly PricingPreset[] = [
 	{
-		id: 'starter', title: 'پایه', fit: 'برای شروع منظم و سبک', monthlyPrice: 3_900_000, userLimit: 3,
-		includedModuleIds: ['finance', 'sales', 'procurement', 'inventory'],
-		perks: ['مالی، فروش، خرید و انبار', 'یک شرکت', 'تا ۳ کاربر'],
+		id: 'restaurant', title: 'فقط رستوران', description: 'عملیات رستوران، بدون افزونهٔ مدیریت منو',
+		moduleIds: ['restaurant'], addonIds: [], badge: 'شروع ساده',
 	},
 	{
-		id: 'professional', title: 'حرفه‌ای', fit: 'برای کسب‌وکار در حال رشد', monthlyPrice: 9_900_000, userLimit: 10,
-		includedModuleIds: ['finance', 'sales', 'procurement', 'inventory', 'crm', 'projects', 'manufacturing', 'quality', 'people', 'assets', 'pricing'],
-		perks: ['۱۱ ماژول تا تولید و دارایی', 'یک شرکت', 'تا ۱۰ کاربر'], recommended: true,
+		id: 'restaurantPurchasing', title: 'رستوران + خرید', description: 'عملیات رستوران همراه با خرید و تدارکات',
+		moduleIds: ['restaurant', 'procurement'], addonIds: [],
 	},
 	{
-		id: 'enterprise', title: 'سازمانی', fit: 'برای عملیات چندبخشی', monthlyPrice: 24_900_000, userLimit: 25,
-		includedModuleIds: productModules.map(module => module.id),
-		perks: ['هر ۱۵ ماژول آسومی', 'یک شرکت', 'تا ۲۵ کاربر'],
+		id: 'complete', title: 'همهٔ امکانات', description: 'تمام ۱۵ ماژول به‌همراه مدیریت منو',
+		moduleIds: productModules.map(module => module.id), addonIds: ['restaurantMenu'], badge: '۵۰ میلیون تومان در ماه',
 	},
 ];
 
-export const moduleAddonPrices: Readonly<Record<ProductModule['id'], number>> = {
-	finance: 0, sales: 0, crm: 490_000, procurement: 0, inventory: 0, projects: 690_000,
-	manufacturing: 1_290_000, quality: 490_000, people: 790_000, assets: 690_000,
-	fleet: 690_000, pricing: 590_000, growth: 690_000, business: 790_000, restaurant: 990_000,
-};
+export const pricingNotice = 'هر ماژول و افزونه جداگانه انتخاب می‌شود. قیمت‌ها برآورد پیشنهادی ماهانه و به تومان هستند؛ تعداد کاربران و شرکت‌ها در این برآورد محدودیتی ندارد. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. مبلغ نهایی پس از بررسی درخواست اعلام می‌شود.';
 
-export const pricingNotice = 'بسته‌ها و افزونه‌ها ماهانه، به تومان و برای یک شرکت تا سقف کاربران درج‌شده هستند. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند.';
-
-export const modulePrerequisites: Readonly<Record<ProductModule['id'], readonly ProductModule['id'][]>> = {
+export const modulePrerequisites: Readonly<Record<ModuleId, readonly ModuleId[]>> = {
 	finance: [], sales: [], crm: [], procurement: [], inventory: [], projects: [],
 	manufacturing: ['inventory'], quality: [], people: [], assets: ['finance'],
 	fleet: [], pricing: [], growth: [], business: ['growth'], restaurant: [],
