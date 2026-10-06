@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, test } from 'vitest';
 import { AsumiApp } from '../../App';
 import { WebsiteDesignPricingPage } from './WebsiteDesignPricingPage';
@@ -28,7 +28,7 @@ test('shows package-specific scope and calculates the selected package with its 
 
 	fireEvent.change(screen.getByRole('searchbox', { name: 'جست‌وجوی قابلیت' }), { target: { value: 'علاقه‌مندی' } });
 	fireEvent.click(screen.getByRole('button', { name: 'افزودن به برآورد' }));
-	expect(screen.getByRole('status')).toHaveTextContent('پیش‌نیاز فروشگاه پایه و صفحات محصول');
+	expect(container.querySelector('.web-design-live-status')).toHaveTextContent('پیش‌نیاز فروشگاه پایه و صفحات محصول');
 	expect(container.querySelector('.web-design-estimate')).toHaveTextContent('۳۴٬۰۰۰٬۰۰۰ تومان');
 	expect(container.querySelector('.web-design-selected-list')).toHaveTextContent('فروشگاه پایه و صفحات محصول');
 	expect(container.querySelector('.web-design-selected-list')).toHaveTextContent('علاقه‌مندی، مقایسه و نظر');
@@ -37,7 +37,7 @@ test('shows package-specific scope and calculates the selected package with its 
 test('requires the advanced website package for ERP integration and separates monthly service costs', () => {
 	window.history.replaceState(null, '', '#website-design');
 	const { container } = render(<WebsiteDesignPricingPage onReturnToModules={() => undefined} />);
-	fireEvent.click(screen.getByRole('button', { name: /بسته‌ی پیشرفته/ }));
+	fireEvent.click(within(screen.getByRole('group', { name: 'انتخاب بسته‌ی طراحی سایت' })).getByRole('button', { name: /بسته‌ی پیشرفته/ }));
 	fireEvent.change(screen.getByRole('searchbox', { name: 'جست‌وجوی قابلیت' }), { target: { value: 'اتصال سایت به ERP' } });
 	fireEvent.click(screen.getByRole('button', { name: 'افزودن به برآورد' }));
 	expect(container.querySelector('.web-design-estimate')).toHaveTextContent('۸۵٬۰۰۰٬۰۰۰ تومان');
@@ -50,7 +50,7 @@ test('requires the advanced website package for ERP integration and separates mo
 test('keeps Three.js pricing from the detailed add-ons sheet and blocks options with an unresolved prerequisite', () => {
 	window.history.replaceState(null, '', '#website-design');
 	const { container } = render(<WebsiteDesignPricingPage onReturnToModules={() => undefined} />);
-	fireEvent.click(screen.getByRole('button', { name: /بسته‌ی متوسط/ }));
+	fireEvent.click(within(screen.getByRole('group', { name: 'انتخاب بسته‌ی طراحی سایت' })).getByRole('button', { name: /بسته‌ی متوسط/ }));
 	fireEvent.change(screen.getByRole('searchbox', { name: 'جست‌وجوی قابلیت' }), { target: { value: 'Three.js' } });
 	expect(container.querySelector('.web-design-addon-grid')).toHaveTextContent('۱۲٬۵۰۰٬۰۰۰ تومان');
 	fireEvent.change(screen.getByRole('searchbox', { name: 'جست‌وجوی قابلیت' }), { target: { value: 'Ads Pixel' } });

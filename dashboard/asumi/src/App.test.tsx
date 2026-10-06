@@ -78,7 +78,7 @@ test('resolves the marketing module name to the growth detail page for direct li
 test('opens the pricing configurator and shows the selected module features beside its chooser', () => {
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
-  expect(screen.getByRole('heading', { level: 1, name: /سیستمی را انتخاب کن/ })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1, name: /فقط چیزهایی را بگیر/ })).toBeInTheDocument();
   expect(screen.getByRole('group', { name: 'انتخاب بسته‌ی تعرفه' })).toBeInTheDocument();
   expect(screen.getByRole('group', { name: 'انتخاب ماژول‌های آسومی' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { level: 2, name: 'مالی و حسابداری' })).toBeInTheDocument();
@@ -90,7 +90,7 @@ test('opens module pricing directly from the homepage module directory', async (
   window.history.replaceState(null, '', '/');
   render(<AsumiApp />);
   fireEvent.click(screen.getByRole('button', { name: /ساخت ترکیب و دیدن تعرفه‌ها/ }));
-  await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: /سیستمی را انتخاب کن/ })).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: /فقط چیزهایی را بگیر/ })).toBeInTheDocument());
   expect(window.location.hash).toBe('#pricing');
 });
 
