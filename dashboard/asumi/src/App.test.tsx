@@ -1,8 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { AsumiApp } from './App';
+import { getAccountsPreviewHref } from './components/site/accountsPreviewRoute';
+import { industryPaths } from './product/industries/industryData';
 import { productModuleDetails } from './product/moduleDetails';
 import { productModules } from './product/modules';
+import { roleDashboards } from './product/roles/roleData';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -53,7 +56,7 @@ test('opens the separate business module and returns to the module directory', a
   await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'برنامه‌ریزی کسب‌وکار' })).toBeInTheDocument());
   expect(screen.getByText('Business Planning Scenario')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: /ورود به نمای کلی کسب‌وکار/ })).toHaveAttribute('href', '/hesab/business/overview');
-  fireEvent.click(screen.getByRole('button', { name: /برگشت به همه‌ی ۱۵ ماژول/ }));
+  fireEvent.click(screen.getByRole('link', { name: 'همه‌ی ماژول‌ها' }));
   await waitFor(() => expect(screen.getByRole('navigation', { name: '۱۵ ماژول آسومی' })).toBeInTheDocument());
 });
 
@@ -71,6 +74,46 @@ test('resolves the marketing module name to the growth detail page for direct li
   expect(screen.getByText('Marketing Campaign Brief')).toBeInTheDocument();
 });
 
+test('opens the pricing configurator and shows the selected module features beside its chooser', () => {
+  window.history.replaceState(null, '', '#pricing');
+  const { container } = render(<AsumiApp />);
+  expect(screen.getByRole('heading', { level: 1, name: /سیستمی را انتخاب کن/ })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'انتخاب بسته‌ی تعرفه' })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'انتخاب ماژول‌های آسومی' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 2, name: 'مالی و حسابداری' })).toBeInTheDocument();
+  expect(screen.getByText('دفتر کل و سندهای حسابداری')).toBeInTheDocument();
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۳٬۹۰۰٬۰۰۰ تومان');
+});
+
+test('opens module pricing directly from the homepage module directory', async () => {
+  window.history.replaceState(null, '', '/');
+  render(<AsumiApp />);
+  fireEvent.click(screen.getByRole('button', { name: /ساخت ترکیب و دیدن تعرفه‌ها/ }));
+  await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: /سیستمی را انتخاب کن/ })).toBeInTheDocument());
+  expect(window.location.hash).toBe('#pricing');
+});
+
+test('adds growth when business planning is selected and blocks removing its prerequisite', () => {
+  window.history.replaceState(null, '', '#pricing');
+  const { container } = render(<AsumiApp />);
+  fireEvent.click(screen.getByRole('button', { name: 'افزودن ماژول برنامه‌ریزی کسب‌وکار' }));
+  expect(screen.getByRole('status')).toHaveTextContent('پیش‌نیازش هم اضافه شد: بازاریابی و رشد');
+  expect(container.querySelector('.pricing-selected-modules')).toHaveTextContent('بازاریابی و رشد · کسب‌وکار');
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۳۸۰٬۰۰۰ تومان');
+  fireEvent.click(screen.getByRole('button', { name: 'حذف ماژول بازاریابی و رشد' }));
+  expect(screen.getByRole('status')).toHaveTextContent('ابتدا این وابسته‌ها را حذف کن: کسب‌وکار');
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۳۸۰٬۰۰۰ تومان');
+});
+
+test('switching to professional includes selected CRM without charging it twice', () => {
+  window.history.replaceState(null, '', '#pricing');
+  const { container } = render(<AsumiApp />);
+  fireEvent.click(screen.getByRole('button', { name: 'افزودن ماژول مدیریت ارتباط با مشتری' }));
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۴٬۳۹۰٬۰۰۰ تومان');
+  fireEvent.click(screen.getByRole('button', { name: /حرفه‌ای/ }));
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۹٬۹۰۰٬۰۰۰ تومان');
+  expect(container.querySelector('.pricing-module-option[data-selected="true"]')).toBeInTheDocument();
+});
 
 test('opens finance as a separate Persian financial story with a direct route into the real center', () => {
   window.history.replaceState(null, '', '#module/finance');
@@ -254,4 +297,52 @@ test('removes its pointer listeners on unmount', () => {
   unmount();
   expect(remove).toHaveBeenCalledWith('pointermove', expect.any(Function));
   expect(remove).toHaveBeenCalledWith('pointerout', expect.any(Function));
+});
+
+test('shows the actual Accounts workspace for the selected role and its related module routes', () => {
+  const { container } = render(<AsumiApp />);
+  const rolePicker = screen.getByRole('group', { name: 'انتخاب نقش برای بازکردن صفحه‌ی واقعی' });
+  expect(rolePicker.querySelectorAll('button')).toHaveLength(11);
+  expect(screen.getByTitle('محیط واقعی آسومی برای مدیر کسب‌وکار، داشبورد مدیریتی')).toHaveAttribute('src', '/hesab/manager-dashboard');
+  fireEvent.click(screen.getByRole('button', { name: 'مدیر مالی' }));
+  expect(screen.getByTitle('محیط واقعی آسومی برای مدیر مالی، مالی')).toHaveAttribute('src', '/hesab/modules/finance');
+  expect(container.querySelector('.role-picker button[aria-pressed="true"]')).toHaveTextContent('مدیر مالی');
+  const roleModules = screen.getByRole('group', { name: 'صفحه‌های مرتبط را در محیط واقعی باز کن' });
+  fireEvent.click(within(roleModules).getByRole('button', { name: 'خرید' }));
+  expect(screen.getByTitle('محیط واقعی آسومی برای مدیر مالی، خرید')).toHaveAttribute('src', '/hesab/modules/procurement');
+  expect(container.querySelector('.role-live-preview-note')).toHaveTextContent('برای دیدن دسترسی دقیق مدیر دیگر، باید با حساب همان نقش وارد شوید');
+});
+
+test('routes role previews to the actual Accounts host locally and stays same-origin in production', () => {
+  expect(getAccountsPreviewHref('/hesab/modules/finance', '/assets/press/asumi_site/index.html'))
+    .toBe('http://asumi:8000/hesab/modules/finance');
+  expect(getAccountsPreviewHref('/hesab/modules/finance', '/'))
+    .toBe('/hesab/modules/finance');
+});
+
+test('renders industry workflows from existing Asumi modules and opens a selected module', async () => {
+  const { container } = render(<AsumiApp />);
+  expect(container.querySelectorAll('.industry-path-card')).toHaveLength(5);
+  expect(screen.getByText('از برنامه و BOM تا ثبت تولید و بررسی کیفیت')).toBeInTheDocument();
+  fireEvent.click(container.querySelector('.industry-path-card .industry-module-list button')!);
+  await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'تولید' })).toBeInTheDocument());
+});
+
+test('keeps role and industry module references inside the existing catalog', () => {
+  const moduleIds = new Set(productModules.map(module => module.id));
+  expect(roleDashboards.every(role => role.moduleIds.every(id => moduleIds.has(id)))).toBe(true);
+  expect(industryPaths.every(industry => industry.moduleIds.every(id => moduleIds.has(id)))).toBe(true);
+  expect(roleDashboards.map(role => role.id)).toHaveLength(11);
+  expect(new Set(roleDashboards.flatMap(role => role.moduleIds)).size).toBe(productModules.length);
+  expect(roleDashboards.every(role => role.entryPath?.startsWith('/') || productModuleDetails[role.moduleIds[0]]?.entryPath.startsWith('/'))).toBe(true);
+  expect(industryPaths.map(industry => industry.id)).toHaveLength(5);
+});
+
+test('shows the shared navigation and footer from the pricing page and returns to homepage sections', async () => {
+  window.history.replaceState(null, '', '#pricing');
+  render(<AsumiApp />);
+  expect(screen.getByRole('navigation', { name: 'ناوبری اصلی آسومی' })).toBeInTheDocument();
+  expect(screen.getByRole('navigation', { name: 'پیوندهای پایین صفحه' })).toBeInTheDocument();
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'ناوبری اصلی آسومی' })).getByRole('link', { name: 'صنایع' }));
+  await waitFor(() => expect(screen.getByRole('region', { name: /هر صنعت/ })).toBeInTheDocument());
 });
