@@ -26,9 +26,9 @@ function initialSelection(): SavedSelection {
 		for (const id of validSavedModules(saved?.moduleIds)) moduleIds = addModule(moduleIds, id).selected;
 		const availableAddons = pricingAddons.filter(addon => moduleIds.includes(addon.moduleId)).map(addon => addon.id);
 		const addonIds = availableAddons.filter(id => saved?.addonIds?.includes(id));
-		return moduleIds.length ? { moduleIds, addonIds } : { moduleIds: ['restaurant'], addonIds: [] };
+		return moduleIds.length ? { moduleIds, addonIds } : { moduleIds: ['finance'], addonIds: [] };
 	} catch {
-		return { moduleIds: ['restaurant'], addonIds: [] };
+		return { moduleIds: ['finance'], addonIds: [] };
 	}
 }
 
@@ -59,7 +59,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	const [initial] = useState(initialSelection);
 	const [selectedIds, setSelectedIds] = useState<ModuleId[]>(initial.moduleIds);
 	const [selectedAddonIds, setSelectedAddonIds] = useState<PricingAddonId[]>(initial.addonIds);
-	const [activeId, setActiveId] = useState<ModuleId>(initial.moduleIds[0] || 'restaurant');
+	const [activeId, setActiveId] = useState<ModuleId>(initial.moduleIds[0] || 'finance');
 	const [status, setStatus] = useState('');
 	const [saved, setSaved] = useState(false);
 	const activeModule = productModules.find(module => module.id === activeId) || productModules[0];
@@ -77,7 +77,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 		});
 		setSelectedIds(moduleIds);
 		setSelectedAddonIds(addonIds);
-		setActiveId(moduleIds[0] || 'restaurant');
+		setActiveId(moduleIds[0] || 'finance');
 		setStatus(`ترکیب «${preset.title}» انتخاب شد؛ حالا می‌توانی هر ماژول یا افزونه‌ای را تغییر بدهی.`);
 		setSaved(false);
 	}
@@ -176,7 +176,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 				<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
 			</section>
 
-			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} بستهٔ همهٔ ماژول‌ها بدون افزونهٔ منو ماهانه ۴۷٬۵۰۰٬۰۰۰ تومان و با افزونهٔ منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان است. بستهٔ کامل تخفیف ترکیبی دارد؛ در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
+			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} بستهٔ همهٔ ماژول‌ها بدون افزونهٔ منو ماهانه ۴۷٬۵۰۰٬۰۰۰ تومان و با افزونهٔ منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان است؛ در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
 		</div>
 		<SiteFooter />
 	</main>;

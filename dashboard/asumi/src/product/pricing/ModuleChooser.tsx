@@ -55,7 +55,7 @@ export function ModuleChooser({ selectedIds, selectedAddonIds, status, activeId,
 				...selectedIds.map(id => productModules.find(module => module.id === id)?.shortTitle).filter(Boolean),
 				...selectedAddonIds.map(id => pricingAddons.find(addon => addon.id === id)?.title || id),
 			].join(' · ')}</div>
-			{estimate.bundleDiscount > 0 && <div className="pricing-estimate-line pricing-estimate-discount"><span>تخفیف بستهٔ کامل</span><strong>−{formatToman(estimate.bundleDiscount)}</strong></div>}
+			{estimate.bundleDiscount > 0 && <div className="pricing-estimate-line pricing-estimate-discount"><span>{estimate.bundleDiscountLabel}</span><strong>−{formatToman(estimate.bundleDiscount)}</strong></div>}
 			<div className="pricing-estimate-total"><span>جمع تعرفهٔ ماهانه</span><strong>{formatToman(estimate.total)}</strong></div>
 			<p>{selectedIds.length} ماژول · بدون محدودیت تعداد کاربر و شرکت</p>
 			<button className="pricing-save-button" type="button" onClick={onSave}>{saved ? 'ترکیب ذخیره شد ✓' : 'ذخیره‌ی ترکیب انتخابی'}</button>

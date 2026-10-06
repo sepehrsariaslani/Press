@@ -21,7 +21,7 @@ export function PricingPresets({ selectedPresetId, onSelect }: PricingPresetsPro
 			<div><p>ترکیب‌های پیشنهادی · قابل ویرایش</p><h2 id="pricing-presets-title">از یک انتخاب آماده شروع کن</h2></div>
 			<span>یا هر ماژول را جداگانه انتخاب کن</span>
 		</div>
-		<div className="pricing-preset-grid" role="group" aria-label="ترکیب‌های پیشنهادی ماژول‌ها">
+		<div className="pricing-preset-grid" role="group" aria-label="انتخاب بسته‌ی تعرفه">
 			{pricingPresets.map(preset => <button
 				key={preset.id}
 				type="button"

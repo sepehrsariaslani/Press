@@ -9,6 +9,7 @@ import { roleDashboards } from './product/roles/roleData';
 
 afterEach(() => {
   vi.restoreAllMocks();
+  window.localStorage.removeItem('asumi-pricing-selection-v2');
   window.history.replaceState(null, '', window.location.pathname);
 });
 
@@ -78,11 +79,11 @@ test('opens the pricing configurator and shows the selected module features besi
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
   expect(screen.getByRole('heading', { level: 1, name: /سیستمی را انتخاب کن/ })).toBeInTheDocument();
-  expect(screen.getByRole('group', { name: 'ترکیب‌های پیشنهادی ماژول‌ها' })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'انتخاب بسته‌ی تعرفه' })).toBeInTheDocument();
   expect(screen.getByRole('group', { name: 'انتخاب ماژول‌های آسومی' })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { level: 2, name: 'فروش حضوری و رستوران' })).toBeInTheDocument();
-  expect(screen.getByText('صندوق و فروش حضوری')).toBeInTheDocument();
-  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۶٬۵۰۰٬۰۰۰ تومان');
+  expect(screen.getByRole('heading', { level: 2, name: 'مالی و حسابداری' })).toBeInTheDocument();
+  expect(screen.getByText('دفتر کل و سندهای حسابداری')).toBeInTheDocument();
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۵۰۰٬۰۰۰ تومان');
 });
 
 test('opens module pricing directly from the homepage module directory', async () => {
@@ -114,6 +115,19 @@ test('switching to the complete package keeps a selected CRM module only once', 
   expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۲٬۵۰۰٬۰۰۰ تومان');
   fireEvent.click(screen.getByRole('button', { name: /همهٔ امکانات/ }));
   expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵۰٬۰۰۰٬۰۰۰ تومان');
+  const selectedModules = container.querySelector('.pricing-selected-modules')?.textContent || '';
+  expect(selectedModules.match(/CRM/g)).toHaveLength(1);
+});
+
+test('switching to the professional package keeps a selected CRM module only once', () => {
+  window.history.replaceState(null, '', '#pricing');
+  const { container } = render(<AsumiApp />);
+  fireEvent.click(screen.getByRole('button', { name: 'پاک‌کردن انتخاب' }));
+  fireEvent.click(screen.getByRole('button', { name: /افزودن ماژول مدیریت ارتباط با مشتری/ }));
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۲٬۵۰۰٬۰۰۰ تومان');
+  fireEvent.click(screen.getByRole('button', { name: /حرفه‌ای/ }));
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۹٬۹۰۰٬۰۰۰ تومان');
+  expect(container.querySelector('.pricing-estimate-discount')).toHaveTextContent('تخفیف بستهٔ حرفه‌ای');
   const selectedModules = container.querySelector('.pricing-selected-modules')?.textContent || '';
   expect(selectedModules.match(/CRM/g)).toHaveLength(1);
 });

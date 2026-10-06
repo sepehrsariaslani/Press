@@ -22,11 +22,12 @@ export const pricingAddons = [
 export type PricingAddonId = (typeof pricingAddons)[number]['id'];
 
 export type PricingPreset = {
-	id: 'restaurant' | 'restaurantPurchasing' | 'completeWithoutMenu' | 'complete';
+	id: 'restaurant' | 'restaurantPurchasing' | 'professional' | 'completeWithoutMenu' | 'complete';
 	title: string;
 	description: string;
 	moduleIds: readonly ModuleId[];
 	addonIds: readonly PricingAddonId[];
+	packageMonthlyPrice?: number;
 	badge?: string;
 };
 
@@ -62,6 +63,11 @@ export const pricingPresets: readonly PricingPreset[] = [
 		moduleIds: ['restaurant', 'procurement'], addonIds: [],
 	},
 	{
+		id: 'professional', title: 'حرفه‌ای', description: '۱۱ ماژول برای فروش، خرید و عملیات',
+		moduleIds: ['finance', 'sales', 'procurement', 'inventory', 'crm', 'projects', 'manufacturing', 'quality', 'people', 'assets', 'pricing'],
+		addonIds: [], packageMonthlyPrice: 9_900_000, badge: 'بستهٔ پیشنهادی',
+	},
+	{
 		id: 'completeWithoutMenu', title: 'همهٔ ماژول‌ها بدون مدیریت منو', description: 'تمام ۱۵ ماژول، بدون افزونهٔ منو',
 		moduleIds: productModules.map(module => module.id), addonIds: [], badge: 'بدون افزونهٔ منو',
 	},
@@ -71,7 +77,7 @@ export const pricingPresets: readonly PricingPreset[] = [
 	},
 ];
 
-export const pricingNotice = 'قیمت هر ماژول و افزونه ماهانه و جداگانه محاسبه می‌شود؛ تعداد کاربران و شرکت‌ها محدودیتی ندارد. برای ترکیب همهٔ ماژول‌ها تخفیف بستهٔ کامل اعمال می‌شود. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. ثبت درخواست خرید، فاکتور یا پرداخت نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.';
+export const pricingNotice = 'قیمت هر ماژول و افزونه ماهانه و جداگانه محاسبه می‌شود؛ تعداد کاربران و شرکت‌ها محدودیتی ندارد. بستهٔ حرفه‌ای ۱۱ ماژول را با تعرفهٔ ماهانهٔ ۹٬۹۰۰٬۰۰۰ تومان ارائه می‌کند و برای ترکیب همهٔ ماژول‌ها نیز تخفیف بستهٔ کامل اعمال می‌شود. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. ثبت درخواست خرید، فاکتور یا پرداخت نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.';
 
 export const modulePrerequisites: Readonly<Record<ModuleId, readonly ModuleId[]>> = {
 	finance: [], sales: [], crm: [], procurement: [], inventory: [], projects: [],
