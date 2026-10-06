@@ -4,6 +4,7 @@ from frappe.website.path_resolver import resolve_path as default_resolve_path
 ASUMI_HOSTS = {"asumi", "asumi.ir", "www.asumi.ir"}
 ASUMI_PASSTHROUGH_ROUTES = {
 	"hesab",
+	"builder",
 	"login",
 	"logout",
 	"update-password",
@@ -19,12 +20,22 @@ ASUMI_PASSTHROUGH_PREFIXES = (
 	"private/files/",
 	"socket.io/",
 	"hesab/",
+	"builder/",
+	"builder_assets/",
 )
 
 
 def get_request_host() -> str:
 	request = getattr(frappe.local, "request", None)
 	return (getattr(request, "host", "") or "").split(":", 1)[0].lower()
+
+
+def is_builder_route(route: str) -> bool:
+	try:
+		builder_path = str(getattr(frappe.conf, "builder_path", None) or "builder").strip("/").lower()
+	except RuntimeError:
+		builder_path = "builder"
+	return route == builder_path or route.startswith(f"{builder_path}/")
 
 
 def resolve_path(path: str):
@@ -42,6 +53,7 @@ def resolve_path(path: str):
 		if (
 			normalized_route in ASUMI_PASSTHROUGH_ROUTES
 			or normalized_route.startswith(ASUMI_PASSTHROUGH_PREFIXES)
+			or is_builder_route(normalized_route)
 		):
 			return default_resolve_path(path)
 		return "asumi"
