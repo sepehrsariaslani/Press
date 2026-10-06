@@ -210,6 +210,7 @@ doc_events = {
 scheduler_events = {
 	"weekly_long": ["press.press.doctype.marketplace_app.events.auto_review_for_missing_steps"],
 	"daily": [
+		"press.api.erpyar.check_erpyar_trial_lifecycle",
 		"press.experimental.doctype.referral_bonus.referral_bonus.credit_referral_bonuses",
 		"press.press.doctype.log_counter.log_counter.record_counts",
 		"press.press.doctype.site_version_audit.site_version_audit.record_audit",
@@ -568,4 +569,5 @@ after_migrate = [
 	"press.overrides.before_after_migrate",
 	"press.api.account.clear_country_list_cache",
 	"press.sanity.checks",
+	"press.api.erpyar.seed_erpyar_products",
 ]

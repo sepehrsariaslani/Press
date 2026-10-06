@@ -78,11 +78,11 @@ test('opens the pricing configurator and shows the selected module features besi
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
   expect(screen.getByRole('heading', { level: 1, name: /سیستمی را انتخاب کن/ })).toBeInTheDocument();
-  expect(screen.getByRole('group', { name: 'انتخاب بسته‌ی تعرفه' })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'ترکیب‌های پیشنهادی ماژول‌ها' })).toBeInTheDocument();
   expect(screen.getByRole('group', { name: 'انتخاب ماژول‌های آسومی' })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { level: 2, name: 'مالی و حسابداری' })).toBeInTheDocument();
-  expect(screen.getByText('دفتر کل و سندهای حسابداری')).toBeInTheDocument();
-  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۳٬۹۰۰٬۰۰۰ تومان');
+  expect(screen.getByRole('heading', { level: 2, name: 'فروش حضوری و رستوران' })).toBeInTheDocument();
+  expect(screen.getByText('صندوق و فروش حضوری')).toBeInTheDocument();
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۶٬۵۰۰٬۰۰۰ تومان');
 });
 
 test('opens module pricing directly from the homepage module directory', async () => {
@@ -96,23 +96,26 @@ test('opens module pricing directly from the homepage module directory', async (
 test('adds growth when business planning is selected and blocks removing its prerequisite', () => {
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
-  fireEvent.click(screen.getByRole('button', { name: 'افزودن ماژول برنامه‌ریزی کسب‌وکار' }));
+  fireEvent.click(screen.getByRole('button', { name: 'پاک‌کردن انتخاب' }));
+  fireEvent.click(screen.getByRole('button', { name: /افزودن ماژول برنامه‌ریزی کسب‌وکار/ }));
   expect(screen.getByRole('status')).toHaveTextContent('پیش‌نیازش هم اضافه شد: بازاریابی و رشد');
   expect(container.querySelector('.pricing-selected-modules')).toHaveTextContent('بازاریابی و رشد · کسب‌وکار');
-  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۳۸۰٬۰۰۰ تومان');
-  fireEvent.click(screen.getByRole('button', { name: 'حذف ماژول بازاریابی و رشد' }));
-  expect(screen.getByRole('status')).toHaveTextContent('ابتدا این وابسته‌ها را حذف کن: کسب‌وکار');
-  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۳۸۰٬۰۰۰ تومان');
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۷٬۳۰۰٬۰۰۰ تومان');
+  fireEvent.click(screen.getByRole('button', { name: /حذف ماژول بازاریابی و رشد/ }));
+  expect(screen.getByRole('status')).toHaveTextContent('برای حذف بازاریابی و رشد، ابتدا این ماژول‌های وابسته را حذف کن: کسب‌وکار');
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۷٬۳۰۰٬۰۰۰ تومان');
 });
 
-test('switching to professional includes selected CRM without charging it twice', () => {
+test('switching to the complete package keeps a selected CRM module only once', () => {
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
-  fireEvent.click(screen.getByRole('button', { name: 'افزودن ماژول مدیریت ارتباط با مشتری' }));
-  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۴٬۳۹۰٬۰۰۰ تومان');
-  fireEvent.click(screen.getByRole('button', { name: /حرفه‌ای/ }));
-  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۹٬۹۰۰٬۰۰۰ تومان');
-  expect(container.querySelector('.pricing-module-option[data-selected="true"]')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'پاک‌کردن انتخاب' }));
+  fireEvent.click(screen.getByRole('button', { name: /افزودن ماژول مدیریت ارتباط با مشتری/ }));
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۲٬۵۰۰٬۰۰۰ تومان');
+  fireEvent.click(screen.getByRole('button', { name: /همهٔ امکانات/ }));
+  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵۰٬۰۰۰٬۰۰۰ تومان');
+  const selectedModules = container.querySelector('.pricing-selected-modules')?.textContent || '';
+  expect(selectedModules.match(/CRM/g)).toHaveLength(1);
 });
 
 test('opens finance as a separate Persian financial story with a direct route into the real center', () => {

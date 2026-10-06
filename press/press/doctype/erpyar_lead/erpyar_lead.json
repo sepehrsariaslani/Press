@@ -1,0 +1,163 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "creation": "2026-04-29 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "full_name",
+  "lead_type",
+  "status",
+  "column_break_top",
+  "phone",
+  "email",
+  "section_break_company",
+  "company",
+  "company_size",
+  "product_interest",
+  "section_break_message",
+  "message",
+  "section_break_source",
+  "source_path",
+  "source_host",
+  "referrer",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign"
+ ],
+ "fields": [
+  {
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Full Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lead_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Lead Type",
+   "options": "contact\ndemo",
+   "reqd": 1
+  },
+  {
+   "default": "New",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "New\nContacted\nQualified\nLost",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_top",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Phone",
+   "reqd": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email"
+  },
+  {
+   "fieldname": "section_break_company",
+   "fieldtype": "Section Break",
+   "label": "Company Details"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company"
+  },
+  {
+   "fieldname": "company_size",
+   "fieldtype": "Data",
+   "label": "Company Size"
+  },
+  {
+   "fieldname": "product_interest",
+   "fieldtype": "Data",
+   "label": "Product Interest"
+  },
+  {
+   "fieldname": "section_break_message",
+   "fieldtype": "Section Break",
+   "label": "Lead Message"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Long Text",
+   "label": "Message"
+  },
+  {
+   "fieldname": "section_break_source",
+   "fieldtype": "Section Break",
+   "label": "Acquisition Source"
+  },
+  {
+   "fieldname": "source_path",
+   "fieldtype": "Data",
+   "label": "Source Path"
+  },
+  {
+   "fieldname": "source_host",
+   "fieldtype": "Data",
+   "label": "Source Host"
+  },
+  {
+   "fieldname": "referrer",
+   "fieldtype": "Data",
+   "label": "Referrer"
+  },
+  {
+   "fieldname": "utm_source",
+   "fieldtype": "Data",
+   "label": "UTM Source"
+  },
+  {
+   "fieldname": "utm_medium",
+   "fieldtype": "Data",
+   "label": "UTM Medium"
+  },
+  {
+   "fieldname": "utm_campaign",
+   "fieldtype": "Data",
+   "label": "UTM Campaign"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-29 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Press",
+ "name": "Erpyar Lead",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
