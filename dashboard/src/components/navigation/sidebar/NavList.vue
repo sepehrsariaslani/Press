@@ -106,6 +106,14 @@ const navigation = computed(() => {
 			disabled: enforce2FA,
 		},
 		{
+			name: 'مدیریت Docker',
+			icon: Server,
+			route: '/docker-control',
+			isActive: routeName === 'Docker Control',
+			condition: $session.isSystemUser,
+			disabled: enforce2FA,
+		},
+		{
 			name: 'ابزار توسعه',
 			icon: Code,
 			route: '/devtools',
@@ -191,7 +199,7 @@ const navigation = computed(() => {
 		},
 		{
 			name: 'وضعیت',
-			icon: LucideActivity,
+			icon: Activity,
 			route: '/status',
 			isActive: routeName === 'Status',
 			disabled: enforce2FA,

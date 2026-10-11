@@ -1,0 +1,38 @@
+{
+  "bind_address": "172.18.0.1",
+  "port": 8769,
+  "project_root": "/home/sepehr/den-v16-docker",
+  "compose_files": [
+    "/home/sepehr/den-v16-docker/docker-compose.yml",
+    "/home/sepehr/den-v16-docker/docker-compose.override.yml"
+  ],
+  "backend_service": "backend",
+  "apps_root": "/home/sepehr/den-v16-docker/apps",
+  "sites_root": "/home/sepehr/den-v16-docker/runtime/sites",
+  "backup_root": "/home/sepehr/den-v16-docker/runtime/backup",
+  "state_path": "/var/lib/press-docker-control-agent/state.sqlite3",
+  "customer_sites": [
+    "boller.ir",
+    "dehati.ir",
+    "denroom.ir",
+    "veederakht.ir"
+  ],
+  "impact_sites": [
+    "asumi.ir",
+    "boller.ir",
+    "dehati.ir",
+    "denroom.ir",
+    "veederakht.ir"
+  ],
+  "allowed_services": [
+    "backend",
+    "websocket",
+    "queue-short",
+    "queue-long",
+    "scheduler",
+    "db",
+    "redis-cache",
+    "redis-queue"
+  ],
+  "allowed_apps": ["accounts", "restaurant"]
+}

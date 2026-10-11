@@ -1,0 +1,31 @@
+{
+ "doctype": "DocType",
+ "name": "Docker Control Operation",
+ "module": "Press",
+ "autoname": "hash",
+ "engine": "InnoDB",
+ "field_order": ["action", "target", "status", "actor", "section_break_impact", "impact_sites", "backup_sites", "migration_sites", "arguments", "confirmation_token_hash", "confirmation_expires_at", "backup_agent_operation_id", "agent_operation_id", "progress", "result", "started_at", "ended_at"],
+ "fields": [
+  {"fieldname": "action", "fieldtype": "Data", "label": "Action", "reqd": 1, "read_only": 1, "in_list_view": 1},
+  {"fieldname": "target", "fieldtype": "Data", "label": "Target", "read_only": 1, "in_list_view": 1},
+  {"default": "Preparing Backup", "fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Preparing Backup\nAwaiting Confirmation\nQueued\nRunning\nSuccess\nFailure", "read_only": 1, "reqd": 1, "in_list_view": 1},
+  {"fieldname": "actor", "fieldtype": "Data", "label": "Requested By", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "section_break_impact", "fieldtype": "Section Break", "label": "Impact and Confirmation"},
+  {"fieldname": "impact_sites", "fieldtype": "Code", "label": "Affected Sites", "options": "JSON", "read_only": 1},
+  {"fieldname": "backup_sites", "fieldtype": "Code", "label": "Backup Sites", "options": "JSON", "read_only": 1},
+  {"fieldname": "migration_sites", "fieldtype": "Code", "label": "Migration Sites", "options": "JSON", "read_only": 1},
+  {"fieldname": "arguments", "fieldtype": "Code", "label": "Operation Arguments", "options": "JSON", "read_only": 1},
+  {"fieldname": "confirmation_token_hash", "fieldtype": "Data", "label": "Confirmation Token Hash", "read_only": 1},
+  {"fieldname": "confirmation_expires_at", "fieldtype": "Datetime", "label": "Confirmation Expires At", "read_only": 1},
+  {"fieldname": "backup_agent_operation_id", "fieldtype": "Data", "label": "Backup Agent Operation ID", "read_only": 1},
+  {"fieldname": "agent_operation_id", "fieldtype": "Data", "label": "Agent Operation ID", "read_only": 1},
+  {"fieldname": "progress", "fieldtype": "Small Text", "label": "Progress", "read_only": 1},
+  {"fieldname": "result", "fieldtype": "Code", "label": "Sanitized Result", "options": "JSON", "read_only": 1},
+  {"fieldname": "started_at", "fieldtype": "Datetime", "label": "Started At", "read_only": 1},
+  {"fieldname": "ended_at", "fieldtype": "Datetime", "label": "Ended At", "read_only": 1}
+ ],
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

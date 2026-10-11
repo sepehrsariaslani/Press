@@ -1,0 +1,20 @@
+{
+ "doctype": "DocType",
+ "name": "Docker Control Site",
+ "module": "Press",
+ "autoname": "field:domain",
+ "engine": "InnoDB",
+ "field_order": ["domain", "host", "enabled", "team", "last_inventory_at", "apps"],
+ "fields": [
+  {"fieldname": "domain", "fieldtype": "Data", "label": "Domain", "reqd": 1, "unique": 1, "in_list_view": 1},
+  {"fieldname": "host", "fieldtype": "Link", "label": "Docker Control Host", "options": "Docker Control Host", "reqd": 1},
+  {"default": "1", "fieldname": "enabled", "fieldtype": "Check", "label": "Enabled"},
+  {"fieldname": "team", "fieldtype": "Link", "label": "Team (Optional)", "options": "Team"},
+  {"fieldname": "last_inventory_at", "fieldtype": "Datetime", "label": "Last Inventory Refresh", "read_only": 1},
+  {"fieldname": "apps", "fieldtype": "Table", "label": "Installed Apps", "options": "Docker Control Site App", "read_only": 1}
+ ],
+ "permissions": [],
+ "sort_field": "domain",
+ "sort_order": "ASC",
+ "track_changes": 1
+}
