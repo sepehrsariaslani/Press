@@ -473,7 +473,7 @@ let router = createRouter({
 			path: '/docker-control',
 			component: () => import('./pages/DockerControl.vue'),
 			beforeEnter: (to, from, next) => {
-				if (session.isSystemUser) next();
+				if (session.isSystemManager) next();
 				else next({ name: 'Welcome' });
 			},
 		},

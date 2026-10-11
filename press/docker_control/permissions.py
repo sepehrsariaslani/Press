@@ -28,13 +28,12 @@ STACK_RESTART_ORDER = (
 
 
 def assert_docker_control_admin() -> None:
-	configured_users = _configured_users()
-	if frappe.session.user not in configured_users:
+	if not _is_docker_control_admin(frappe.session.user):
 		frappe.throw("فقط مدیر مجاز به مدیریت میزبان Docker است.", frappe.PermissionError)
 
 
 def has_document_permission(doc=None, user=None, permission_type=None) -> bool:
-	return (user or frappe.session.user) in _configured_users()
+	return _is_docker_control_admin(user or frappe.session.user)
 
 
 def get_permission_query_conditions(user=None) -> str:
@@ -46,3 +45,7 @@ def get_permission_query_conditions(user=None) -> str:
 def _configured_users() -> list[str]:
 	value = frappe.conf.get("docker_control_admin_users") or ["Administrator"]
 	return [value] if isinstance(value, str) else list(value)
+
+
+def _is_docker_control_admin(user: str) -> bool:
+	return user in _configured_users() or "System Manager" in frappe.get_roles(user)
