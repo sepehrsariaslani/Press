@@ -2,6 +2,7 @@
   "bind_address": "172.18.0.1",
   "port": 8769,
   "project_root": "/home/sepehr/den-v16-docker",
+  "runtime_root": "/home/sepehr/den-v16-runtime",
   "compose_files": [
     "/home/sepehr/den-v16-docker/docker-compose.yml",
     "/home/sepehr/den-v16-docker/docker-compose.override.yml"
