@@ -41,6 +41,7 @@ def get_boot():
 		default_team=get_default_team_for_user(frappe.session.user),
 		valid_teams=get_valid_teams_for_user(frappe.session.user),
 		is_system_user=frappe.session.data.user_type == "System User",
+		is_system_manager="System Manager" in frappe.get_roles(frappe.session.user),
 		verify_cards_with_micro_charge=frappe.db.get_single_value(
 			"Press Settings", "verify_cards_with_micro_charge"
 		),

@@ -98,6 +98,7 @@ export let session = reactive({
 	userFullName: getSessionCookies().get('full_name') || '',
 	isLoggedIn: computed(() => !!session.user),
 	isSystemUser: getSessionCookies().get('system_user') === 'yes',
+	isSystemManager: Boolean(window.is_system_manager),
 });
 
 export default session;
