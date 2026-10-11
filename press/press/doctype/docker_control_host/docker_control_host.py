@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 import frappe
 from frappe.model.document import Document
 
+from press.docker_control.client import AGENT_HOST
 from press.docker_control.permissions import assert_docker_control_admin
 
 
@@ -14,7 +15,7 @@ class DockerControlHost(Document):
 		parsed = urlsplit(self.endpoint or "")
 		if (
 			parsed.scheme != "http"
-			or parsed.hostname != "dehati.ir"
+			or parsed.hostname != AGENT_HOST
 			or parsed.port != 8769
 			or parsed.username
 			or parsed.password
