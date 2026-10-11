@@ -60,7 +60,7 @@ import OperationDetails from '@/components/docker-control/OperationDetails.vue';
 import ConfirmDockerOperation from '@/components/docker-control/ConfirmDockerOperation.vue';
 import { callDockerControl, fetchDockerControl } from '@/data/dockerControl';
 
-const endpoint = 'http://dehati.ir:8769';
+const endpoint = 'http://172.18.0.1:8769';
 const state = reactive({ initialized: false, host: null, sites: [], operations: [] });
 const loading = ref(true);
 const busy = ref(false);
