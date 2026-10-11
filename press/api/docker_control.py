@@ -14,6 +14,7 @@ import frappe
 from frappe.utils import cint, get_datetime, now_datetime
 
 from press.docker_control.client import DockerControlClient, DockerControlError
+from press.docker_control.operation_policy import preparation_backup_request
 from press.docker_control.permissions import (
 	ALLOWED_APPS,
 	ALLOWED_SERVICES,
@@ -423,22 +424,19 @@ def process_preparation(operation_name: str) -> None:
 	try:
 		arguments = json.loads(operation.arguments or "{}")
 		if operation.backup_sites:
-			if operation.target:
-				backup_result = _run_agent(
-					operation,
-					"backup_site",
-					operation.target,
-					{},
-					operation_id_field="backup_agent_operation_id",
-				)
-			else:
-				backup_result = _run_agent(
-					operation,
-					"backup_sites",
-					None,
-					{"sites": list(IMPACT_SITES)},
-					operation_id_field="backup_agent_operation_id",
-				)
+			backup_action, backup_target, backup_arguments = preparation_backup_request(
+				operation.action,
+				operation.target,
+				customer_sites=CUSTOMER_SITES,
+				impact_sites=IMPACT_SITES,
+			)
+			backup_result = _run_agent(
+				operation,
+				backup_action,
+				backup_target,
+				backup_arguments,
+				operation_id_field="backup_agent_operation_id",
+			)
 			operation.reload()
 			_set_operation(
 				operation,
