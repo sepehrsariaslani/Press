@@ -23,7 +23,7 @@ from press.docker_control.permissions import (
 	assert_docker_control_admin,
 )
 
-AGENT_ENDPOINT = "http://dehati.ir:8769"
+AGENT_ENDPOINT = "http://172.18.0.1:8769"
 CONFIRMATION_SECONDS = 600
 POLL_INTERVAL_SECONDS = 2
 OPERATION_TIMEOUT_SECONDS = 10800
