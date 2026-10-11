@@ -1,0 +1,24 @@
+{
+ "doctype": "DocType",
+ "name": "Docker Control Host",
+ "module": "Press",
+ "autoname": "field:host_name",
+ "engine": "InnoDB",
+ "field_order": ["host_name", "endpoint", "hmac_key", "section_break_status", "connection_status", "protocol_version", "agent_version", "compose_project", "last_inventory_at", "inventory"],
+ "fields": [
+  {"fieldname": "host_name", "fieldtype": "Data", "label": "Host Name", "reqd": 1, "unique": 1},
+  {"fieldname": "endpoint", "fieldtype": "Data", "label": "Private Agent Endpoint", "reqd": 1},
+  {"fieldname": "hmac_key", "fieldtype": "Password", "label": "Encrypted HMAC Key", "reqd": 1},
+  {"fieldname": "section_break_status", "fieldtype": "Section Break", "label": "Agent Status"},
+  {"fieldname": "connection_status", "fieldtype": "Select", "label": "Connection Status", "options": "Unknown\nConnected\nDisconnected", "read_only": 1},
+  {"fieldname": "protocol_version", "fieldtype": "Int", "label": "Protocol Version", "read_only": 1},
+  {"fieldname": "agent_version", "fieldtype": "Data", "label": "Agent Version", "read_only": 1},
+  {"fieldname": "compose_project", "fieldtype": "Data", "label": "Compose Project", "read_only": 1},
+  {"fieldname": "last_inventory_at", "fieldtype": "Datetime", "label": "Last Inventory Refresh", "read_only": 1},
+  {"fieldname": "inventory", "fieldtype": "Code", "label": "Latest Inventory", "options": "JSON", "read_only": 1}
+ ],
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

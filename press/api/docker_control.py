@@ -1,0 +1,546 @@
+# ruff: noqa: RUF001
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import re
+import secrets
+import time
+import uuid
+from datetime import timedelta
+
+import frappe
+from frappe.utils import cint, get_datetime, now_datetime
+
+from press.docker_control.client import DockerControlClient, DockerControlError
+from press.docker_control.permissions import (
+	ALLOWED_APPS,
+	ALLOWED_SERVICES,
+	CUSTOMER_SITES,
+	IMPACT_SITES,
+	STACK_RESTART_ORDER,
+	assert_docker_control_admin,
+)
+
+AGENT_ENDPOINT = "http://dehati.ir:8769"
+CONFIRMATION_SECONDS = 600
+POLL_INTERVAL_SECONDS = 2
+OPERATION_TIMEOUT_SECONDS = 10800
+SHA_RE = re.compile(r"^[a-f0-9]{40}$")
+
+
+def _host_doc():
+	hosts = frappe.get_all("Docker Control Host", pluck="name")
+	if len(hosts) != 1:
+		frappe.throw("عامل Docker هنوز ثبت نشده است.")
+	return frappe.get_doc("Docker Control Host", hosts[0])
+
+
+def _client(host=None, hmac_key=None) -> DockerControlClient:
+	return DockerControlClient(host or _host_doc(), hmac_key=hmac_key)
+
+
+def _validate_inventory(inventory: dict) -> list[dict]:
+	if not isinstance(inventory, dict) or inventory.get("protocol_version") != 1:
+		frappe.throw("نسخهٔ پروتکل عامل با Press سازگار نیست.")
+	if inventory.get("domains") != list(IMPACT_SITES):
+		frappe.throw("فهرست دامنه‌های بنچ با فهرست مورد انتظار یکسان نیست.")
+	sites = inventory.get("sites")
+	if not isinstance(sites, list):
+		frappe.throw("ساختار موجودی سایت‌ها معتبر نیست.")
+	by_domain = {}
+	for site in sites:
+		_validate_inventory_site(site, by_domain)
+	if set(by_domain) != set(IMPACT_SITES):
+		frappe.throw("موجودی باید دقیقاً هر پنج دامنهٔ بنچ را شامل شود.")
+	return [by_domain[domain] for domain in IMPACT_SITES]
+
+
+def _validate_inventory_site(site, by_domain: dict) -> None:
+	if not isinstance(site, dict) or site.get("domain") in by_domain:
+		frappe.throw("دامنهٔ تکراری یا نامعتبر در موجودی عامل پیدا شد.")
+	if not isinstance(site.get("apps"), list):
+		frappe.throw("ساختار برنامه‌های نصب‌شده معتبر نیست.")
+	for app in site["apps"]:
+		if not isinstance(app, dict) or not isinstance(app.get("app"), str):
+			frappe.throw("اطلاعات برنامهٔ نصب‌شده معتبر نیست.")
+	by_domain[site["domain"]] = site
+
+
+def _store_inventory(host, inventory: dict) -> None:
+	sites = _validate_inventory(inventory)
+	now = now_datetime()
+	host.connection_status = "Connected"
+	host.protocol_version = inventory["protocol_version"]
+	host.agent_version = "1.0.0"
+	host.compose_project = "den-v16-docker"
+	host.last_inventory_at = now
+	host.inventory = json.dumps(inventory, ensure_ascii=False)
+	host.save(ignore_permissions=True)
+	for site_data in sites:
+		domain = site_data["domain"]
+		if domain not in CUSTOMER_SITES:
+			continue
+		if frappe.db.exists("Docker Control Site", domain):
+			site_doc = frappe.get_doc("Docker Control Site", domain)
+		else:
+			site_doc = frappe.new_doc("Docker Control Site")
+			site_doc.domain = domain
+			site_doc.host = host.name
+			site_doc.enabled = 1
+		site_doc.last_inventory_at = now
+		site_doc.apps = []
+		for app in site_data["apps"]:
+			site_doc.append(
+				"apps",
+				{
+					"app": app["app"],
+					"version": str(app.get("version", "unknown"))[:100],
+					"branch": str(app.get("branch", "unknown"))[:100],
+				},
+			)
+		site_doc.save(ignore_permissions=True)
+
+
+def _dashboard_payload(host=None) -> dict:
+	host = host or _host_doc()
+	parsed_inventory = json.loads(host.inventory) if host.inventory else {}
+	sites = []
+	for domain in CUSTOMER_SITES:
+		if frappe.db.exists("Docker Control Site", domain):
+			doc = frappe.get_doc("Docker Control Site", domain)
+			sites.append(
+				{
+					"domain": doc.domain,
+					"enabled": bool(doc.enabled),
+					"team": doc.team or None,
+					"last_inventory_at": str(doc.last_inventory_at or ""),
+					"apps": [
+						{"app": row.app, "version": row.version, "branch": row.branch} for row in doc.apps
+					],
+				}
+			)
+	operations = frappe.get_all(
+		"Docker Control Operation",
+		fields=[
+			"name",
+			"action",
+			"target",
+			"status",
+			"actor",
+			"impact_sites",
+			"backup_sites",
+			"migration_sites",
+			"arguments",
+			"progress",
+			"result",
+			"creation",
+			"started_at",
+			"ended_at",
+		],
+		order_by="creation desc",
+		limit=25,
+	)
+	for operation in operations:
+		for field in ("impact_sites", "backup_sites", "migration_sites", "arguments", "result"):
+			operation[field] = (
+				json.loads(operation[field]) if operation[field] else ([] if field.endswith("sites") else {})
+			)
+	return {
+		"host": {
+			"name": host.host_name,
+			"status": host.connection_status,
+			"protocol_version": host.protocol_version,
+			"agent_version": host.agent_version,
+			"compose_project": host.compose_project,
+			"last_inventory_at": str(host.last_inventory_at or ""),
+			"resources": parsed_inventory.get("resources", {}),
+			"services": parsed_inventory.get("services", []),
+			"impact_sites": list(IMPACT_SITES),
+		},
+		"sites": sites,
+		"operations": operations,
+	}
+
+
+def _operation_preview(doc) -> dict:
+	return {
+		"operation": doc.name,
+		"action": doc.action,
+		"target": doc.target or None,
+		"status": doc.status,
+		"arguments": json.loads(doc.arguments or "{}"),
+		"impact_sites": json.loads(doc.impact_sites or "[]"),
+		"backup_sites": json.loads(doc.backup_sites or "[]"),
+		"migration_sites": json.loads(doc.migration_sites or "[]"),
+		"progress": doc.progress or "",
+		"result": json.loads(doc.result or "{}"),
+		"confirmation_expires_at": str(doc.confirmation_expires_at or ""),
+	}
+
+
+def _set_operation(doc, **values) -> None:
+	for key, value in values.items():
+		setattr(doc, key, value)
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+
+
+def _issue_confirmation(doc) -> str:
+	token = secrets.token_urlsafe(32)
+	doc.confirmation_token_hash = hashlib.sha256(token.encode()).hexdigest()
+	doc.confirmation_expires_at = now_datetime() + timedelta(seconds=CONFIRMATION_SECONDS)
+	doc.save(ignore_permissions=True)
+	return token
+
+
+def _parse_arguments(arguments) -> dict:
+	if isinstance(arguments, str):
+		try:
+			arguments = json.loads(arguments)
+		except json.JSONDecodeError:
+			frappe.throw("پارامترهای عملیات معتبر نیستند.")
+	if not isinstance(arguments, dict):
+		frappe.throw("پارامترهای عملیات معتبر نیستند.")
+	return arguments
+
+
+@frappe.whitelist()
+def get_dashboard_data() -> dict:
+	assert_docker_control_admin()
+	if not frappe.get_all("Docker Control Host", pluck="name"):
+		return {"initialized": False, "host": None, "sites": [], "operations": []}
+	return {"initialized": True, **_dashboard_payload()}
+
+
+@frappe.whitelist(methods=["POST"])
+def bootstrap_agent(endpoint: str, hmac_key: str) -> dict:
+	assert_docker_control_admin()
+	if frappe.get_all("Docker Control Host", pluck="name"):
+		frappe.throw("میزبان Docker از قبل ثبت شده است.")
+	if endpoint != AGENT_ENDPOINT or not isinstance(hmac_key, str) or len(hmac_key.encode()) < 32:
+		frappe.throw("نشانی یا کلید خصوصی عامل نامعتبر است.")
+	try:
+		client = DockerControlClient(type("BootstrapHost", (), {"endpoint": endpoint})(), hmac_key=hmac_key)
+		if client.health().get("protocol_version") != 1:
+			frappe.throw("نسخهٔ پروتکل عامل پشتیبانی نمی‌شود.")
+		inventory = client.inventory()
+		_validate_inventory(inventory)
+	except DockerControlError as error:
+		frappe.throw(str(error))
+	host = frappe.new_doc("Docker Control Host")
+	host.host_name = "den-v16-docker"
+	host.endpoint = endpoint
+	host.hmac_key = hmac_key
+	_store_inventory(host, inventory)
+	return _dashboard_payload(host)
+
+
+@frappe.whitelist(methods=["POST"])
+def register_current_bench() -> dict:
+	assert_docker_control_admin()
+	host = _host_doc()
+	try:
+		inventory = _client(host).inventory()
+	except DockerControlError as error:
+		host.connection_status = "Disconnected"
+		host.save(ignore_permissions=True)
+		frappe.throw(str(error))
+	_validate_inventory(inventory)
+	_store_inventory(host, inventory)
+	return _dashboard_payload(host)
+
+
+@frappe.whitelist(methods=["POST"])
+def refresh_inventory() -> dict:
+	return register_current_bench()
+
+
+def _action_data(  # noqa: C901
+	action: str, target: str | None, arguments: dict, host
+) -> tuple[list[str], list[str], list[str]]:
+	allowed_site_actions = {
+		"backup_site",
+		"restore_site",
+		"set_maintenance",
+		"clear_cache",
+		"set_scheduler",
+		"migrate_site",
+		"read_site_logs",
+	}
+	if action not in allowed_site_actions | {"restart_service", "restart_stack", "deploy_app_revision"}:
+		frappe.throw("این عملیات در فهرست مجاز نیست.")
+	allowed_argument_keys = {
+		"restore_site": {"backup_id"},
+		"set_maintenance": {"enabled"},
+		"set_scheduler": {"enabled"},
+		"deploy_app_revision": {"app", "revision"},
+		"restart_stack": {"services"},
+	}
+	if set(arguments) - allowed_argument_keys.get(action, set()):
+		frappe.throw("پارامتر اضافه برای این عملیات مجاز نیست.")
+	if action in allowed_site_actions and target not in CUSTOMER_SITES:
+		frappe.throw("سایت انتخاب‌شده در فهرست مدیریت‌شده نیست.")
+	if action in allowed_site_actions and not frappe.db.exists(
+		"Docker Control Site", {"domain": target, "enabled": 1}
+	):
+		frappe.throw("سایت انتخاب‌شده فعال یا ثبت‌شده نیست.")
+	if action == "restart_service" and target not in ALLOWED_SERVICES:
+		frappe.throw("سرویس انتخاب‌شده مجاز نیست.")
+	if action == "restart_stack" and target:
+		frappe.throw("عملیات بازراه‌اندازی کل بنچ نباید هدف سایت داشته باشد.")
+	if action == "deploy_app_revision":
+		app = arguments.get("app")
+		revision = arguments.get("revision")
+		if app not in ALLOWED_APPS or not isinstance(revision, str) or not SHA_RE.fullmatch(revision):
+			frappe.throw("برنامه یا نسخهٔ انتخاب‌شده مجاز نیست.")
+		try:
+			preflight = _client(host).preflight_app_revision(app, revision)
+		except DockerControlError as error:
+			frappe.throw(str(error))
+		if preflight.get("app") != app or preflight.get("revision") != revision:
+			frappe.throw("پیش‌بررسی انتشار پاسخ معتبر نداد.")
+		migration_sites = preflight.get("migration_sites")
+		if not isinstance(migration_sites, list) or any(site not in IMPACT_SITES for site in migration_sites):
+			frappe.throw("فهرست مهاجرت سایت‌ها معتبر نیست.")
+		if preflight.get("backup_sites") != list(IMPACT_SITES) or preflight.get("restart_services") != [
+			"backend",
+			"queue-short",
+			"queue-long",
+			"scheduler",
+			"websocket",
+		]:
+			frappe.throw("فهرست اثر انتشار معتبر نیست.")
+		arguments["expected_migration_sites"] = migration_sites
+		arguments["restart_services"] = preflight["restart_services"]
+		return list(IMPACT_SITES), list(IMPACT_SITES), migration_sites
+	if action in {"restart_service", "restart_stack"}:
+		if action == "restart_stack":
+			arguments["services"] = list(STACK_RESTART_ORDER)
+		return list(IMPACT_SITES), list(IMPACT_SITES), []
+	impact = [target] if target else []
+	backup_sites = [target] if action in {"restore_site", "migrate_site"} else []
+	if action == "restore_site" and (
+		not isinstance(arguments.get("backup_id"), str)
+		or not re.fullmatch(r"[A-Za-z0-9_.-]{1,120}", arguments["backup_id"])
+	):
+		frappe.throw("شناسهٔ پشتیبان معتبر نیست.")
+	if action in {"set_maintenance", "set_scheduler"} and not isinstance(arguments.get("enabled"), bool):
+		frappe.throw("وضعیت انتخاب‌شده معتبر نیست.")
+	return impact, backup_sites, [target] if action == "migrate_site" else []
+
+
+def _enqueue_prepare(doc) -> None:
+	frappe.enqueue(
+		"press.api.docker_control.process_preparation",
+		queue="long",
+		timeout=OPERATION_TIMEOUT_SECONDS + 60,
+		enqueue_after_commit=True,
+		operation_name=doc.name,
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def prepare_operation(action: str, target: str | None = None, arguments=None) -> dict:
+	assert_docker_control_admin()
+	host = _host_doc()
+	arguments = _parse_arguments(arguments)
+	impact_sites, backup_sites, migration_sites = _action_data(action, target, arguments, host)
+	operation = frappe.new_doc("Docker Control Operation")
+	operation.action = action
+	operation.target = target
+	operation.actor = frappe.session.user
+	operation.impact_sites = json.dumps(impact_sites)
+	operation.backup_sites = json.dumps(backup_sites)
+	operation.migration_sites = json.dumps(migration_sites)
+	operation.arguments = json.dumps(arguments, sort_keys=True, ensure_ascii=False)
+	operation.status = "Preparing Backup" if backup_sites else "Queued"
+	operation.progress = "در انتظار آغاز"
+	operation.insert(ignore_permissions=True)
+	frappe.db.commit()
+	if backup_sites or action in {"backup_site", "read_site_logs"}:
+		_enqueue_prepare(operation)
+		return _operation_preview(operation)
+	operation.status = "Awaiting Confirmation"
+	operation.progress = "برای اجرای این تغییر، تأیید نهایی لازم است."
+	confirmation_token = _issue_confirmation(operation)
+	frappe.db.commit()
+	response = _operation_preview(operation)
+	response["confirmation_token"] = confirmation_token
+	return response
+
+
+def _set_failure(operation, message: str) -> None:
+	_set_operation(
+		operation,
+		status="Failure",
+		progress=message[:500],
+		result=json.dumps({"error": message[:500]}, ensure_ascii=False),
+		ended_at=now_datetime(),
+		confirmation_token_hash=None,
+	)
+
+
+def _run_agent(
+	operation,
+	action: str,
+	target: str | None,
+	arguments: dict,
+	*,
+	operation_id_field: str = "agent_operation_id",
+) -> dict:
+	host = _host_doc()
+	client = _client(host)
+	agent_id = getattr(operation, operation_id_field, None) or str(uuid.uuid4())
+	_set_operation(
+		operation,
+		**{operation_id_field: agent_id},
+		status="Running",
+		started_at=now_datetime(),
+		progress="در حال اجرا",
+	)
+	client.submit(agent_id, action, target, arguments)
+	started = time.monotonic()
+	while time.monotonic() - started < OPERATION_TIMEOUT_SECONDS:
+		result = client.get_operation(agent_id)
+		status = result.get("status")
+		_set_operation(operation, progress=str(result.get("progress") or "در حال اجرا")[:500])
+		if status == "Success":
+			return result.get("result") or {}
+		if status == "Failure":
+			raise DockerControlError(
+				str((result.get("result") or {}).get("error") or "عامل عملیات را ناموفق گزارش کرد.")
+			)
+		time.sleep(POLL_INTERVAL_SECONDS)
+	raise DockerControlError("زمان عملیات به پایان رسید؛ وضعیت را در تاریخچه بررسی کنید.")
+
+
+def process_preparation(operation_name: str) -> None:
+	operation = frappe.get_doc("Docker Control Operation", operation_name)
+	if operation.status not in {"Preparing Backup", "Queued"}:
+		return
+	try:
+		arguments = json.loads(operation.arguments or "{}")
+		if operation.backup_sites:
+			if operation.target:
+				backup_result = _run_agent(
+					operation,
+					"backup_site",
+					operation.target,
+					{},
+					operation_id_field="backup_agent_operation_id",
+				)
+			else:
+				backup_result = _run_agent(
+					operation,
+					"backup_sites",
+					None,
+					{"sites": list(IMPACT_SITES)},
+					operation_id_field="backup_agent_operation_id",
+				)
+			operation.reload()
+			_set_operation(
+				operation,
+				status="Awaiting Confirmation",
+				progress="پشتیبان‌گیری کامل شد؛ تأیید نهایی لازم است.",
+				result=json.dumps(backup_result, ensure_ascii=False),
+				confirmation_expires_at=now_datetime() + timedelta(seconds=CONFIRMATION_SECONDS),
+			)
+			return
+		result = _run_agent(operation, operation.action, operation.target, arguments)
+		operation.reload()
+		_set_operation(
+			operation,
+			status="Success",
+			progress="عملیات با موفقیت انجام شد.",
+			result=json.dumps(result, ensure_ascii=False),
+			ended_at=now_datetime(),
+		)
+	except Exception as error:
+		operation.reload()
+		message = (
+			str(error)
+			if isinstance(error, DockerControlError)
+			else "اجرای عملیات ناموفق شد؛ جزئیات امن عامل را بررسی کنید."
+		)
+		_set_failure(operation, message)
+
+
+def process_confirmed_operation(operation_name: str) -> None:
+	operation = frappe.get_doc("Docker Control Operation", operation_name)
+	if operation.status != "Queued":
+		return
+	try:
+		arguments = json.loads(operation.arguments or "{}")
+		result = _run_agent(operation, operation.action, operation.target or None, arguments)
+		operation.reload()
+		_set_operation(
+			operation,
+			status="Success",
+			progress="عملیات با موفقیت انجام شد.",
+			result=json.dumps(result, ensure_ascii=False),
+			ended_at=now_datetime(),
+		)
+	except Exception as error:
+		operation.reload()
+		message = (
+			str(error)
+			if isinstance(error, DockerControlError)
+			else "اجرای عملیات ناموفق شد؛ جزئیات امن عامل را بررسی کنید."
+		)
+		_set_failure(operation, message)
+
+
+@frappe.whitelist()
+def get_operation(operation: str, issue_confirmation_token: int = 0) -> dict:
+	assert_docker_control_admin()
+	doc = frappe.get_doc("Docker Control Operation", operation)
+	response = _operation_preview(doc)
+	if cint(issue_confirmation_token) and doc.status == "Awaiting Confirmation":
+		# Reopening the exact saved preview issues a fresh short-lived, single-use token.
+		# The agent independently rejects stale backups before any shared write.
+		response["confirmation_token"] = _issue_confirmation(doc)
+		frappe.db.commit()
+	return response
+
+
+@frappe.whitelist(methods=["POST"])
+def confirm_operation(operation: str, confirmation_token: str, expected_preview=None) -> dict:
+	assert_docker_control_admin()
+	if not isinstance(confirmation_token, str) or not confirmation_token:
+		frappe.throw("توکن تأیید نامعتبر است.")
+	frappe.db.sql("SELECT name FROM `tabDocker Control Operation` WHERE name=%s FOR UPDATE", operation)
+	doc = frappe.get_doc("Docker Control Operation", operation)
+	if doc.status != "Awaiting Confirmation" or not doc.confirmation_token_hash:
+		frappe.throw("این عملیات در انتظار تأیید نیست.")
+	if doc.confirmation_expires_at and get_datetime(doc.confirmation_expires_at) < now_datetime():
+		frappe.throw("مهلت تأیید تمام شده است.")
+	expected_hash = hashlib.sha256(confirmation_token.encode()).hexdigest()
+	if not hmac.compare_digest(expected_hash, doc.confirmation_token_hash):
+		frappe.throw("توکن تأیید نامعتبر یا مصرف‌شده است.")
+	provided = _parse_arguments(expected_preview)
+	actual = {
+		"action": doc.action,
+		"target": doc.target or None,
+		"arguments": json.loads(doc.arguments or "{}"),
+		"impact_sites": json.loads(doc.impact_sites or "[]"),
+		"backup_sites": json.loads(doc.backup_sites or "[]"),
+		"migration_sites": json.loads(doc.migration_sites or "[]"),
+	}
+	if provided != actual:
+		frappe.throw("پیش‌نمایش عملیات تغییر کرده است؛ دوباره آن را بررسی کنید.")
+	doc.confirmation_token_hash = None
+	doc.confirmation_expires_at = None
+	doc.status = "Queued"
+	doc.progress = "تأیید شد؛ در صف اجرا"
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+	frappe.enqueue(
+		"press.api.docker_control.process_confirmed_operation",
+		queue="long",
+		timeout=OPERATION_TIMEOUT_SECONDS + 60,
+		enqueue_after_commit=True,
+		operation_name=doc.name,
+	)
+	return _operation_preview(doc)

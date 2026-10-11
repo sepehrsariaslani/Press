@@ -469,6 +469,15 @@ let router = createRouter({
 			props: true,
 		},
 		{
+			name: 'Docker Control',
+			path: '/docker-control',
+			component: () => import('./pages/DockerControl.vue'),
+			beforeEnter: (to, from, next) => {
+				if (session.isSystemUser) next();
+				else next({ name: 'Welcome' });
+			},
+		},
+		{
 			name: 'CreateSiteForMarketplaceApp',
 			path: '/create-site/:app',
 			component: () => import('./pages/CreateSiteForMarketplaceApp.vue'),

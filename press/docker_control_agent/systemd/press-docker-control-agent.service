@@ -1,0 +1,26 @@
+[Unit]
+Description=Private Press Docker control agent
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+Environment=PYTHONPATH=/home/sepehr/den-v16-docker/apps/press
+EnvironmentFile=/etc/press-docker-control-agent.env
+ExecStart=/usr/bin/python3 -m press.docker_control_agent.service --config /etc/press-docker-control-agent.json
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/press-docker-control-agent /home/sepehr/den-v16-docker/apps /home/sepehr/den-v16-docker/runtime/sites
+
+[Install]
+WantedBy=multi-user.target

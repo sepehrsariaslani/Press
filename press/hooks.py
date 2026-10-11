@@ -109,6 +109,10 @@ notification_config = "press.notifications.get_notification_config"
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
+	"Docker Control Host": "press.docker_control.permissions.get_permission_query_conditions",
+	"Docker Control Site": "press.docker_control.permissions.get_permission_query_conditions",
+	"Docker Control Site App": "press.docker_control.permissions.get_permission_query_conditions",
+	"Docker Control Operation": "press.docker_control.permissions.get_permission_query_conditions",
 	"Site": "press.press.doctype.site.site.get_permission_query_conditions",
 	"Site Action": "press.press.doctype.site_action.site_action.get_permission_query_conditions",
 	"Site Backup": "press.press.doctype.site_backup.site_backup.get_permission_query_conditions",
@@ -137,6 +141,10 @@ permission_query_conditions = {
 	"Server Snapshot Recovery": "press.press.doctype.server_snapshot_recovery.server_snapshot_recovery.get_permission_query_conditions",
 }
 has_permission = {
+	"Docker Control Host": "press.docker_control.permissions.has_document_permission",
+	"Docker Control Site": "press.docker_control.permissions.has_document_permission",
+	"Docker Control Site App": "press.docker_control.permissions.has_document_permission",
+	"Docker Control Operation": "press.docker_control.permissions.has_document_permission",
 	"Site": "press.overrides.has_permission",
 	"Site Action": "press.overrides.has_permission",
 	"Site Backup": "press.overrides.has_permission",
