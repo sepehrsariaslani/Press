@@ -9,6 +9,8 @@ from urllib.parse import urlsplit
 
 import requests
 
+AGENT_HOST = "172.18.0.1"
+
 
 class DockerControlError(Exception):
 	pass
@@ -18,7 +20,7 @@ class DockerControlClient:
 	def __init__(self, host, hmac_key: str | None = None):
 		self.endpoint = host.endpoint.rstrip("/")
 		parsed = urlsplit(self.endpoint)
-		if parsed.scheme != "http" or parsed.hostname != "dehati.ir" or parsed.port != 8769:
+		if parsed.scheme != "http" or parsed.hostname != AGENT_HOST or parsed.port != 8769:
 			raise DockerControlError("نشانی عامل خصوصی نامعتبر است.")
 		try:
 			self.key = (hmac_key if hmac_key is not None else host.get_password("hmac_key")).encode("utf-8")
