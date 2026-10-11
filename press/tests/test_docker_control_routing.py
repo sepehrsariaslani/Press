@@ -24,6 +24,16 @@ class TestDockerControlRouting(unittest.TestCase):
 			)
 		)
 
+	def test_guest_can_reach_control_route_login_gate(self):
+		self.assertTrue(
+			should_route_dashboard(
+				"/dashboard/docker-control",
+				host="asumi.ir",
+				is_guest=True,
+				can_manage_docker=False,
+			)
+		)
+
 	def test_guest_can_reach_press_login_without_opening_dashboard_pages(self):
 		self.assertTrue(
 			should_route_dashboard(
