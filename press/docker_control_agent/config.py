@@ -28,6 +28,7 @@ class AgentConfig:
 	bind_address: str
 	port: int
 	project_root: Path
+	runtime_root: Path
 	compose_files: tuple[Path, ...]
 	backend_service: str
 	apps_root: Path
@@ -51,6 +52,7 @@ def load_config(path: str) -> AgentConfig:  # noqa: C901
 		raise ValueError("Agent config permissions must be 0600 or stricter")
 	data = json.loads(config_path.read_text(encoding="utf-8"))
 	project_root = Path(data["project_root"]).resolve(strict=True)
+	runtime_root = Path(data["runtime_root"]).resolve(strict=True)
 	compose_files = tuple(Path(item).resolve(strict=True) for item in data["compose_files"])
 	apps_root = Path(data["apps_root"]).resolve(strict=True)
 	sites_root = Path(data["sites_root"]).resolve(strict=True)
@@ -59,10 +61,10 @@ def load_config(path: str) -> AgentConfig:  # noqa: C901
 
 	if any(not _inside(item, project_root) for item in compose_files):
 		raise ValueError("Compose files must stay under project_root")
-	if not _inside(apps_root, project_root) or not _inside(sites_root, project_root):
-		raise ValueError("apps_root and sites_root must stay under project_root")
-	if not _inside(backup_root, project_root):
-		raise ValueError("backup_root must stay under project_root")
+	if not _inside(apps_root, project_root):
+		raise ValueError("apps_root must stay under project_root")
+	if not _inside(sites_root, runtime_root) or not _inside(backup_root, runtime_root):
+		raise ValueError("sites_root and backup_root must stay under runtime_root")
 	if data.get("customer_sites") != list(CUSTOMER_SITES):
 		raise ValueError("customer_sites does not match the fixed allowlist")
 	if data.get("impact_sites") != list(IMPACT_SITES):
@@ -92,6 +94,7 @@ def load_config(path: str) -> AgentConfig:  # noqa: C901
 		bind_address=bind_address,
 		port=port,
 		project_root=project_root,
+		runtime_root=runtime_root,
 		compose_files=compose_files,
 		backend_service="backend",
 		apps_root=apps_root,
