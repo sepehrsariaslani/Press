@@ -20,8 +20,12 @@ from press.docker_control.permissions import (
 	ALLOWED_SERVICES,
 	CUSTOMER_SITES,
 	IMPACT_SITES,
+	SITE_SCOPED_ACTIONS,
 	STACK_RESTART_ORDER,
 	assert_docker_control_admin,
+	assert_docker_control_operation_admin,
+	can_manage_docker_control_site,
+	is_docker_control_admin,
 )
 
 AGENT_ENDPOINT = "http://172.18.0.1:8769"
@@ -104,11 +108,14 @@ def _store_inventory(host, inventory: dict) -> None:
 		site_doc.save(ignore_permissions=True)
 
 
-def _dashboard_payload(host=None) -> dict:
+def _dashboard_payload(
+	host=None, *, visible_domains: list[str] | None = None, can_manage_host: bool = True
+) -> dict:
 	host = host or _host_doc()
 	parsed_inventory = json.loads(host.inventory) if host.inventory else {}
 	sites = []
-	for domain in CUSTOMER_SITES:
+	allowed_domains = visible_domains if visible_domains is not None else CUSTOMER_SITES
+	for domain in allowed_domains:
 		if frappe.db.exists("Docker Control Site", domain):
 			doc = frappe.get_doc("Docker Control Site", domain)
 			sites.append(
@@ -122,8 +129,15 @@ def _dashboard_payload(host=None) -> dict:
 					],
 				}
 			)
+	operation_filters = {}
+	if not can_manage_host:
+		operation_filters = {
+			"action": ["in", sorted(SITE_SCOPED_ACTIONS)],
+			"target": ["in", allowed_domains],
+		}
 	operations = frappe.get_all(
 		"Docker Control Operation",
+		filters=operation_filters,
 		fields=[
 			"name",
 			"action",
@@ -149,6 +163,13 @@ def _dashboard_payload(host=None) -> dict:
 				json.loads(operation[field]) if operation[field] else ([] if field.endswith("sites") else {})
 			)
 	return {
+		"can_manage_host": can_manage_host,
+		"can_manage_site_teams": can_manage_host,
+		"teams": (
+			frappe.get_all("Team", filters={"enabled": 1}, fields=["name"], order_by="name asc")
+			if can_manage_host
+			else []
+		),
 		"host": {
 			"name": host.host_name,
 			"status": host.connection_status,
@@ -159,7 +180,7 @@ def _dashboard_payload(host=None) -> dict:
 			"resources": parsed_inventory.get("resources", {}),
 			"services": parsed_inventory.get("services", []),
 			"impact_sites": list(IMPACT_SITES),
-		},
+		} if can_manage_host else None,
 		"sites": sites,
 		"operations": operations,
 	}
@@ -209,9 +230,37 @@ def _parse_arguments(arguments) -> dict:
 
 @frappe.whitelist()
 def get_dashboard_data() -> dict:
-	assert_docker_control_admin()
+	can_manage_host = is_docker_control_admin()
 	if not frappe.get_all("Docker Control Host", pluck="name"):
+		assert_docker_control_admin()
 		return {"initialized": False, "host": None, "sites": [], "operations": []}
+	visible_domains = (
+		CUSTOMER_SITES
+		if can_manage_host
+		else [domain for domain in CUSTOMER_SITES if can_manage_docker_control_site(domain)]
+	)
+	if not visible_domains:
+		frappe.throw("هنوز سایتی به تیم شما متصل نشده است.", frappe.PermissionError)
+	return {
+		"initialized": True,
+		**_dashboard_payload(
+			visible_domains=visible_domains,
+			can_manage_host=can_manage_host,
+		),
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def save_site_team(domain: str, team: str | None = None) -> dict:
+	assert_docker_control_admin()
+	if domain not in CUSTOMER_SITES or not frappe.db.exists("Docker Control Site", domain):
+		frappe.throw("سایت انتخاب‌شده در فهرست مدیریت‌شده نیست.")
+	team = str(team or "").strip()
+	if team and not frappe.db.exists("Team", {"name": team, "enabled": 1}):
+		frappe.throw("تیم انتخاب‌شده فعال یا معتبر نیست.")
+	site = frappe.get_doc("Docker Control Site", domain)
+	site.team = team or None
+	site.save(ignore_permissions=True)
 	return {"initialized": True, **_dashboard_payload()}
 
 
@@ -261,16 +310,7 @@ def refresh_inventory() -> dict:
 def _action_data(  # noqa: C901
 	action: str, target: str | None, arguments: dict, host
 ) -> tuple[list[str], list[str], list[str]]:
-	allowed_site_actions = {
-		"backup_site",
-		"restore_site",
-		"set_maintenance",
-		"clear_cache",
-		"set_scheduler",
-		"migrate_site",
-		"read_site_logs",
-	}
-	if action not in allowed_site_actions | {"restart_service", "restart_stack", "deploy_app_revision"}:
+	if action not in SITE_SCOPED_ACTIONS | {"restart_service", "restart_stack", "deploy_app_revision"}:
 		frappe.throw("این عملیات در فهرست مجاز نیست.")
 	allowed_argument_keys = {
 		"restore_site": {"backup_id"},
@@ -281,9 +321,9 @@ def _action_data(  # noqa: C901
 	}
 	if set(arguments) - allowed_argument_keys.get(action, set()):
 		frappe.throw("پارامتر اضافه برای این عملیات مجاز نیست.")
-	if action in allowed_site_actions and target not in CUSTOMER_SITES:
+	if action in SITE_SCOPED_ACTIONS and target not in CUSTOMER_SITES:
 		frappe.throw("سایت انتخاب‌شده در فهرست مدیریت‌شده نیست.")
-	if action in allowed_site_actions and not frappe.db.exists(
+	if action in SITE_SCOPED_ACTIONS and not frappe.db.exists(
 		"Docker Control Site", {"domain": target, "enabled": 1}
 	):
 		frappe.throw("سایت انتخاب‌شده فعال یا ثبت‌شده نیست.")
@@ -344,7 +384,7 @@ def _enqueue_prepare(doc) -> None:
 
 @frappe.whitelist(methods=["POST"])
 def prepare_operation(action: str, target: str | None = None, arguments=None) -> dict:
-	assert_docker_control_admin()
+	assert_docker_control_operation_admin(action, target)
 	host = _host_doc()
 	arguments = _parse_arguments(arguments)
 	impact_sites, backup_sites, migration_sites = _action_data(action, target, arguments, host)
@@ -492,8 +532,8 @@ def process_confirmed_operation(operation_name: str) -> None:
 
 @frappe.whitelist()
 def get_operation(operation: str, issue_confirmation_token: int = 0) -> dict:
-	assert_docker_control_admin()
 	doc = frappe.get_doc("Docker Control Operation", operation)
+	assert_docker_control_operation_admin(doc.action, doc.target)
 	response = _operation_preview(doc)
 	if cint(issue_confirmation_token) and doc.status == "Awaiting Confirmation":
 		# Reopening the exact saved preview issues a fresh short-lived, single-use token.
@@ -505,11 +545,11 @@ def get_operation(operation: str, issue_confirmation_token: int = 0) -> dict:
 
 @frappe.whitelist(methods=["POST"])
 def confirm_operation(operation: str, confirmation_token: str, expected_preview=None) -> dict:
-	assert_docker_control_admin()
 	if not isinstance(confirmation_token, str) or not confirmation_token:
 		frappe.throw("توکن تأیید نامعتبر است.")
 	frappe.db.sql("SELECT name FROM `tabDocker Control Operation` WHERE name=%s FOR UPDATE", operation)
 	doc = frappe.get_doc("Docker Control Operation", operation)
+	assert_docker_control_operation_admin(doc.action, doc.target)
 	if doc.status != "Awaiting Confirmation" or not doc.confirmation_token_hash:
 		frappe.throw("این عملیات در انتظار تأیید نیست.")
 	if doc.confirmation_expires_at and get_datetime(doc.confirmation_expires_at) < now_datetime():

@@ -12,9 +12,19 @@
 					<div>
 					<h3 class="text-base font-semibold text-gray-900">{{ site.domain }}</h3>
 					<p class="mt-1 text-xs text-gray-500">آخرین موجودی: {{ site.last_inventory_at || '—' }}</p>
-				</div>
+					</div>
 					<span class="rounded-full px-2.5 py-1 text-xs" :class="site.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'">{{ site.enabled ? 'فعال' : 'غیرفعال' }}</span>
 				</div>
+				<div v-if="canManageSiteTeams" class="mt-4">
+					<label :for="`team-${site.domain}`" class="block text-sm font-medium text-gray-700">تیم دارای دسترسی سایت</label>
+					<select :id="`team-${site.domain}`" v-model="selectedTeams[site.domain]" :disabled="locked" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-50">
+						<option value="">بدون تیم</option>
+						<option v-for="team in teams" :key="team.name" :value="team.name">{{ team.name }}</option>
+					</select>
+					<p class="mt-1 text-xs font-normal text-gray-500">مالک یا مدیر این تیم در آسومی می‌تواند عملیات همین سایت را اجرا کند.</p>
+					<Button class="mt-2" size="sm" :disabled="locked || selectedTeams[site.domain] === (site.team || '')" label="ذخیرهٔ دسترسی تیم" @click="saveTeam(site)" />
+				</div>
+				<p v-else class="mt-2 text-xs text-gray-500">تیم دسترسی: {{ site.team || 'تیمی به این سایت متصل نشده' }}</p>
 				<div class="mt-4 flex flex-wrap gap-2">
 					<span v-for="app in site.apps" :key="app.app" class="rounded-md bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
 						{{ app.app }} <span class="text-gray-400">{{ app.version }}</span>
@@ -38,10 +48,26 @@
 </template>
 
 <script setup>
-const props = defineProps({ sites: { type: Array, default: () => [] }, locked: Boolean });
-const emit = defineEmits(['action', 'restore']);
+import { reactive, watch } from 'vue';
+
+const props = defineProps({ sites: { type: Array, default: () => [] }, teams: { type: Array, default: () => [] }, canManageSiteTeams: Boolean, locked: Boolean });
+const emit = defineEmits(['action', 'restore', 'assign-team']);
+const selectedTeams = reactive({});
+
+watch(() => props.sites, (sites) => {
+	for (const site of sites) selectedTeams[site.domain] = site.team || '';
+}, { immediate: true, deep: true });
 
 function emitAction(action, target, arguments_ = {}) {
 	if (props.sites.some((site) => site.domain === target)) emit('action', { action, target, arguments: arguments_ });
+}
+
+function saveTeam(site) {
+	if (!props.sites.some((item) => item.domain === site.domain)) return;
+	const team = selectedTeams[site.domain] || '';
+	const accessDescription = team ? `مالک و مدیران تیم «${team}»` : 'هیچ تیمی';
+	if (window.confirm(`دسترسی عملیات مدیریتی سایت ${site.domain} به ${accessDescription} تغییر کند؟`)) {
+		emit('assign-team', { domain: site.domain, team });
+	}
 }
 </script>

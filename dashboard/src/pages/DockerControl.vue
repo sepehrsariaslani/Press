@@ -6,7 +6,7 @@
 				<h1 class="mt-1 text-2xl font-semibold text-gray-900">مدیریت Docker Bench</h1>
 				<p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600">وضعیت میزبان و چهار سایت را ببینید و عملیات مجاز را از همین پنل اجرا کنید.</p>
 			</div>
-			<div v-if="state.initialized" class="flex flex-wrap gap-2">
+			<div v-if="state.initialized && state.can_manage_host" class="flex flex-wrap gap-2">
 				<select v-model="service" :disabled="busy || operationLocked" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" aria-label="انتخاب سرویس">
 					<option v-for="item in services" :key="item" :value="item">{{ item }}</option>
 				</select>
@@ -29,11 +29,11 @@
 		</section>
 
 		<template v-else>
-			<HostSummary :host="state.host" :busy="busy" @refresh="refreshInventory" />
-			<div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+			<HostSummary v-if="state.can_manage_host" :host="state.host" :busy="busy" @refresh="refreshInventory" />
+			<div v-if="state.can_manage_host" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
 				راه‌اندازی سرویس یا کل بنچ و انتشار برنامه روی هر پنج سایت اثر دارد: ابتدا از همه پشتیبان می‌گیریم و بعد تأیید جداگانه می‌خواهیم. این کارها ممکن است <strong>asumi.ir</strong> را موقتاً متوقف کنند؛ عملیات کارت هر سایت فقط همان سایت را تغییر می‌دهد.
 			</div>
-			<div class="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
+			<div v-if="state.can_manage_host" class="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
 				<div class="flex-1">
 					<h2 class="font-semibold">انتشار برنامه</h2>
 					<p class="mt-1 text-xs text-gray-500">فقط نسخهٔ ثابت Git پذیرفته می‌شود؛ مخزن دارای تغییرات محلی قابل انتشار نیست.</p>
@@ -45,7 +45,7 @@
 				<input v-model="revision" :disabled="busy || operationLocked" class="min-w-64 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50" dir="ltr" placeholder="SHA کامل ۴۰ نویسه‌ای" aria-label="نسخهٔ ثابت Git" />
 				<Button label="پیش‌بررسی و انتشار" :disabled="busy || operationLocked || revision.length !== 40" @click="startAction({ action: 'deploy_app_revision', target: null, arguments: { app: deployApp, revision } })" />
 			</div>
-			<ManagedSites :sites="state.sites" :locked="busy || operationLocked" @action="startAction" @restore="requestRestore" />
+			<ManagedSites :sites="state.sites" :teams="state.teams" :can-manage-site-teams="state.can_manage_site_teams" :locked="busy || operationLocked" @action="startAction" @restore="requestRestore" @assign-team="saveSiteTeam" />
 			<OperationDetails :operations="state.operations" :busy="busy" @resume="resumeOperation" />
 		</template>
 		<ConfirmDockerOperation :open="confirmOpen" :operation="pendingOperation" :loading="busy" @close="closeConfirmation" @confirm="confirmOperation" />
@@ -61,7 +61,7 @@ import ConfirmDockerOperation from '@/components/docker-control/ConfirmDockerOpe
 import { callDockerControl, fetchDockerControl } from '@/data/dockerControl';
 
 const endpoint = 'http://172.18.0.1:8769';
-const state = reactive({ initialized: false, host: null, sites: [], operations: [] });
+const state = reactive({ initialized: false, host: null, sites: [], operations: [], teams: [], can_manage_host: false, can_manage_site_teams: false });
 const loading = ref(true);
 const busy = ref(false);
 const error = ref('');
@@ -116,6 +116,20 @@ async function refreshInventory() {
 		Object.assign(state, { initialized: true, ...data });
 	} catch (failure) {
 		error.value = failure?.messages?.[0] || failure?.message || 'دریافت موجودی ناموفق بود.';
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function saveSiteTeam({ domain, team }) {
+	if (busy.value || !state.can_manage_site_teams) return;
+	busy.value = true;
+	error.value = '';
+	try {
+		const data = await callDockerControl('save_site_team', { domain, team });
+		Object.assign(state, data);
+	} catch (failure) {
+		error.value = failure?.messages?.[0] || failure?.message || 'ذخیرهٔ تیم سایت ناموفق بود.';
 	} finally {
 		busy.value = false;
 	}
