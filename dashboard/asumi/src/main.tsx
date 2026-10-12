@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/vazirmatn';
 import { AsumiApp } from './App';
+import { readMarketplaceApps } from './product/marketplace/MarketplaceShowcase';
 import './styles/global.css';
 
 document.documentElement.lang = 'fa';
@@ -15,6 +16,9 @@ if (!root) {
 
 createRoot(root).render(
 	<StrictMode>
-		<AsumiApp />
+		<AsumiApp
+			marketplaceApps={readMarketplaceApps(document.getElementById('asumi-marketplace-data'))}
+			canManageMarketplacePrices={document.getElementById('asumi-marketplace-data')?.getAttribute('data-can-manage-prices') === 'true'}
+		/>
 	</StrictMode>,
 );

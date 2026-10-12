@@ -29,6 +29,43 @@ test('renders the evidence board, six Persian chapters, fifteen product modules 
   expect(container.querySelector('.module-card[href="#module/business"]')).toBeInTheDocument();
 });
 
+test('shows published marketplace apps and their live prices inside the homepage design', () => {
+  render(<AsumiApp marketplaceApps={[
+    {
+      id: 'demo-app',
+      title: 'اپ نمونه',
+      description: 'برای آزمودن بخش اپلیکیشن‌ها',
+      route: '/marketplace/apps/demo-app',
+      plans: [{
+        id: 'demo-monthly',
+        title: 'پلن پایه',
+        interval: 'Monthly',
+        interval_label: 'ماهانه',
+        price_irr: 35000,
+        price_usd: 0,
+        price_inr: 0,
+        is_free: false,
+        prices: [{ currency: 'IRR', symbol: 'ریال', amount: 35000 }],
+      }],
+    },
+  ]} canManageMarketplacePrices />);
+
+  const section = screen.getByRole('region', { name: /ابزارهای بیشتر/ });
+  expect(within(section).getByRole('heading', { level: 3, name: 'اپ نمونه' })).toBeInTheDocument();
+  expect(within(section).getByText('۳۵٬۰۰۰ ریال')).toBeInTheDocument();
+  expect(within(section).getByRole('link', { name: /جزئیات و دریافت اپ/ })).toHaveAttribute('href', '/marketplace/apps/demo-app');
+  expect(within(section).getByRole('link', { name: /مدیریت اپ‌ها و قیمت‌ها/ })).toHaveAttribute('href', '/dashboard/seller/apps');
+  expect(within(section).getByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).toHaveAttribute('href', '/marketplace');
+});
+
+test('keeps the homepage app section useful when no published marketplace plans are available', () => {
+  render(<AsumiApp />);
+  const section = screen.getByRole('region', { name: /ابزارهای بیشتر/ });
+  expect(within(section).getByText(/فعلاً اپلیکیشنی با پلن فعال وجود ندارد/)).toBeInTheDocument();
+  expect(within(section).getByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).toHaveAttribute('href', '/marketplace');
+  expect(within(section).queryByRole('link', { name: /مدیریت اپ‌ها و قیمت‌ها/ })).not.toBeInTheDocument();
+});
+
 test('sends the public customer navigation to the current Asumi orders page', () => {
   render(<AsumiApp />);
   expect(screen.getByRole('link', { name: 'خرید و سفارش‌ها' })).toHaveAttribute('href', '/dashboard/orders');

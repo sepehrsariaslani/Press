@@ -9,8 +9,16 @@ import { CaseBoard } from './board/CaseBoard';
 import { ProductShowcase } from '../product/ProductShowcase';
 import { IndustryShowcase } from '../product/industries/IndustryShowcase';
 import { RoleShowcase } from '../product/roles/RoleShowcase';
+import { MarketplaceShowcase, type MarketplaceApp } from '../product/marketplace/MarketplaceShowcase';
 
-export function StoryLanding({ onOpenModule, onOpenPricing }: { onOpenModule: (moduleId: string) => void; onOpenPricing: () => void }) {
+type StoryLandingProps = {
+	onOpenModule: (moduleId: string) => void;
+	onOpenPricing: () => void;
+	marketplaceApps: MarketplaceApp[];
+	canManageMarketplacePrices: boolean;
+};
+
+export function StoryLanding({ onOpenModule, onOpenPricing, marketplaceApps, canManageMarketplacePrices }: StoryLandingProps) {
   const systemReduced = useReducedMotion();
   const [motionChoice, setMotionChoice] = useState<boolean | null>(null);
   const reducedMotion = motionChoice ?? systemReduced;
@@ -51,6 +59,7 @@ export function StoryLanding({ onOpenModule, onOpenPricing }: { onOpenModule: (m
     <RoleShowcase />
     <ProductShowcase onOpenModule={onOpenModule} onOpenPricing={onOpenPricing} />
     <IndustryShowcase onOpenModule={onOpenModule} onOpenPricing={onOpenPricing} />
+    <MarketplaceShowcase apps={marketplaceApps} canManagePrices={canManageMarketplacePrices} />
     <SiteFooter />
   </main>;
 }

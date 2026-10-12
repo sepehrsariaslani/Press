@@ -9,6 +9,7 @@ export function SiteFooter({ customerPortal = false, label = 'پنل مشتری'
 				<a href="#roles">داشبوردها</a>
 				<a href="#modules">ماژول‌ها</a>
 				<a href="#industries">صنایع</a>
+				<a href="#apps">اپلیکیشن‌ها</a>
 				<a href="#pricing">تعرفه‌ها</a>
 				<a href="#website-design">طراحی سایت</a>
 			</nav>

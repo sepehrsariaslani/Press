@@ -7,8 +7,14 @@ import { SalesStory } from './product/sales/SalesStory';
 import { productModules } from './product/modules';
 import { useModuleNavigation } from './product/useModuleNavigation';
 import { StoryLanding } from './story/StoryLanding';
+import type { MarketplaceApp } from './product/marketplace/MarketplaceShowcase';
 
-export function AsumiApp() {
+type AsumiAppProps = {
+	marketplaceApps?: MarketplaceApp[];
+	canManageMarketplacePrices?: boolean;
+};
+
+export function AsumiApp({ marketplaceApps = [], canManageMarketplacePrices = false }: AsumiAppProps = {}) {
 	const { activeModuleId, openModule, openPricing, openOrderCenter, returnToModules, showPricing, showWebsiteDesign } = useModuleNavigation();
 	if (showWebsiteDesign) {
 		return <WebsiteDesignPricingPage onReturnToModules={returnToModules} />;
@@ -30,5 +36,5 @@ export function AsumiApp() {
 	if (activeModule) {
 		return <ModuleDetailPage module={activeModule} index={activeModuleIndex} onOpenModule={openModule} onReturnToModules={returnToModules} onOpenPricing={openPricing} />;
 	}
-	return <StoryLanding onOpenModule={openModule} onOpenPricing={openPricing} />;
+	return <StoryLanding onOpenModule={openModule} onOpenPricing={openPricing} marketplaceApps={marketplaceApps} canManageMarketplacePrices={canManageMarketplacePrices} />;
 }
