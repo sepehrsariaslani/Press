@@ -545,13 +545,23 @@ def _run_action(  # noqa: C901
 		_bench(config, target, "migrate", timeout=7200)
 		return {"site": target, "migrated": True}
 	if action == "read_site_logs":
-		log_path = f"/home/frappe/frappe-bench/sites/{target}/logs/frappe.web.log"
-		result = _checked_command(
-			config,
-			compose_command(config, "exec", "-T", config.backend_service, "tail", "-n", "200", log_path),
-			timeout=30,
-		)
-		return {"site": target, "logs": sanitize_text(result.stdout, 12000)}
+		logs = ""
+		for filename in ("frappe.web.log", "frappe.log"):
+			log_path = f"/home/frappe/frappe-bench/sites/{target}/logs/{filename}"
+			try:
+				result = _checked_command(
+					config,
+					compose_command(
+						config, "exec", "-T", config.backend_service, "tail", "-n", "200", log_path
+					),
+					timeout=30,
+				)
+			except OperationError:
+				continue
+			if result.stdout.strip():
+				logs = result.stdout
+				break
+		return {"site": target, "logs": sanitize_text(logs, 12000)}
 	if action == "restart_service":
 		_require_recent_backups(connection, list(IMPACT_SITES))
 		_checked_command(config, compose_command(config, "restart", target), timeout=600)
