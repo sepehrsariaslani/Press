@@ -1,13 +1,61 @@
 import unittest
+from types import SimpleNamespace
 
 from press.saas.commerce.hosting_readiness import (
 	build_hosting_readiness,
 	hosting_plan_fits_capacity,
 	normalize_capacity_reserve,
+	resolve_ipv4,
 )
 
 
 class HostingReadinessTest(unittest.TestCase):
+	def test_ipv4_lookup_uses_a_bounded_dns_resolver_and_sorts_unique_addresses(self):
+		class ResolverStub:
+			def __init__(self):
+				self.nameservers = None
+				self.timeout = None
+				self.lifetime = None
+
+			def resolve(self, hostname, record_type):
+				self.query = (hostname, record_type)
+				return [
+					SimpleNamespace(address="203.0.113.9"),
+					SimpleNamespace(address="203.0.113.2"),
+					SimpleNamespace(address="203.0.113.9"),
+				]
+
+		resolver = ResolverStub()
+		factory_kwargs = {}
+
+		def resolver_factory(**kwargs):
+			factory_kwargs.update(kwargs)
+			return resolver
+
+		self.assertEqual(
+			resolve_ipv4("hosting-check.asumi.ir", resolver_factory=resolver_factory),
+			["203.0.113.2", "203.0.113.9"],
+		)
+		self.assertEqual(resolver.query, ("hosting-check.asumi.ir", "A"))
+		self.assertEqual(factory_kwargs, {"configure": False})
+		self.assertEqual(resolver.nameservers, ["1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4"])
+		self.assertGreater(resolver.lifetime, 0)
+		self.assertLessEqual(resolver.lifetime, 3)
+		self.assertGreater(resolver.timeout, 0)
+		self.assertLessEqual(resolver.timeout, resolver.lifetime)
+
+	def test_ipv4_lookup_treats_dns_failures_as_an_unresolved_host(self):
+		class ResolverStub:
+			def __init__(self):
+				self.nameservers = None
+				self.timeout = None
+				self.lifetime = None
+
+			def resolve(self, hostname, record_type):
+				raise OSError("DNS resolver unavailable")
+
+		self.assertEqual(resolve_ipv4("hosting-check.asumi.ir", resolver_factory=lambda **_: ResolverStub()), [])
+
 	def test_capacity_reserve_must_be_positive_and_finite(self):
 		self.assertEqual(normalize_capacity_reserve("2.5"), 2.5)
 		for value in (None, "", "0", "-1", "nan", "inf", "1000001", True):

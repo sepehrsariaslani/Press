@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 from . import __version__
 from .auth import AuthenticationError, verify_request
 from .config import MAX_BODY_BYTES, AgentConfig, load_config
-from .inventory import get_inventory
+from .inventory import get_inventory, get_resources
 from .operations import (
 	OperationError,
 	OperationManager,
@@ -77,7 +77,7 @@ class ControlHandler(BaseHTTPRequestHandler):
 		path = parsed.path
 		preflight = re.fullmatch(r"/v1/preflight/(accounts|restaurant)/([a-f0-9]{40})", path)
 		if not preflight and not re.fullmatch(
-			r"/v1/(health|inventory|operations(?:/[a-f0-9-]{36,48})?)", path
+			r"/v1/(health|inventory|resources|operations(?:/[a-f0-9-]{36,48})?)", path
 		):
 			self._send(404, {"error": "Not found"})
 			return
@@ -97,6 +97,9 @@ class ControlHandler(BaseHTTPRequestHandler):
 				return
 			if self.command == "GET" and path == "/v1/inventory":
 				self._send(200, get_inventory(self.config))
+				return
+			if self.command == "GET" and path == "/v1/resources":
+				self._send(200, get_resources(self.config))
 				return
 			if self.command == "GET" and preflight:
 				self._send(200, preflight_app_revision(self.config, preflight.group(1), preflight.group(2)))

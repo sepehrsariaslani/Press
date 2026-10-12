@@ -116,12 +116,14 @@
 - [x] Run the dashboard commerce access/pricing tests (20 pass), 49 focused commerce tests, and the production build.
 - [x] Verify public `/`, `/saas`, `/pricing`, `/marketplace`, and `/dashboard/orders` return HTTP 200 page shells.
 - [x] Verify `checkout_status` reports checkout disabled without exposing any credential and all 48 catalog plans remain at zero in all currencies. Hosting checkout remains disabled because the provisioning path, capacity threshold, and wildcard DNS are not ready.
+- [x] Bound the hosting readiness checks: DNS queries use a two-second deadline, and the page uses the lightweight `/v1/resources` endpoint instead of the full Bench/Git inventory. The agent and web workers were deployed; a live administrator check returned in 1.5 seconds with the Docker agent connected.
 - [x] Commit the code and plan with a Persian commit subject/body; leave the existing `press/routing.py` changes preserved.
-- [ ] Before any production reload that replaces shared Bench web workers, show the affected sites and ask for the separately required confirmation.
+- [x] List the five affected sites before the soft web reload and use the user's prior approval for this shared-Bench deployment. The latest HUP replaced all six Gunicorn workers without restarting the database or queues.
 
 ## Known external completion conditions
 
 - Live payment cannot be enabled or fully exercised until the administrator enters the real Merchant ID through `/dashboard/orders`; this plan never invents or embeds one.
-- Hosting delivery choices are stored per Site Plan. New-site delivery is intended to use `*.asumi.ir`, but the DNS check currently fails. Provisioning uses Press's Site and Agent Job path; an isolated end-to-end run against this Docker Bench is still required. Keep hosting checkout unavailable until DNS/proxy routing, site creation, upgrade, and storage capacity are confirmed.
-- The current live Press database has no configured Root Domain or Site Plans; Site Plan sales must remain disabled until the operator configures the Asumi root domain and at least one compatible shared Site Plan/release group.
-- New-site readiness requires a compatible active public server. Numerical free disk space is not checked by this code; verify the shared server's storage headroom and scaling policy before enabling new-site sales.
+- Hosting delivery choices are stored per Site Plan. New-site delivery is intended to use `*.asumi.ir`, but the wildcard probe has no DNS answer. `asumi.ir` resolves to `62.60.207.82`; DNS nameservers are `ns1.hostiran.net` and `ns2.hostiran.net`. Provisioning still needs the Root Domain, a public Server, active Bench, Release Group, wildcard TLS certificate, and an isolated end-to-end run. Keep hosting checkout unavailable until these and the capacity gate are verified.
+- The current live Press database has only the `Default` Cluster; there are no Server, Bench, Release Group, Root Domain, Site Plan, or wildcard TLS records. The live readiness check reports the Docker agent connected and the other seven gates unready.
+- Capacity is checked against plan limits and configured free-resource reserves. The shared Docker host currently has under 6 GB free disk and both capacity reserves are still zero, so new-site checkout must stay disabled until headroom and scaling are addressed.
+- Public DNS returns NXDOMAIN for `boller.ir`, so its login route cannot be reached. This needs correction at its registrar/DNS provider and is separate from the Asumi commerce change.

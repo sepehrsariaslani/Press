@@ -2,6 +2,9 @@
 
 import math
 
+from dns.exception import DNSException
+from dns.resolver import Resolver
+
 
 READINESS_CHECKS = (
 	("live_payment", "درگاه پرداخت زنده"),
@@ -20,6 +23,20 @@ RESOURCE_FIELDS = (
 	"memory_available_bytes",
 	"memory_total_bytes",
 )
+
+DNS_NAMESERVERS = ["1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4"]
+
+
+def resolve_ipv4(hostname, resolver_factory=None):
+	"""Resolve A records with a strict deadline so readiness checks cannot hang."""
+	try:
+		resolver = (resolver_factory or Resolver)(configure=False)
+		resolver.nameservers = DNS_NAMESERVERS
+		resolver.timeout = 1
+		resolver.lifetime = 2
+		return sorted({str(record.address) for record in resolver.resolve(hostname, "A")})
+	except (DNSException, OSError):
+		return []
 
 
 def hosting_plan_fits_capacity(plan, resources, reserve_disk_gb, reserve_memory_gb):

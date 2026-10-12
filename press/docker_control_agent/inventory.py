@@ -111,6 +111,14 @@ def _resource_summary(config: AgentConfig) -> dict:
 	}
 
 
+def get_resources(config: AgentConfig) -> dict:
+	"""Return fast capacity data without querying the Bench or git repositories."""
+	return {
+		"protocol_version": 1,
+		"resources": _resource_summary(config),
+	}
+
+
 def get_inventory(config: AgentConfig) -> dict:
 	result = run_command(
 		config,

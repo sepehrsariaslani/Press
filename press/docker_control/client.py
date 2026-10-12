@@ -72,8 +72,11 @@ class DockerControlClient:
 		except ValueError as error:
 			raise DockerControlError("پاسخ عامل میزبان قابل خواندن نیست.") from error
 
-	def health(self) -> dict:
-		return self.request("GET", "/v1/health", timeout=(5, 15))
+	def health(self, timeout: tuple[int, int] = (5, 15)) -> dict:
+		return self.request("GET", "/v1/health", timeout=timeout)
+
+	def resources(self) -> dict:
+		return self.request("GET", "/v1/resources", timeout=(2, 5))
 
 	def inventory(self) -> dict:
 		return self.request("GET", "/v1/inventory", timeout=(5, 360))

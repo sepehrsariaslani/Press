@@ -18,6 +18,7 @@ from press.saas.commerce.hosting_readiness import (
 	build_hosting_readiness,
 	hosting_plan_fits_capacity,
 	normalize_capacity_reserve,
+	resolve_ipv4,
 )
 from press.saas.commerce.pricing import (
 	ZARINPAL_MINIMUM_AMOUNT_IRR,
@@ -96,16 +97,7 @@ def checkout_status() -> dict:
 
 
 def _resolve_ipv4(hostname: str) -> list[str]:
-	try:
-		return sorted(
-			{
-				address[4][0]
-				for address in socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
-				if ":" not in address[4][0]
-			}
-		)
-	except OSError:
-		return []
+	return resolve_ipv4(hostname)
 
 
 def _wildcard_dns_targets_apex(root_addresses: list[str] | None = None) -> bool:
@@ -174,11 +166,12 @@ def _live_docker_snapshot() -> dict:
 		if host.connection_status != "Connected":
 			return {"connected": False, "resources": {}}
 		client = _client(host)
-		health = client.health()
-		inventory = client.inventory()
-		resources = inventory.get("resources")
+		health = client.health(timeout=(2, 3))
+		resource_snapshot = client.resources()
+		resources = resource_snapshot.get("resources")
 		return {
-			"connected": health.get("protocol_version") == 1 and inventory.get("protocol_version") == 1,
+			"connected": health.get("protocol_version") == 1
+			and resource_snapshot.get("protocol_version") == 1,
 			"resources": resources if isinstance(resources, dict) else {},
 		}
 	except Exception:
