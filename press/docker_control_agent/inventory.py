@@ -7,7 +7,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .config import ALLOWED_APPS, CUSTOMER_SITES, IMPACT_SITES, AgentConfig
+from .config import CUSTOMER_SITES, IMPACT_SITES, AgentConfig
+
+APP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 def compose_command(config: AgentConfig, *arguments: str) -> list[str]:
@@ -46,20 +48,25 @@ def _parse_all_apps(output: str) -> dict[str, list[str]]:
 
 
 def _app_revision(config: AgentConfig, app: str) -> dict:
-	if app not in ALLOWED_APPS:
+	if not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
 		return {"app": app, "version": "unknown", "branch": "unknown"}
-	path = (config.apps_root / app).resolve(strict=True)
-	if not path.is_relative_to(config.apps_root):
-		raise ValueError("App path escapes the configured apps root")
+	try:
+		apps_root = config.apps_root.resolve(strict=True)
+		path = (apps_root / app).resolve(strict=True)
+	except (OSError, RuntimeError):
+		return {"app": app, "version": "unknown", "branch": "unknown"}
+	if not path.is_relative_to(apps_root) or not path.is_dir():
+		return {"app": app, "version": "unknown", "branch": "unknown"}
+	git_prefix = ["git", "-c", f"safe.directory={path}", "-C", str(path)]
 	commit = subprocess.run(
-		["git", "-C", str(path), "rev-parse", "--short=12", "HEAD"],
+		[*git_prefix, "rev-parse", "--short=12", "HEAD"],
 		capture_output=True,
 		text=True,
 		timeout=10,
 		check=False,
 	)
 	branch = subprocess.run(
-		["git", "-C", str(path), "branch", "--show-current"],
+		[*git_prefix, "branch", "--show-current"],
 		capture_output=True,
 		text=True,
 		timeout=10,
