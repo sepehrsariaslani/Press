@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import socket
 import ssl
 from urllib.parse import quote
@@ -86,6 +87,21 @@ def _checkout_enabled(settings, sale_type: str = "marketplace") -> bool:
 
 def _free_marketplace_purchase_enabled(settings) -> bool:
 	return bool(settings and settings.enabled and settings.allow_marketplace_app_sales)
+
+
+def _acquire_transaction_lock(lock_name: str, timeout: int = 10) -> bool:
+	"""Hold a MySQL advisory lock until this request commits or rolls back."""
+	db = frappe.db
+	lock = db.sql("SELECT GET_LOCK(%s, %s)", (lock_name, timeout), as_list=True)
+	if not lock or not lock[0] or lock[0][0] != 1:
+		return False
+
+	def release_lock():
+		db.sql("SELECT RELEASE_LOCK(%s)", (lock_name,))
+
+	db.after_commit.add(release_lock)
+	db.after_rollback.add(release_lock)
+	return True
 
 
 def _require_commerce_admin():
@@ -738,6 +754,9 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 		merchant_id = _merchant_id(settings)
 		if not _checkout_enabled(settings) or not merchant_id:
 			frappe.throw(_("پرداخت آنلاین هنوز توسط مدیر آسومی پیکربندی نشده است."))
+	lock_digest = hashlib.sha256(f"{site_type}:{site}:{plan_doc.name}".encode()).hexdigest()[:40]
+	if not _acquire_transaction_lock(f"asumi-marketplace:{lock_digest}"):
+		frappe.throw(_("درخواست خرید این برنامه برای این سایت هم‌اکنون در حال ثبت است؛ کمی بعد دوباره تلاش کنید."))
 	target_field = "docker_site" if site_type == "Docker Control Site" else "site"
 	target_filters = {target_field: site}
 	active_plan = frappe.db.exists(
@@ -1050,49 +1069,45 @@ def start_site_plan_purchase(
 	}
 	if snapshot["service_delivery_mode"] == "Create New Site":
 		lock_name = f"asumi-site:{snapshot['subdomain']}"
-		lock = frappe.db.sql("SELECT GET_LOCK(%s, 10)", (lock_name,), as_list=True)
-		if not lock or lock[0][0] != 1:
+		if not _acquire_transaction_lock(lock_name):
 			frappe.throw(_("ثبت این زیردامنه هم‌اکنون در حال انجام است؛ کمی بعد دوباره تلاش کنید."))
-		try:
-			matching_pending = frappe.get_all(
+		matching_pending = frappe.get_all(
+			"Commerce Order",
+			filters={**pending_filters, "status": "Pending Payment"},
+			fields=["name", "authority", "sandbox_mode"],
+			order_by="creation desc",
+			limit_page_length=1,
+			ignore_permissions=True,
+		)
+		if matching_pending:
+			if matching_pending[0].authority:
+				return {
+					"order": matching_pending[0].name,
+					"checkout_url": checkout_url(
+						matching_pending[0].authority,
+						sandbox=bool(matching_pending[0].sandbox_mode),
+					),
+				}
+			frappe.throw(_("درخواست پرداخت قبلی همین زیردامنه هنوز در حال ثبت است."))
+		if not selected_site:
+			if frappe.db.exists("Site", full_site_name):
+				frappe.throw(_("این زیردامنه قبلاً استفاده شده است."))
+			reserved = frappe.db.exists(
 				"Commerce Order",
-				filters={**pending_filters, "status": "Pending Payment"},
-				fields=["name", "authority", "sandbox_mode"],
-				order_by="creation desc",
-				limit_page_length=1,
-				ignore_permissions=True,
+				{
+					"subdomain": snapshot["subdomain"],
+					"order_type": "Hosting",
+					"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed", "Active"]],
+				},
 			)
-			if matching_pending:
-				if matching_pending[0].authority:
-					return {
-						"order": matching_pending[0].name,
-						"checkout_url": checkout_url(
-							matching_pending[0].authority,
-							sandbox=bool(matching_pending[0].sandbox_mode),
-						),
-					}
-				frappe.throw(_("درخواست پرداخت قبلی همین زیردامنه هنوز در حال ثبت است."))
-			if not selected_site:
-				if frappe.db.exists("Site", full_site_name):
-					frappe.throw(_("این زیردامنه قبلاً استفاده شده است."))
-				reserved = frappe.db.exists(
-					"Commerce Order",
-					{
-						"subdomain": snapshot["subdomain"],
-						"order_type": "Hosting",
-						"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed", "Active"]],
-					},
-				)
-				if reserved:
-					frappe.throw(_("این زیردامنه قبلاً برای یک سفارش رزرو شده است."))
-			return _create_zarinpal_checkout(
-				snapshot,
-				settings,
-				f"Asumi hosting plan: {plan_doc.plan_title or plan_doc.name}",
-				pending_filters,
-			)
-		finally:
-			frappe.db.sql("SELECT RELEASE_LOCK(%s)", (lock_name,))
+			if reserved:
+				frappe.throw(_("این زیردامنه قبلاً برای یک سفارش رزرو شده است."))
+		return _create_zarinpal_checkout(
+			snapshot,
+			settings,
+			f"Asumi hosting plan: {plan_doc.plan_title or plan_doc.name}",
+			pending_filters,
+		)
 
 	return _create_zarinpal_checkout(
 		snapshot,
