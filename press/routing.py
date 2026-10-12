@@ -1,7 +1,28 @@
 import frappe
 from frappe.website.path_resolver import resolve_path as default_resolve_path
 
-ASUMI_HOSTS = {"asumi.ir", "www.asumi.ir"}
+ASUMI_HOSTS = {"asumi", "asumi.ir", "www.asumi.ir"}
+ASUMI_PASSTHROUGH_ROUTES = {
+	"hesab",
+	"builder",
+	"login",
+	"logout",
+	"update-password",
+	"complete_signup",
+	"favicon.ico",
+	"robots.txt",
+	"manifest.json",
+}
+ASUMI_PASSTHROUGH_PREFIXES = (
+	"api/",
+	"assets/",
+	"files/",
+	"private/files/",
+	"socket.io/",
+	"hesab/",
+	"builder/",
+	"builder_assets/",
+)
 
 
 def get_request_host() -> str:
@@ -9,11 +30,19 @@ def get_request_host() -> str:
 	return (getattr(request, "host", "") or "").split(":", 1)[0].lower()
 
 
-def resolve_path(path: str):
-	"""Route only the Asumi public root and delegate all other paths to Frappe.
+def is_builder_route(route: str) -> bool:
+	try:
+		builder_path = str(getattr(frappe.conf, "builder_path", None) or "builder").strip("/").lower()
+	except RuntimeError:
+		builder_path = "builder"
+	return route == builder_path or route.startswith(f"{builder_path}/")
 
-	Press routes such as Desk, Dashboard, API, and assets remain under Frappe's
-	default resolver even when they are requested from the Asumi domain.
+
+def resolve_path(path: str):
+	"""Serve the Asumi app on customer-facing page routes for Asumi hosts.
+
+	Keep API, asset, authentication, and Press dashboard routes available while
+	serving public marketing pages through the Asumi application.
 	"""
 	route = (path or "").strip("/ ")
 	if get_request_host() in ASUMI_HOSTS and (
@@ -22,7 +51,17 @@ def resolve_path(path: str):
 		or route.lower() == "website_script.js"
 	):
 		return default_resolve_path(path)
-	if get_request_host() in ASUMI_HOSTS and not route:
+	if get_request_host() in ASUMI_HOSTS:
+		if not route:
+			return "asumi"
+		normalized_route = route.lower()
+		# Accounts owns /hesab; /hesabyar and other customer pages stay on Asumi.
+		if (
+			normalized_route in ASUMI_PASSTHROUGH_ROUTES
+			or normalized_route.startswith(ASUMI_PASSTHROUGH_PREFIXES)
+			or is_builder_route(normalized_route)
+		):
+			return default_resolve_path(path)
 		return "asumi"
 
 	return default_resolve_path(path)
