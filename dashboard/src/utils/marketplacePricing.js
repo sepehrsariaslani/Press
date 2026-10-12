@@ -1,5 +1,9 @@
 export function isPlanFreeForCurrency(plan, currency) {
-	const priceField = currency === 'INR' ? 'price_inr' : 'price_usd';
+	const priceField =
+		{
+			INR: 'price_inr',
+			IRR: 'price_irr',
+		}[currency] || 'price_usd';
 	return Number(plan?.[priceField] ?? 0) <= 0;
 }
 
@@ -8,7 +12,11 @@ export function marketplacePlanLabel(plan, currency, freeLabel) {
 }
 
 export function hasPaidPlanForCurrency(plans, currency) {
-	const priceField = currency === 'INR' ? 'price_inr' : 'price_usd';
+	const priceField =
+		{
+			INR: 'price_inr',
+			IRR: 'price_irr',
+		}[currency] || 'price_usd';
 	return Boolean(plans?.some((plan) => Number(plan?.[priceField] ?? 0) > 0));
 }
 

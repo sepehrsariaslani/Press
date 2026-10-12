@@ -167,7 +167,7 @@ def check_marketplace_app_plan_installable(
 		available_plans = frappe.get_all(
 			"Marketplace App Plan",
 			filters={"app": app, "enabled": 1},
-			fields=["price_inr", "price_usd"],
+			fields=["price_inr", "price_usd", "price_irr"],
 			ignore_permissions=True,
 		)
 		app_team = frappe.db.get_value("Marketplace App", app, "team")
@@ -175,7 +175,10 @@ def check_marketplace_app_plan_installable(
 			frappe.throw(_("Please select a pricing plan for app {0}.").format(app))
 		return
 	plan_prices = frappe.db.get_value(
-		"Marketplace App Plan", plan, ["app", "price_inr", "price_usd", "enabled"], as_dict=True
+		"Marketplace App Plan",
+		plan,
+		["app", "price_inr", "price_usd", "price_irr", "enabled"],
+		as_dict=True,
 	)
 	if not plan_prices:
 		frappe.throw(_("The selected marketplace app plan is unavailable."))
@@ -185,6 +188,10 @@ def check_marketplace_app_plan_installable(
 		frappe.throw(_("The selected plan does not belong to app {0}.").format(app))
 
 	team = get_marketplace_plan_team(team)
+	if team.currency == "IRR" and not is_marketplace_app_plan_free(plan_prices, team.currency):
+		frappe.throw(
+			"خرید تعرفهٔ ریالی را از پنل آسومی تکمیل کنید؛ نصب مستقیم تعرفهٔ پولی ممکن نیست."
+		)
 	if not is_marketplace_app_plan_free(plan_prices, team.currency) and not team.can_install_paid_apps():
 		frappe.throw(
 			"You cannot install a Paid app on Free Credits. Please buy credits before trying to install again."

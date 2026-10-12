@@ -31,7 +31,13 @@ def format_plan_prices(plan):
 	interval = plan.get("interval")
 	price_inr = _normalize_price(plan.get("price_inr"))
 	price_usd = _normalize_price(plan.get("price_usd"))
-	if interval not in INTERVAL_LABELS or price_inr is None or price_usd is None:
+	price_irr = _normalize_price(plan.get("price_irr", 0))
+	if (
+		interval not in INTERVAL_LABELS
+		or price_inr is None
+		or price_usd is None
+		or price_irr is None
+	):
 		return None
 
 	return {
@@ -39,11 +45,13 @@ def format_plan_prices(plan):
 		"interval_label": INTERVAL_LABELS[interval],
 		"price_inr": price_inr,
 		"price_usd": price_usd,
+		"price_irr": price_irr,
 		"prices": [
 			{"currency": "INR", "symbol": "₹", "amount": price_inr},
 			{"currency": "USD", "symbol": "$", "amount": price_usd},
+			{"currency": "IRR", "symbol": "ریال", "amount": price_irr},
 		],
-		"is_free": price_inr == 0 and price_usd == 0,
+		"is_free": price_inr == 0 and price_usd == 0 and price_irr == 0,
 	}
 
 
@@ -119,7 +127,16 @@ def get_public_marketplace_catalog(get_all):
 	plans = get_all(
 		"Marketplace App Plan",
 		filters={"enabled": 1, "app": ["in", app_names]},
-		fields=["name", "app", "title", "interval", "enabled", "price_inr", "price_usd"],
+		fields=[
+			"name",
+			"app",
+			"title",
+			"interval",
+			"enabled",
+			"price_inr",
+			"price_usd",
+			"price_irr",
+		],
 		order_by="app asc, interval asc, title asc",
 	)
 	return build_marketplace_catalog(apps, plans)

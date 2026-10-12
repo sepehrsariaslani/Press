@@ -195,6 +195,24 @@ class MarketplaceCatalogTest(unittest.TestCase):
 
 		self.assertEqual(formatted["price_inr"], price)
 		self.assertEqual(formatted["price_usd"], Decimal("2.000000000000000001"))
+		self.assertEqual(formatted["price_irr"], 0)
+
+	def test_iranian_rial_price_is_displayed_and_prevents_free_label(self):
+		formatted = format_plan_prices(
+			{
+				"interval": "Monthly",
+				"price_inr": 0,
+				"price_usd": 0,
+				"price_irr": 2500000,
+			}
+		)
+
+		self.assertEqual(formatted["price_irr"], 2500000)
+		self.assertFalse(formatted["is_free"])
+		self.assertEqual(
+			formatted["prices"][-1],
+			{"currency": "IRR", "symbol": "ریال", "amount": 2500000},
+		)
 
 	def test_page_context_has_real_apps_and_does_not_invent_hosting_offers(self):
 		def get_all(doctype, **kwargs):
@@ -265,6 +283,7 @@ class MarketplaceCatalogTest(unittest.TestCase):
 			queries[1][1]["filters"],
 			{"enabled": 1, "app": ["in", ["app-a"]]},
 		)
+		self.assertIn("price_irr", queries[1][1]["fields"])
 
 	def test_only_published_apps_with_enabled_plans_are_listed(self):
 		apps = [
@@ -371,7 +390,7 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		self.assertEqual(plan["interval_label"], "ماهانه")
 		self.assertEqual(
 			[(price["currency"], price["amount"]) for price in plan["prices"]],
-			[("INR", 1250), ("USD", 12.5)],
+			[("INR", 1250), ("USD", 12.5), ("IRR", 0)],
 		)
 
 	def test_plans_with_unknown_period_or_missing_prices_are_not_listed(self):
@@ -412,7 +431,7 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		self.assertEqual(formatted["interval_label"], "سالانه")
 		self.assertEqual(formatted["price_inr"], 2400)
 		self.assertEqual(formatted["price_usd"], 24)
-		self.assertEqual([price["symbol"] for price in formatted["prices"]], ["₹", "$"])
+		self.assertEqual([price["symbol"] for price in formatted["prices"]], ["₹", "$", "ریال"])
 
 class LegacyPricingTemplateTest(unittest.TestCase):
 	def test_template_contains_no_fixed_infrastructure_rates_or_dynamic_html(self):

@@ -6,6 +6,7 @@ import PanelTopInactive from '~icons/lucide/panel-top-inactive';
 import Boxes from '~icons/lucide/boxes';
 import Server from '~icons/lucide/server';
 import WalletCards from '~icons/lucide/wallet-cards';
+import ShoppingBag from '~icons/lucide/shopping-bag';
 import Store from '~icons/lucide/store';
 import Settings from '~icons/lucide/settings';
 import App from '~icons/lucide/layout-grid';
@@ -164,6 +165,14 @@ const navigation = computed(() => {
 				admin: Boolean($session.userPermissions?.data?.admin),
 				isSystemUser: $session.isSystemUser,
 			}),
+			disabled: enforce2FA,
+		},
+		{
+			name: 'خرید و سفارش‌ها',
+			icon: ShoppingBag,
+			route: '/orders',
+			isActive: routeName === 'Commerce Orders',
+			condition: onboardingComplete,
 			disabled: enforce2FA,
 		},
 		{

@@ -803,8 +803,10 @@ def get_plans_for_app(
 			"name",
 			"title",
 			"enabled",
+			"interval",
 			"price_inr",
 			"price_usd",
+			"price_irr",
 		],
 	)
 

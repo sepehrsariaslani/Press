@@ -345,7 +345,7 @@ export default {
 					filters: (app) => {
 						return { app: app.doc.name };
 					},
-					fields: ['name', 'title', 'price_inr', 'price_usd', 'enabled'],
+					fields: ['name', 'title', 'price_inr', 'price_usd', 'price_irr', 'enabled'],
 					columns: [
 						{
 							label: 'Title',
@@ -371,6 +371,13 @@ export default {
 							fieldname: 'price_usd',
 							format: (value) => {
 								return currency(value, 'USD');
+							},
+						},
+						{
+							label: 'قیمت (ریال)',
+							fieldname: 'price_irr',
+							format: (value) => {
+								return currency(value, 'IRR');
 							},
 						},
 					],

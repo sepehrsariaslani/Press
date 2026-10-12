@@ -15,6 +15,12 @@ describe('marketplace app plan prices', () => {
 		);
 	});
 
+	it('uses the IRR price for an Iranian team', () => {
+		expect(
+			isPlanFreeForCurrency({ price_inr: 0, price_usd: 0, price_irr: 150000 }, 'IRR'),
+		).toBe(false);
+	});
+
 	it('provides a custom label only for plans that are free in the selected currency', () => {
 		const getPlanLabel = marketplacePricing.marketplacePlanLabel;
 
@@ -33,6 +39,7 @@ describe('marketplace app plan prices', () => {
 		expect(hasPaidPlan).toBeTypeOf('function');
 		expect(hasPaidPlan([{ price_inr: 0, price_usd: 9 }], 'USD')).toBe(true);
 		expect(hasPaidPlan([{ price_inr: 0, price_usd: 9 }], 'INR')).toBe(false);
+		expect(hasPaidPlan([{ price_inr: 0, price_usd: 0, price_irr: 150000 }], 'IRR')).toBe(true);
 	});
 
 	it('does not require publisher teams to subscribe to their own paid app', () => {

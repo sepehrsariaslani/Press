@@ -217,6 +217,15 @@ class Subscription(Document):
 		return usage_record
 
 	def can_charge_for_subscription(self):
+		if (
+			self.document_type == "Marketplace App"
+			and self.name
+			and frappe.db.exists("DocType", "Commerce Order")
+			and frappe.db.exists("Commerce Order", {"subscription": self.name})
+		):
+			# A direct checkout purchases one explicit plan interval. The
+			# commerce expiry job controls access; do not also invoice usage.
+			return False
 		doc = self.get_subscribed_document()
 		if not doc:
 			return False

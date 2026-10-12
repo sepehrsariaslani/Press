@@ -18,6 +18,11 @@ describe('Asumi dashboard portal styles', () => {
 		expect(fontStack).toContain('Vazirmatn Variable');
 	});
 
+	it('loads Asumi fonts from the dashboard public asset directory', () => {
+		expect(css).toContain("url('../fonts/asumi/vazirmatn-arabic.woff2')");
+		expect(css).toContain("url('../fonts/asumi/manrope-latin.woff2')");
+	});
+
 	it('applies the compact radius to portalled rounded controls', () => {
 		let hasGlobalRoundedControlStyle = false;
 

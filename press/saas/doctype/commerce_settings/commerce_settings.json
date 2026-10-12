@@ -1,0 +1,57 @@
+{
+ "actions": [],
+ "creation": "2026-10-12 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "allow_marketplace_app_sales",
+  "sandbox_mode",
+  "merchant_id"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enable Asumi Checkout"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_marketplace_app_sales",
+   "fieldtype": "Check",
+   "label": "Allow Marketplace App Sales"
+  },
+  {
+   "default": "1",
+   "fieldname": "sandbox_mode",
+   "fieldtype": "Check",
+   "label": "Sandbox Mode"
+  },
+  {
+   "fieldname": "merchant_id",
+   "fieldtype": "Password",
+   "label": "ZarinPal Merchant ID"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-12 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SaaS",
+ "name": "Commerce Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "role": "Press Admin"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

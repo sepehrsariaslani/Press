@@ -118,6 +118,14 @@ class TestAPIMarketplace(FrappeTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			create_app_plan(self.marketplace_app.name, self.plan_data)
 
+	def test_create_marketplace_app_plan_rejects_fractional_irr(self):
+		with self.assertRaises(frappe.ValidationError):
+			create_app_plan(self.marketplace_app.name, {**self.plan_data, "price_irr": 1.5})
+
+	def test_create_marketplace_app_plan_rejects_negative_price(self):
+		with self.assertRaises(frappe.ValidationError):
+			create_app_plan(self.marketplace_app.name, {**self.plan_data, "price_usd": -1})
+
 	def test_reset_features_for_plan(self):
 		plan_doc = create_app_plan(self.marketplace_app.name, self.plan_data)
 		new_features = ["feature 3", "feature 4"]
@@ -433,6 +441,7 @@ class TestAPIMarketplace(FrappeTestCase):
 		updated_plan_data = {
 			"price_inr": m_plan.price_inr + 100,
 			"price_usd": m_plan.price_usd + 1,
+			"interval": "Monthly",
 			"title": m_plan.title + " updated",
 			"features": ["feature 3", "feature 4"],
 		}
@@ -441,9 +450,15 @@ class TestAPIMarketplace(FrappeTestCase):
 
 		self.assertEqual(m_plan.price_inr, updated_plan_data["price_inr"])
 		self.assertEqual(m_plan.price_usd, updated_plan_data["price_usd"])
+		self.assertEqual(m_plan.interval, updated_plan_data["interval"])
 		self.assertEqual(m_plan.title, updated_plan_data["title"])
 		self.assertEqual(m_plan.features[0].description, updated_plan_data["features"][0])
 		self.assertEqual(m_plan.features[1].description, updated_plan_data["features"][1])
+
+	def test_update_app_plan_rejects_fractional_irr(self):
+		m_plan = create_test_marketplace_app_plan()
+		with self.assertRaises(frappe.ValidationError):
+			update_app_plan(m_plan.name, {"title": m_plan.title, "price_irr": 1.5})
 
 	def test_update_marketplace_app_plan_rejects_another_team(self):
 		m_plan = create_test_marketplace_app_plan(self.marketplace_app.name)

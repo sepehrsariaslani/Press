@@ -18,7 +18,8 @@ class Plan(Document):
 		return None
 
 	def get_price_per_day(self, currency):
-		price = self.price_inr if currency == "INR" else self.price_usd
+		price_field = {"INR": "price_inr", "IRR": "price_irr"}.get(currency, "price_usd")
+		price = getattr(self, price_field, 0)
 		return rounded(price / self.period, 2)
 
 	@property

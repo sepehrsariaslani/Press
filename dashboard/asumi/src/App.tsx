@@ -1,20 +1,34 @@
-import { useState } from 'react';
-import { AsumiHero } from './components/organisms/AsumiHero';
-import { AsumiLoader } from './components/organisms/AsumiLoader';
+import { ModuleDetailPage } from './product/ModuleDetailPage';
+import { FinanceStory } from './product/finance/FinanceStory';
+import { ModulePricingPage } from './product/pricing/ModulePricingPage';
+import { WebsiteDesignPricingPage } from './product/web-design/WebsiteDesignPricingPage';
+import { ProcurementStory } from './product/procurement/ProcurementStory';
+import { SalesStory } from './product/sales/SalesStory';
+import { productModules } from './product/modules';
+import { useModuleNavigation } from './product/useModuleNavigation';
+import { StoryLanding } from './story/StoryLanding';
 
 export function AsumiApp() {
-	const [heroActive, setHeroActive] = useState(false);
-	const [showLoader, setShowLoader] = useState(true);
-
-	return (
-		<main className="asumi-app">
-			<AsumiHero active={heroActive} />
-			{showLoader ? (
-				<AsumiLoader
-					onComplete={() => setShowLoader(false)}
-					onReveal={() => setHeroActive(true)}
-				/>
-			) : null}
-		</main>
-	);
+	const { activeModuleId, openModule, openPricing, openOrderCenter, returnToModules, showPricing, showWebsiteDesign } = useModuleNavigation();
+	if (showWebsiteDesign) {
+		return <WebsiteDesignPricingPage onReturnToModules={returnToModules} />;
+	}
+	if (showPricing) {
+		return <ModulePricingPage onOpenModule={openModule} onReturnToModules={returnToModules} onRequestPurchase={openOrderCenter} />;
+	}
+	const activeModuleIndex = productModules.findIndex(module => module.id === activeModuleId);
+	const activeModule = productModules[activeModuleIndex];
+	if (activeModule?.id === 'finance') {
+		return <FinanceStory onOpenModule={openModule} onReturnToModules={returnToModules} onOpenPricing={openPricing} />;
+	}
+	if (activeModule?.id === 'sales') {
+		return <SalesStory onOpenModule={openModule} onReturnToModules={returnToModules} onOpenPricing={openPricing} />;
+	}
+	if (activeModule?.id === 'procurement') {
+		return <ProcurementStory onOpenModule={openModule} onReturnToModules={returnToModules} onOpenPricing={openPricing} />;
+	}
+	if (activeModule) {
+		return <ModuleDetailPage module={activeModule} index={activeModuleIndex} onOpenModule={openModule} onReturnToModules={returnToModules} onOpenPricing={openPricing} />;
+	}
+	return <StoryLanding onOpenModule={openModule} onOpenPricing={openPricing} />;
 }

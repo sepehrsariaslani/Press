@@ -16,6 +16,7 @@
   "column_break_5",
   "price_inr",
   "price_usd",
+  "price_irr",
   "allow_downgrading_from_other_plan",
   "legacy_plan",
   "features_section",
@@ -98,6 +99,13 @@
    "label": "Price (USD)",
    "options": "USD",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "price_irr",
+   "fieldtype": "Currency",
+   "label": "Price (IRR)",
+   "options": "IRR"
   },
   {
    "depends_on": "eval:doc.document_type == 'Site'",

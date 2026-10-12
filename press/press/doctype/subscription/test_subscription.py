@@ -48,6 +48,45 @@ class TestSubscription(FrappeTestCase):
 		frappe.set_user("Administrator")
 		frappe.db.rollback()
 
+	def test_directly_paid_marketplace_plan_is_not_billed_again_as_usage(self):
+		subscription = frappe.get_doc(
+			{
+				"doctype": "Subscription",
+				"name": "commerce-test-subscription",
+				"document_type": "Marketplace App",
+				"document_name": "test-app",
+				"team": self.team.name,
+				"plan_type": "Marketplace App Plan",
+				"plan": "test-plan",
+			}
+		)
+		with patch("frappe.db.exists", side_effect=[True, True]) as exists:
+			self.assertFalse(subscription.can_charge_for_subscription())
+			self.assertEqual(
+				exists.call_args_list,
+				[
+					(("DocType", "Commerce Order"),),
+					(("Commerce Order", {"subscription": subscription.name}),),
+				],
+			)
+
+	def test_marketplace_subscription_without_commerce_doctype_follows_legacy_billing(self):
+		subscription = frappe.get_doc(
+			{
+				"doctype": "Subscription",
+				"name": "legacy-test-subscription",
+				"document_type": "Marketplace App",
+				"document_name": "test-app",
+				"team": self.team.name,
+				"plan_type": "Marketplace App Plan",
+				"plan": "test-plan",
+			}
+		)
+		with patch("frappe.db.exists", return_value=False) as exists:
+			with patch.object(subscription, "get_subscribed_document", return_value=None):
+				self.assertFalse(subscription.can_charge_for_subscription())
+			exists.assert_called_once_with("DocType", "Commerce Order")
+
 	def test_subscription_daily(self):
 		todo = frappe.get_doc(doctype="ToDo", description="Test todo").insert()
 		plan = frappe.get_doc(

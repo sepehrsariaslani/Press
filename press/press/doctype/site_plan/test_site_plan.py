@@ -78,6 +78,12 @@ class TestSitePlan(FrappeTestCase):
 		self.assertIsInstance(per_day_usd, (int, float))
 		self.assertNotEqual(per_day_inr, per_day_usd)
 
+	def test_irr_price_is_used_for_iranian_rial_accounts(self):
+		self.plan.price_irr = 3_000_000
+		month_with_30_days = frappe.utils.get_last_day(date(1997, 4, 3))
+		with patch.object(frappe.utils, "get_last_day", return_value=month_with_30_days):
+			self.assertEqual(self.plan.get_price_per_day("IRR"), 100_000)
+
 	def test_dynamic_period(self):
 		month_with_29_days = frappe.utils.get_last_day(date(2020, 2, 3))
 		month_with_30_days = frappe.utils.get_last_day(date(1997, 4, 3))

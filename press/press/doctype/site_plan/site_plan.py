@@ -47,6 +47,7 @@ class SitePlan(Plan):
 		plan_description: DF.Data | None
 		plan_title: DF.Data | None
 		price_inr: DF.Currency
+		price_irr: DF.Currency
 		price_usd: DF.Currency
 		private_bench_support: DF.Check
 		private_benches: DF.Check
@@ -64,6 +65,7 @@ class SitePlan(Plan):
 		"document_type",
 		"document_name",
 		"price_inr",
+		"price_irr",
 		"price_usd",
 		"period",
 		"cpu_time_per_day",
@@ -81,6 +83,7 @@ class SitePlan(Plan):
 	def get_doc(self, doc):
 		doc["price_per_day_inr"] = self.get_price_per_day("INR")
 		doc["price_per_day_usd"] = self.get_price_per_day("USD")
+		doc["price_per_day_irr"] = self.get_price_per_day("IRR")
 		return doc
 
 	@classmethod

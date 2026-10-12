@@ -20,9 +20,19 @@
 						v-model="currentEditingPlan.title"
 					></FormControl>
 				</div>
+				<div class="mb-4">
+					<label class="block text-sm text-gray-700">
+						دورهٔ اشتراک
+						<select v-model="currentEditingPlan.interval" class="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2">
+							<option value="Daily">روزانه</option>
+							<option value="Monthly">ماهانه</option>
+							<option value="Yearly">سالانه</option>
+						</select>
+					</label>
+				</div>
 				<div class="mb-8">
 					<h3 class="mb-3 text-lg font-semibold">قیمت اشتراک</h3>
-					<div class="grid grid-cols-2 gap-2">
+					<div class="grid grid-cols-1 gap-2 md:grid-cols-3">
 						<FormControl
 							label="قیمت برای حساب روپیه‌ای (INR)"
 							v-model="currentEditingPlan.price_inr"
@@ -31,11 +41,15 @@
 							label="قیمت برای حساب دلاری (USD)"
 							v-model="currentEditingPlan.price_usd"
 						></FormControl>
+						<FormControl
+							label="قیمت برای حساب ریالی (IRR)"
+							v-model="currentEditingPlan.price_irr"
+						></FormControl>
 					</div>
 					<p
 						class="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-950"
 					>
-						هر قیمت برای مشتریان همان ارز اعمال می‌شود؛ مبلغ صفر یعنی این تعرفه برای همان ارز رایگان است.
+				قیمت‌ها جداگانه برای هر ارز ثبت می‌شوند؛ مبلغ صفر یعنی این تعرفه برای همان ارز رایگان است.
 					</p>
 				</div>
 				<div>
@@ -114,6 +128,8 @@ export default {
 			currentEditingPlan: {
 				price_inr: 0,
 				price_usd: 0,
+				price_irr: 0,
+				interval: 'Daily',
 				features: [''],
 				title: '',
 				enabled: true,
@@ -214,6 +230,8 @@ export default {
 			Object.assign(this.currentEditingPlan, {
 				price_inr: 0,
 				price_usd: 0,
+				price_irr: 0,
+				interval: 'Daily',
 				features: [''],
 				title: '',
 				enabled: true,

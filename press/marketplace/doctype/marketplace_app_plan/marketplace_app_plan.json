@@ -15,6 +15,7 @@
   "price_inr",
   "column_break_3",
   "price_usd",
+  "price_irr",
   "plan_features_section",
   "available_on_versions",
   "features",
@@ -69,6 +70,14 @@
    "fieldname": "price_usd",
    "fieldtype": "Currency",
    "label": "Price (USD)",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "price_irr",
+   "fieldtype": "Currency",
+   "label": "Price (IRR)",
+   "options": "IRR",
    "reqd": 1
   },
   {

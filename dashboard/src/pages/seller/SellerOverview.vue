@@ -114,7 +114,7 @@ export default {
 				auto: true,
 				params: {
 					doctype: 'Marketplace App Plan',
-					fields: ['name', 'price_inr', 'price_usd'],
+					fields: ['name', 'price_inr', 'price_usd', 'price_irr'],
 					limit: 500,
 				},
 				initialData: [],
@@ -151,9 +151,11 @@ export default {
 		},
 		planPrices() {
 			const prices = {};
-			const currency = this.$team?.doc?.currency === 'INR' ? 'price_inr' : 'price_usd';
+			const priceField =
+				{ INR: 'price_inr', IRR: 'price_irr' }[this.$team?.doc?.currency] ||
+				'price_usd';
 			for (const plan of this.$resources.plans.data || []) {
-				prices[plan.name] = Number(plan[currency] || 0);
+				prices[plan.name] = Number(plan[priceField] || 0);
 			}
 			return prices;
 		},

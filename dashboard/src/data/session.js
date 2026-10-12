@@ -99,6 +99,7 @@ export let session = reactive({
 	isLoggedIn: computed(() => !!session.user),
 	isSystemUser: getSessionCookies().get('system_user') === 'yes',
 	isSystemManager: Boolean(window.is_system_manager),
+	isPressAdmin: Boolean(window.is_press_admin),
 });
 
 export default session;

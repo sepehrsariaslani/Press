@@ -1,0 +1,34 @@
+.case-board { display: block; width: 100%; height: 100%; overflow: visible; font-family: inherit; user-select: none; }
+.board-frame { fill: #242020; stroke: #413737; stroke-width: 1; }
+.board-felt { fill: #171414; stroke: #050404; stroke-width: 2; }
+.board-screw { fill: #5a5050; }
+.board-index { fill: #98908d; font-size: 13px; text-anchor: start; direction: rtl; }
+.evidence-card { filter: drop-shadow(3px 8px 5px #00000080); }
+.paper-body { stroke: #f4eee329; stroke-width: .75; }
+.paper-fold { fill: #a7a197; stroke: #d5cfc5; stroke-width: .5; }
+.document-face, .chart-face { fill: var(--case-paper-ink); direction: rtl; text-anchor: start; }
+.paper-tag { fill: var(--case-paper-muted); font-size: 11px; }
+.paper-title { font-size: 18px; font-weight: 650; }
+.paper-rule { stroke: #a6a098; stroke-width: .8; }
+.paper-text-line { stroke: #918a82; stroke-width: 3; }
+.paper-value { font-size: 15px; font-weight: 650; }
+.paper-note { font-size: 10px; fill: var(--case-paper-muted); }
+.paper-question { font-size: 37px; fill: #9d2834; font-weight: 400; }
+.paper-stamp { fill: #ae3340; stroke: #ae3340; }
+.paper-stamp rect { fill: none; stroke-width: 1.5; }
+.paper-stamp text { stroke: none; font-size: 10px; }
+.chart-heading { font-size: 18px; font-weight: 650; }
+.chart-value { font-size: 13px; fill: var(--case-paper-muted); }
+.chart-grid { stroke: #bcb4ac; stroke-width: .6; }
+.chart-percentage { font-size: 23px; font-weight: 650; }
+.chart-caption { fill: var(--case-paper-muted); font-size: 10px; }
+.evidence-thread { fill: none; stroke: #c72b3b; stroke-width: 1.8; stroke-linecap: round; filter: drop-shadow(1px 2px 1px #00000090); }
+.route-track { fill: none; stroke: #725758; stroke-width: 1; stroke-dasharray: 3 8; }
+.route-line { fill: none; stroke: #ee4a58; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 5px #f0344255); }
+.route-node-outer { fill: #160c0e; stroke: #e24250; stroke-width: 1.5; }
+.route-node-inner { fill: #ff6b76; }
+.route-node-title { fill: var(--case-ink); font-size: 21px; font-weight: 550; direction: rtl; }
+.route-node-detail { fill: #b2a8a5; font-size: 14px; direction: rtl; }
+.destination-flag { fill: #a62331; stroke: #fa6872; stroke-width: 1.5; stroke-linejoin: round; }
+.destination-brackets { fill: none; stroke: #ff6670; stroke-width: 1; }
+.route-legend { text-anchor: start; direction: rtl; font-size: 13px; fill: #b2a8a5; }

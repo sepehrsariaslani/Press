@@ -16,6 +16,9 @@ class TestMarketplacePricing(TestCase):
 	def test_usd_uses_usd_price(self):
 		self.assertFalse(is_marketplace_app_plan_free({"price_inr": 0, "price_usd": 9}, "USD"))
 
+	def test_irr_uses_irr_price(self):
+		self.assertFalse(is_marketplace_app_plan_free({"price_irr": 120000, "price_usd": 0}, "IRR"))
+
 	def test_paid_plan_requires_a_plan_selection(self):
 		self.assertTrue(has_paid_marketplace_app_plan([{"price_inr": 0, "price_usd": 9}], "USD"))
 
@@ -24,3 +27,6 @@ class TestMarketplacePricing(TestCase):
 
 	def test_free_only_plans_do_not_require_a_plan_selection(self):
 		self.assertFalse(has_paid_marketplace_app_plan([{"price_inr": 0, "price_usd": 0}], "USD"))
+
+	def test_irr_paid_plan_requires_a_plan_selection(self):
+		self.assertTrue(has_paid_marketplace_app_plan([{"price_irr": 120000}], "IRR"))

@@ -21,6 +21,7 @@ from press.press.doctype.marketplace_app.marketplace_app import (
 	get_plans_for_app,
 	get_total_installs_by_app,
 )
+from press.saas.commerce.pricing import normalize_interval, normalize_marketplace_app_plan_prices
 from press.utils import (
 	get_app_tag,
 	get_current_team,
@@ -119,7 +120,11 @@ def get_install_app_options(marketplace_app: str) -> dict:
 
 	app_plans = get_plans_for_app(marketplace_app)
 
-	if not [plan for plan in app_plans if plan["price_inr"] > 0 or plan["price_usd"] > 0]:
+	if not [
+		plan
+		for plan in app_plans
+		if plan["price_inr"] > 0 or plan["price_usd"] > 0 or plan.get("price_irr", 0) > 0
+	]:
 		app_plans = []
 
 	return {
@@ -924,8 +929,10 @@ def get_apps_with_plans(apps: list[str], release_group: str):
 @frappe.whitelist()
 def change_app_plan(subscription: str, new_plan: str):
 	team = get_current_team(get_doc=True)
-	price_field = "price_inr" if team.currency == "INR" else "price_usd"
+	price_field = {"INR": "price_inr", "IRR": "price_irr"}.get(team.currency, "price_usd")
 	is_free = (frappe.db.get_value("Marketplace App Plan", new_plan, price_field) or 0) <= 0
+	if team.currency == "IRR" and not is_free:
+		frappe.throw("خرید تعرفهٔ پولی ریالی را از صفحهٔ سفارش‌های آسومی انجام دهید.")
 	if not is_free:
 		if not team.can_install_paid_apps():
 			frappe.throw(
@@ -1009,7 +1016,8 @@ def get_subscriptions_list(marketplace_app: str) -> list:
 
 	conditions = (
 		((team.currency == "INR") & (app_plan.price_inr > 0))
-		| ((team.currency != "INR") & (app_plan.price_usd > 0))
+		| ((team.currency == "USD") & (app_plan.price_usd > 0))
+		| ((team.currency == "IRR") & (app_plan.price_irr > 0))
 	)
 	conditions = conditions & (app_sub.document_name == marketplace_app)
 
@@ -1032,6 +1040,7 @@ def get_subscriptions_list(marketplace_app: str) -> list:
 			app_sub.plan.as_("app_plan"),
 			app_plan.price_usd.as_("price_usd"),
 			app_plan.price_inr.as_("price_inr"),
+			app_plan.price_irr.as_("price_irr"),
 			app_sub.enabled,
 		)
 		.orderby(app_sub.enabled)
@@ -1046,13 +1055,17 @@ def get_subscriptions_list(marketplace_app: str) -> list:
 @frappe.whitelist()
 def create_app_plan(marketplace_app: str, plan_data: dict):
 	_get_marketplace_app_for_plan_write(marketplace_app)
+	try:
+		prices = normalize_marketplace_app_plan_prices(plan_data)
+	except ValueError as error:
+		frappe.throw(str(error))
 	app_plan_doc = frappe.get_doc(
 		{
 			"doctype": "Marketplace App Plan",
 			"app": marketplace_app,
 			"title": plan_data.get("title"),
-			"price_inr": plan_data.get("price_inr"),
-			"price_usd": plan_data.get("price_usd"),
+			**prices,
+			"interval": normalize_interval(plan_data.get("interval")),
 		}
 	)
 
@@ -1073,25 +1086,37 @@ def update_app_plan(app_plan_name: str, updated_plan_data: dict):
 		"Subscription",
 		{
 			"document_type": "Marketplace App",
+			"plan_type": "Marketplace App Plan",
 			"document_name": app_plan_doc.app,
 			"plan": app_plan_doc.name,
 			"enabled": True,
 		},
 	)
 
-	if (
-		updated_plan_data["price_inr"] != app_plan_doc.price_inr
-		or updated_plan_data["price_usd"] != app_plan_doc.price_usd
-	) and no_of_active_subscriptions > 0:
-		# Someone is on this plan, don't change price for the plan,
-		# instead create and link a new plan
-		# TODO: Later we have to figure out a way for plan changes
-		frappe.throw("Plan is already in use, cannot update the plan. Please contact support to proceed.")
+	try:
+		updated_prices = normalize_marketplace_app_plan_prices(
+			{
+				"price_inr": updated_plan_data.get("price_inr", app_plan_doc.price_inr),
+				"price_usd": updated_plan_data.get("price_usd", app_plan_doc.price_usd),
+				"price_irr": updated_plan_data.get("price_irr", app_plan_doc.price_irr),
+			}
+		)
+	except ValueError as error:
+		frappe.throw(str(error))
+	updated_interval = normalize_interval(updated_plan_data.get("interval"), app_plan_doc.interval)
+	if any(
+		updated_prices[field] != getattr(app_plan_doc, field)
+		for field in updated_prices
+	) or updated_interval != app_plan_doc.interval:
+		if no_of_active_subscriptions > 0:
+			# Someone is on this plan, don't change price for the plan,
+			# instead create and link a new plan.
+			frappe.throw("Plan is already in use, cannot update the plan. Please contact support to proceed.")
 
 	app_plan_doc.update(
 		{
-			"price_inr": updated_plan_data.get("price_inr"),
-			"price_usd": updated_plan_data.get("price_usd"),
+			**updated_prices,
+			"interval": updated_interval,
 			"title": updated_plan_data.get("title", app_plan_doc.title),
 		}
 	)
@@ -1266,7 +1291,7 @@ def login_via_token(token: str, team: str, site: str):
 @frappe.whitelist()
 def subscriptions():
 	team = get_current_team(True)
-	price_field = "price_inr" if team.currency == "INR" else "price_usd"
+	price_field = {"INR": "price_inr", "IRR": "price_irr"}.get(team.currency, "price_usd")
 	free_plans = frappe.get_all("Marketplace App Plan", {price_field: ("<=", 0)}, pluck="name")
 	subscriptions = frappe.get_all(
 		"Subscription",

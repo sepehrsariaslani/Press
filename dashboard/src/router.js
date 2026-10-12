@@ -256,6 +256,11 @@ let router = createRouter({
 			],
 		},
 		{
+			name: 'Commerce Orders',
+			path: '/orders',
+			component: () => import('./pages/CommerceOrders.vue'),
+		},
+		{
 			path: '/settings',
 			name: 'Settings',
 			redirect: { name: 'SettingsProfile' },

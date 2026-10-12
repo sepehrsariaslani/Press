@@ -31,6 +31,7 @@ def get_context_for_dev():
 
 
 def get_boot():
+	user_roles = frappe.get_roles(frappe.session.user)
 	return frappe._dict(
 		frappe_version=frappe.__version__,
 		press_dashboard_sentry_dsn=frappe.conf.press_dashboard_sentry_dsn or "",
@@ -41,7 +42,8 @@ def get_boot():
 		default_team=get_default_team_for_user(frappe.session.user),
 		valid_teams=get_valid_teams_for_user(frappe.session.user),
 		is_system_user=frappe.session.data.user_type == "System User",
-		is_system_manager="System Manager" in frappe.get_roles(frappe.session.user),
+		is_system_manager="System Manager" in user_roles,
+		is_press_admin="Press Admin" in user_roles,
 		verify_cards_with_micro_charge=frappe.db.get_single_value(
 			"Press Settings", "verify_cards_with_micro_charge"
 		),
