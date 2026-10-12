@@ -1,5 +1,5 @@
 <template>
-	<Dialog :options="{ title: 'Edit Plan' }" v-model="showEditPlanDialog">
+	<Dialog :options="{ title: 'مدیریت تعرفه' }" v-model="showEditPlanDialog">
 		<template v-slot:body-content>
 			<div>
 				<div class="mb-4">
@@ -10,31 +10,36 @@
 						v-model="currentEditingPlan.enabled"
 					/>
 					<label for="enabled-checkbox" class="ml-1 text-sm text-gray-900">
-						Enabled
+						فعال بودن تعرفه
 					</label>
 				</div>
 				<div class="mb-4">
 					<FormControl
-						placeholder="My Pro Plan"
-						label="Name"
+						placeholder="مثلاً حرفه‌ای"
+						label="نام تعرفه"
 						v-model="currentEditingPlan.title"
 					></FormControl>
 				</div>
 				<div class="mb-8">
-					<h3 class="mb-4 text-lg font-semibold">Subscription Price</h3>
+					<h3 class="mb-3 text-lg font-semibold">قیمت اشتراک</h3>
 					<div class="grid grid-cols-2 gap-2">
 						<FormControl
-							label="Price INR"
+							label="قیمت برای حساب روپیه‌ای (INR)"
 							v-model="currentEditingPlan.price_inr"
 						></FormControl>
 						<FormControl
-							label="Price USD"
+							label="قیمت برای حساب دلاری (USD)"
 							v-model="currentEditingPlan.price_usd"
 						></FormControl>
 					</div>
+					<p
+						class="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-950"
+					>
+						هر قیمت برای مشتریان همان ارز اعمال می‌شود؛ مبلغ صفر یعنی این تعرفه برای همان ارز رایگان است.
+					</p>
 				</div>
 				<div>
-					<h3 class="mb-4 text-lg font-semibold">Features</h3>
+					<h3 class="mb-4 text-lg font-semibold">امکانات تعرفه</h3>
 					<div>
 						<div
 							v-for="(feature, idx) in currentEditingPlan.features"
@@ -62,7 +67,7 @@
 						</div>
 					</div>
 					<div>
-						<Button icon-left="plus" @click="addFeatureInput">Add</Button>
+						<Button icon-left="plus" @click="addFeatureInput">افزودن ویژگی</Button>
 					</div>
 
 					<div>
@@ -88,7 +93,7 @@
 				"
 				@click="savePlan"
 				@close="resetCurrentEditingPlan"
-				>Save</Button
+				>ذخیره تعرفه</Button
 			>
 		</template>
 	</Dialog>
@@ -146,7 +151,7 @@ export default {
 				url: 'press.api.marketplace.create_app_plan',
 				validate() {
 					if (!this.currentEditingPlan.title) {
-						throw new DashboardError('Plan name is required');
+						throw new DashboardError('نام تعرفه را وارد کنید');
 					}
 				},
 				onSuccess() {
@@ -183,15 +188,15 @@ export default {
 							marketplace_app: this.app,
 						}),
 				{
-					loading: 'Saving plan...',
+					loading: 'در حال ذخیره تعرفه...',
 					success: () => {
 						this.showEditPlanDialog = false;
 						if (this.currentEditingPlan.name) {
 							this.$emit('plan-updated', this.currentEditingPlan);
-							return 'Plan updated successfully';
+							return 'تعرفه به‌روزرسانی شد';
 						} else {
 							this.$emit('plan-created', this.currentEditingPlan);
-							return 'Plan created successfully';
+							return 'تعرفه ثبت شد';
 						}
 					},
 					error: (e) => getToastErrorMessage(e),
