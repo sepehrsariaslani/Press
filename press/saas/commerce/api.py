@@ -146,7 +146,7 @@ def _require_commerce_admin():
 		frappe.throw(_("Only a Press system administrator can manage commerce."), frappe.PermissionError)
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def checkout_status() -> dict:
 	"""Return public configuration state without exposing gateway credentials."""
 	settings = _get_settings()

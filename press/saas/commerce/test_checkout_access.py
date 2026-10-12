@@ -2,11 +2,32 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import frappe
 from press.saas.commerce import api
 from press.saas.commerce.checkout_access import checkout_available_for_actor
 
 
 class CheckoutAccessTest(unittest.TestCase):
+	def test_checkout_status_is_guest_accessible_but_returns_public_state_only(self):
+		self.assertIn(api.checkout_status, frappe.guest_methods)
+		settings = SimpleNamespace(sandbox_mode=True)
+		with patch("press.saas.commerce.api._get_settings", return_value=settings), patch(
+			"press.saas.commerce.api._checkout_available_for_user", side_effect=[True, False, False]
+		):
+			status = api.checkout_status()
+
+		self.assertEqual(
+			status,
+			{
+				"enabled": True,
+				"marketplace_apps_enabled": False,
+				"hosting_enabled": False,
+				"sandbox_mode": True,
+				"currency": "IRR",
+			},
+		)
+		self.assertNotIn("merchant_id", status)
+
 	def test_live_checkout_is_available_to_customers_when_configured(self):
 		self.assertTrue(
 			checkout_available_for_actor(
