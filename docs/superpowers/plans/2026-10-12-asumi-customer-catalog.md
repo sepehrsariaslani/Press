@@ -32,21 +32,21 @@
 - Produces: `format_plan_prices(plan)` returning only the stored `price_inr`, `price_usd`, and interval labels.
 - Consumes: plain dictionaries from Frappe list queries; the module must not import or call Frappe.
 
-- [ ] **Step 1: Write failing tests for actual app-plan values**
+- [x] **Step 1: Write failing tests for actual app-plan values**
 
 Add tests proving that disabled plans are omitted, zero-priced enabled plans are labeled free, nonzero INR/USD values stay in their original currencies, and apps without an enabled plan are not represented as purchasable.
 
-- [ ] **Step 2: Run the pure catalog test module and confirm it fails**
+- [x] **Step 2: Run the pure catalog test module and confirm it fails**
 
 Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
 Expected: import or missing-function failures for `press.www.saas.catalog`.
 
-- [ ] **Step 3: Implement the smallest pure catalog helpers**
+- [x] **Step 3: Implement the smallest pure catalog helpers**
 
 Keep all price and interval decisions in this module so they can be tested without a live site or payment credentials.
 
-- [ ] **Step 4: Run the catalog tests and confirm they pass**
+- [x] **Step 4: Run the catalog tests and confirm they pass**
 
 Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
@@ -62,21 +62,21 @@ Expected: every catalog-rule test passes.
 - Consumes: the pure helpers from Task 1.
 - Produces: `context.marketplace_apps`, `context.hosting_available = False`, and Asumi Persian page metadata.
 
-- [ ] **Step 1: Add controller tests for the page context contract**
+- [x] **Step 1: Add catalog query and page-context contract tests**
 
 Test that the controller requests only `Marketplace App` records with status `Published`, queries only enabled `Marketplace App Plan` rows for those app IDs, and returns no guessed hosting rates or resource defaults when no Site Plan exists.
 
-- [ ] **Step 2: Run the focused tests and confirm the current controller fails**
+- [x] **Step 2: Run the focused tests and confirm the current controller fails**
 
 Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
 Expected: failures for the missing marketplace context and old SaaS-only context.
 
-- [ ] **Step 3: Implement the page data queries and Asumi metadata**
+- [x] **Step 3: Implement the page data queries and Asumi metadata**
 
 Query all published Marketplace Apps and only their enabled plans. Do not load or expose private seller fields. Do not expose hosting plans as purchasable while capacity validation and checkout are absent.
 
-- [ ] **Step 4: Re-run the focused tests**
+- [x] **Step 4: Re-run the focused tests**
 
 Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
@@ -93,25 +93,25 @@ Expected: all controller contract tests pass.
 - Consumes: the context produced by Task 2.
 - Produces: an Asumi-branded `/saas` catalog with links to real Marketplace app detail pages, an explicit no-hosting-offer state, and a link to the existing app-price editor for authorized users.
 
-- [ ] **Step 1: Add template regression tests**
+- [x] **Step 1: Add template regression tests**
 
 Assert that the template has no old `DEN Cloud` branding, fixed `390000`, `160000`, or `4200` rates, guessed resource values, or client-side `innerHTML` rendering of product data.
 
-- [ ] **Step 2: Run the regression tests and confirm they fail on the existing template**
+- [x] **Step 2: Run the regression tests and confirm they fail on the existing template**
 
 Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
 Expected: failures identify the current brand, hard-coded rates, and unsafe rendering.
 
-- [ ] **Step 3: Render apps and plans through Jinja auto-escaping**
+- [x] **Step 3: Render apps and plans through Jinja auto-escaping**
 
 Render one card per published app with an enabled plan. A zero-priced app plan is labeled `رایگان`; nonzero values use `₹` and `$` labels alongside the stored interval. Link each card to its existing `Marketplace App.route`. Link the authorized price-management action to `/dashboard/seller/apps`. Render no hosting purchase CTA while `hosting_available` is false.
 
-- [ ] **Step 4: Add the Asumi black-and-red public catalog stylesheet**
+- [x] **Step 4: Add the Asumi black-and-red public catalog stylesheet**
 
 Use `#080808`, `#141212`, `#c63140`, `#ff6670`, light text, and responsive RTL card grids. Keep the existing Press login and Marketplace routes as the destinations for account and app actions.
 
-- [ ] **Step 5: Run the focused regression tests**
+- [x] **Step 5: Run the focused regression tests**
 
 Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
@@ -128,7 +128,7 @@ Expected: no stale fixed-rate or unsafe product-rendering patterns remain.
 - Consumes: the server-rendered catalog from Tasks 1–3.
 - Produces: live `/saas` and `/pricing` pages with no fabricated prices and a functioning link to the existing Marketplace app flow.
 
-- [ ] **Step 1: Run the full catalog tests and Python syntax check**
+- [x] **Step 1: Run the full catalog tests and Python syntax check**
 
 Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
