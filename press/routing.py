@@ -17,7 +17,9 @@ def resolve_path(path: str):
 	"""
 	route = (path or "").strip("/ ")
 	if get_request_host() in ASUMI_HOSTS and (
-		route.lower() == "dashboard" or route.lower().startswith("dashboard/")
+		route.lower() == "dashboard"
+		or route.lower().startswith("dashboard/")
+		or route.lower() == "website_script.js"
 	):
 		return default_resolve_path(path)
 	if get_request_host() in ASUMI_HOSTS and not route:

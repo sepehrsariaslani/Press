@@ -1,9 +1,21 @@
+import frappe
+
 try:
 	# Keep Press optional in shared benches where all dependencies might not be present yet.
 	from press.api.account import get_frappe_io_auth_url as _get_frappe_io_auth_url
 except Exception:
 	def _get_frappe_io_auth_url():
 		return None
+
+
+def _get_frappe_io_auth_url_for_hooks():
+	try:
+		if not frappe.local.site:
+			return None
+	except (AttributeError, RuntimeError):
+		return None
+	return _get_frappe_io_auth_url()
+
 
 from . import __version__ as app_version
 
@@ -75,7 +87,7 @@ website_route_rules = [
 ]
 
 website_redirects = [
-	{"source": "/dashboard/f-login", "target": _get_frappe_io_auth_url() or "/"},
+	{"source": "/dashboard/f-login", "target": _get_frappe_io_auth_url_for_hooks() or "/"},
 	{
 		"source": "/suspended-site",
 		"target": "/api/method/press.api.handle_suspended_site_redirection",
