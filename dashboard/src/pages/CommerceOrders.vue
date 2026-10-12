@@ -202,8 +202,31 @@
 					<h2 class="text-lg font-semibold text-gray-950">تعرفهٔ برنامه‌های Marketplace</h2>
 					<p class="mt-1 text-sm text-gray-600">برای رایگان‌ماندن، مبلغ هر ارز را صفر نگه دارید. پرداخت ریالی زرین‌پال برای مبلغ‌های پولی از ۱۰٬۰۰۰ ریال شروع می‌شود. تغییر قیمت تعرفه‌ای با مشترک فعال رد می‌شود؛ تعرفهٔ تازه بسازید.</p>
 				</div>
-				<Button label="دریافت فهرست" :loading="appPlans.loading" @click="appPlans.fetch()" />
+				<div class="flex gap-2">
+					<Button label="تعرفهٔ جدید" :disabled="!marketplacePlanOptions.data?.apps?.length" @click="showCreateMarketplacePlan = !showCreateMarketplacePlan" />
+					<Button label="دریافت فهرست" :loading="appPlans.loading" @click="appPlans.fetch()" />
+				</div>
 			</div>
+			<form v-if="showCreateMarketplacePlan" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4" @submit.prevent="createMarketplacePlan">
+				<div class="grid gap-3 md:grid-cols-3">
+					<label class="text-sm font-medium text-gray-700">برنامه
+						<select v-model="newMarketplacePlan.app" required class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+							<option value="" disabled>برنامه را انتخاب کنید</option>
+							<option v-for="app in marketplacePlanOptions.data?.apps || []" :key="app.name" :value="app.name">{{ app.title || app.name }}</option>
+						</select>
+					</label>
+					<label class="text-sm font-medium text-gray-700">نام تعرفه
+						<input v-model="newMarketplacePlan.title" required maxlength="140" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+					</label>
+					<label class="text-sm font-medium text-gray-700">دوره
+						<select v-model="newMarketplacePlan.interval" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"><option value="Daily">روزانه</option><option value="Monthly">ماهانه</option><option value="Yearly">سالانه</option></select>
+					</label>
+				</div>
+				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+					<p class="text-xs leading-5 text-gray-600">تعرفه با قیمت صفر و وضعیت غیرفعال ساخته می‌شود؛ پس از ساخت، قیمت‌ها را در جدول وارد و تعرفه را فعال کن. تعرفهٔ قبلی را خودکار غیرفعال نمی‌کنیم.</p>
+					<div class="flex gap-2"><Button type="button" label="انصراف" @click="showCreateMarketplacePlan = false" /><Button type="submit" variant="solid" :loading="creatingMarketplacePlan" label="ساخت پیش‌نویس" /></div>
+				</div>
+			</form>
 			<div v-if="appPlans.data?.length" class="mt-4 overflow-x-auto">
 				<table class="w-full min-w-[880px] text-sm">
 					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">برنامه / تعرفه</th><th>دوره</th><th>INR</th><th>USD</th><th>IRR</th><th>وضعیت</th><th></th></tr></thead>
@@ -375,9 +398,12 @@ const refundReferences = reactive({});
 const savingSettings = ref(false);
 const showCreateSitePlan = ref(false);
 const creatingSitePlan = ref(false);
+const showCreateMarketplacePlan = ref(false);
+const creatingMarketplacePlan = ref(false);
 const error = ref('');
 const notice = ref('');
 const newSitePlan = reactive({ name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', release_groups: [], allowed_apps: [] });
+const newMarketplacePlan = reactive({ app: '', title: '', interval: 'Monthly' });
 const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, sandbox_mode: true, hosting_min_free_disk_gb: 0, hosting_min_free_memory_gb: 0 });
 
 const sites = createResource({ url: 'press.saas.commerce.api.my_purchase_sites', auto: true });
@@ -401,6 +427,7 @@ const settings = createResource({
 });
 const hostingReadiness = createResource({ url: 'press.saas.commerce.api.admin_hosting_readiness', auto: isCommerceAdmin.value });
 const appPlans = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plans', auto: isCommerceAdmin.value });
+const marketplacePlanOptions = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plan_options', auto: isCommerceAdmin.value });
 const sitePlans = createResource({ url: 'press.saas.commerce.api.admin_site_plans', auto: isCommerceAdmin.value });
 const sitePlanOptions = createResource({ url: 'press.saas.commerce.api.admin_site_plan_options', auto: isCommerceAdmin.value });
 const adminOrders = createResource({ url: 'press.saas.commerce.api.admin_orders', auto: isCommerceAdmin.value });
@@ -408,6 +435,7 @@ const saveSettingsResource = createResource({ url: 'press.saas.commerce.api.save
 const saveAppPriceResource = createResource({ url: 'press.saas.commerce.api.save_marketplace_plan_prices' });
 const saveSitePriceResource = createResource({ url: 'press.saas.commerce.api.save_site_plan_prices' });
 const createSitePlanResource = createResource({ url: 'press.saas.commerce.api.create_site_plan' });
+const createMarketplacePlanResource = createResource({ url: 'press.saas.commerce.api.create_marketplace_plan_draft' });
 const retryResource = createResource({ url: 'press.saas.commerce.api.retry_provisioning' });
 const refundResource = createResource({ url: 'press.saas.commerce.api.record_refund' });
 const startPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_marketplace_app_purchase' });
@@ -493,6 +521,18 @@ async function saveAppPrices(row) {
 		await Promise.all([appPlans.fetch(), plans.data?.site ? plans.fetch({ site: plans.data.site }) : Promise.resolve()]);
 		notice.value = 'قیمت تعرفهٔ برنامه ذخیره شد.';
 	} catch (failure) { showError(failure); }
+}
+
+async function createMarketplacePlan() {
+	error.value = '';
+	creatingMarketplacePlan.value = true;
+	try {
+		await createMarketplacePlanResource.submit({ ...newMarketplacePlan, title: newMarketplacePlan.title.trim() });
+		await appPlans.fetch();
+		Object.assign(newMarketplacePlan, { app: '', title: '', interval: 'Monthly' });
+		showCreateMarketplacePlan.value = false;
+		notice.value = 'پیش‌نویس تعرفه ساخته شد. قیمت‌ها را در جدول تنظیم کن و پس از آماده‌شدن فروش آن را فعال کن.';
+	} catch (failure) { showError(failure); } finally { creatingMarketplacePlan.value = false; }
 }
 
 async function saveSitePrices(row) {
@@ -597,7 +637,7 @@ async function refresh() {
 	error.value = '';
 	try {
 		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
-		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch());
+		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch());
 		if (selectedSite.value) calls.push(plans.fetch({ site: selectedSite.value }));
 		await Promise.all(calls);
 	} catch (failure) { showError(failure); }

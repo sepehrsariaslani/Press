@@ -132,7 +132,21 @@
 - [x] Edit a plan's title, description, prices, term, capacity, enabled state, release groups, and allowed apps in the same panel.
 - [x] Validate every selected app against all selected release groups and prevent material changes while orders or subscriptions are active.
 - [x] Keep new-site checkout bound to a customer-chosen subdomain under `asumi.ir`; leave payment and hosting checkout off until DNS, TLS, Press provisioning, capacity, and the real payment credential are configured.
-- [x] Run 12 Site Plan administration tests, 62 other isolated commerce tests, Python syntax checks, the dashboard commerce-access test, and the production dashboard build. The DNS-readiness module could not import in the container because `dnspython` is absent; the older ESLint/Prettier integration also crashes before reporting lint findings.
+- [x] Run the complete 71-test commerce suite in the Bench virtual environment, Python syntax checks, the dashboard commerce-access test, and the production dashboard build. The legacy ESLint/Prettier integration still crashes before reporting lint findings.
+
+### Task 8: Create replacement Marketplace App Plans in the Asumi admin panel
+
+**Files:**
+- Modify: `press/saas/commerce/api.py`
+- Add: `press/saas/commerce/marketplace_plan_admin.py`
+- Modify: `dashboard/src/pages/CommerceOrders.vue`
+- Test: `press/saas/commerce/test_marketplace_plan_admin.py`
+
+- [x] Let Press administrators create a new disabled, zero-price draft for any published app and supported billing interval.
+- [x] Reject unpublished apps, invalid fields, and duplicate app/title/interval combinations; keep existing plans intact.
+- [x] Show published apps in the admin form and let the existing table configure the draft's prices and enabled state.
+- [x] Keep an old plan enabled or disable it only when the administrator chooses; never move existing subscribers automatically.
+- [x] Verify the full commerce suite (71 tests), Python syntax, dashboard commerce-access test, production build, and the live catalog summary (24 published apps, 48 existing plans, all still free).
 
 ## Known external completion conditions
 

@@ -13,6 +13,7 @@ from press.saas.commerce.order_lifecycle import (
 	transition_order,
 )
 from press.saas.commerce.order_snapshot import hosting_order_snapshot, marketplace_app_order_snapshot
+from press.saas.commerce.marketplace_plan_admin import build_marketplace_plan_draft
 from press.saas.commerce.periods import period_end
 from press.saas.commerce.hosting_readiness import (
 	build_hosting_readiness,
@@ -1500,6 +1501,58 @@ def admin_marketplace_plans() -> list[dict]:
 		limit_page_length=500,
 		ignore_permissions=True,
 	)
+
+
+@frappe.whitelist()
+def admin_marketplace_plan_options() -> dict:
+	_require_commerce_admin()
+	return {
+		"apps": frappe.get_all(
+			"Marketplace App",
+			filters={"status": "Published"},
+			fields=["name", "title"],
+			order_by="title asc",
+			limit_page_length=500,
+			ignore_permissions=True,
+		)
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_marketplace_plan_draft(app: str, title: str, interval: str) -> dict:
+	_require_commerce_admin()
+	available_apps = frappe.get_all(
+		"Marketplace App",
+		filters={"status": "Published"},
+		pluck="name",
+		limit_page_length=500,
+		ignore_permissions=True,
+	)
+	try:
+		values = build_marketplace_plan_draft(
+			app=app,
+			title=title,
+			interval=interval,
+			available_apps=available_apps,
+		)
+	except ValueError as error:
+		frappe.throw(str(error))
+	if frappe.db.exists(
+		"Marketplace App Plan",
+		{"app": values["app"], "title": values["title"], "interval": values["interval"]},
+	):
+		frappe.throw(_("برای این برنامه، تعرفه‌ای با همین نام و دوره وجود دارد."))
+	doc = frappe.get_doc({"doctype": "Marketplace App Plan", **values}).insert(ignore_permissions=True)
+	return {
+		"name": doc.name,
+		"app": doc.app,
+		"title": doc.title,
+		"interval": doc.interval,
+		"enabled": bool(doc.enabled),
+		"price_inr": doc.price_inr,
+		"price_usd": doc.price_usd,
+		"price_irr": doc.price_irr,
+	}
 
 
 @frappe.whitelist()
