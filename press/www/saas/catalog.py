@@ -23,7 +23,7 @@ def _normalize_price(value):
 	if amount == amount.to_integral_value():
 		return int(amount)
 
-	return float(amount)
+	return amount
 
 
 def format_plan_prices(plan):
@@ -137,3 +137,22 @@ def get_catalog_page_context(get_all, can_manage_prices=False):
 			"og:type": "website",
 		},
 	}
+
+
+def add_app_categories(apps, category_rows):
+	"""Attach unique category labels to catalog apps and return the public options."""
+	app_ids = {app["id"] for app in apps}
+	categories_by_app = {app_id: set() for app_id in app_ids}
+	for row in category_rows:
+		app_id = row.get("parent")
+		category = row.get("category")
+		if app_id in categories_by_app and category:
+			categories_by_app[app_id].add(category)
+
+	all_categories = set()
+	for app in apps:
+		app_categories = sorted(categories_by_app[app["id"]])
+		app["categories"] = app_categories
+		all_categories.update(app_categories)
+
+	return sorted(all_categories)

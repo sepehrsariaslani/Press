@@ -23,6 +23,7 @@ import { unreadNotificationsCount } from '@/data/notifications';
 import { getTeam } from '@/data/team';
 import { session } from '@/data/session';
 import { privateSourceOnly } from '@/data/security';
+import { canAccessSellerDashboard } from '@/data/sellerAccess';
 import { useRoute } from 'vue-router';
 
 const $route = useRoute();
@@ -158,8 +159,11 @@ const navigation = computed(() => {
 			icon: Store,
 			route: '/seller',
 			isActive: routeName.startsWith('Seller'),
-			condition:
-				Boolean($session.userPermissions?.data?.owner) || $session.isSystemUser,
+			condition: canAccessSellerDashboard({
+				owner: Boolean($session.userPermissions?.data?.owner),
+				admin: Boolean($session.userPermissions?.data?.admin),
+				isSystemUser: $session.isSystemUser,
+			}),
 			disabled: enforce2FA,
 		},
 		{

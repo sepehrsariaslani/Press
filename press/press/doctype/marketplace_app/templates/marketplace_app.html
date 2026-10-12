@@ -3,7 +3,7 @@
 five_star_rating, approved_badge -%}
 
 {%- block title -%}
-{{ app.title }} - Frappe Cloud Marketplace
+{{ app.title | e }} | آسومی
 {%- endblock -%}
 
 {%- block content -%}
@@ -12,7 +12,7 @@ five_star_rating, approved_badge -%}
 		<div class="container mx-auto pt-4">
 			<div class="pb-0 sm:pb-4 px-4 sm:px-8">
 				{{ breadcrumbs([ { 'label': 'Apps', 'url': '/marketplace' }, { 'label':
-				app.title, 'url': '' } ]) }}
+				app.title | e, 'url': '' } ]) }}
 			</div>
 			<div class="px-4 sm:px-8 flex flex-col md:flex-row justify-between">
 				<div class="mt-4 sm:mt-8 mb-8 sm:mb-12 flex">
@@ -20,20 +20,20 @@ five_star_rating, approved_badge -%}
 					<div class="mr-2 md:hidden">{{ app_image(app) }}</div>
 					<div class="flex flex-col">
 						<h1 style="font-size: 20px;" class="flex font-semibold text-gray-900 md:text-5xl">
-							{{ app.title }}
+							{{ app.title | e }}
 							{%- if app.frappe_approved -%}
 								<div class="ml-1 flex items-center justify-center">
 									{{ approved_badge() }}
 								</div>
 							{%- endif -%}
 						</h1>
-						<p class="text-base text-gray-700 mt-1 md:mt-2">{{ app.description }}</p>
+						<p class="text-base text-gray-700 mt-1 md:mt-2">{{ app.description | e }}</p>
 						<div class="hidden sm:block">
 							<!-- Hard-coded for now -->
 							 {%- for category in
 							app.categories -%}
 							<div class="inline-flex flex-row mt-4 mr-2">
-								{{ badge_gray(category.category) }}
+								{{ badge_gray(category.category | e) }}
 							</div>
 							{%- endfor -%}
 						</div>
@@ -66,8 +66,8 @@ five_star_rating, approved_badge -%}
 	<div>
 		<h5 class="text-base font-semibold text-gray-900 mt-4">Built by</h5>
 		<a class="text-sm text-gray-800 hover:text-gray-900"
-			href="{{ 'mailto:{}'.format(publisher_profile.contact_email) if  publisher_profile.contact_email else '#'}}">
-			{{ publisher_profile.display_name }}
+			href="{{ 'mailto:{}'.format(publisher_profile.contact_email | e) if  publisher_profile.contact_email else '#'}}">
+			{{ publisher_profile.display_name | e }}
 		</a>
 	</div>
 	{%- endif -%}
@@ -86,9 +86,9 @@ five_star_rating, approved_badge -%}
 			app.website), ('Support', 'life-buoy', app.support), ('Documentation',
 			'file-text', app.documentation), ('Privacy Policy', 'lock',
 			app.privacy_policy), ('Terms of Service', 'shield', app.terms_of_service)
-			] -%} {%- if href -%}
+			] -%} {%- if href and frappe.utils.validate_url(href, valid_schemes=['http', 'https']) -%}
 			<li>
-				<a class="flex flex-row space-x-1 text-gray-600 hover:text-gray-800" target="_blank" href="{{ href }}">
+				<a class="flex flex-row space-x-1 text-gray-600 hover:text-gray-800" target="_blank" rel="noopener noreferrer" href="{{ href | e }}">
 					<i class="w-4 h-4" data-feather="{{ icon }}"></i>
 					<span class="text-sm">{{ label }}</span>
 				</a>
@@ -101,13 +101,14 @@ five_star_rating, approved_badge -%}
 		<h5 class="text-base font-semibold text-gray-900">Supported versions</h5>
 		<ul class="mt-2 space-y-2 text-sm text-gray-600">
 			{%- for supported_version in supported_versions -%}
+			{% set repository_url = supported_version.frappe_source.repository_url + '/tree/' + supported_version.frappe_source.branch %}
+			{% if frappe.utils.validate_url(repository_url, valid_schemes=['http', 'https']) %}
 			<li>
 				{{
-				link(supported_version.version,
-				supported_version.frappe_source.repository_url + '/tree/' +
-				supported_version.frappe_source.branch, blank=True)
+				link(supported_version.version | e, repository_url | e, blank=True)
 				}}
 			</li>
+			{% endif %}
 			{%- endfor -%}
 		</ul>
 	</div>
@@ -121,22 +122,24 @@ five_star_rating, approved_badge -%}
 	{%- if app.screenshots -%}
 	<div class="flex space-x-4 mt-2 mb-6 overflow-y-auto">
 		{%- for image in app.screenshots -%}
+		{% if image.image and (frappe.utils.validate_url(image.image, valid_schemes=['http', 'https']) or image.image.startswith('/files/')) %}
 		<div class="flex-shrink-0 overflow-hidden border rounded-md h-60 w-80">
-			<a href="{{ image.image }}">
+				<a href="{{ image.image | e }}">
 				{%- if image.image.endswith("mp4") -%}
 				<video class="object-cover w-full h-full">
-					<source src="{{ image.image }}" type="video/mp4" />
+					<source src="{{ image.image | e }}" type="video/mp4" />
 				</video>
 				{%- else -%}
-				<img class="object-cover w-full h-full" src="{{ image.image }}" alt="{{ image.caption or '' }}" />
+					<img class="object-cover w-full h-full" src="{{ image.image | e }}" alt="{{ image.caption | e if image.caption else '' }}" />
 				{%- endif -%}
 			</a>
 		</div>
+		{% endif %}
 		{%- endfor -%}
 	</div>
 	{%- endif -%}
 	<div class="w-full pb-8 prose prose-sm max-w-none text-gray-900">
-		{{ frappe.utils.md_to_html(app.long_description) }}
+		{{ frappe.utils.markdown(app.long_description) }}
 	</div>
 
 	<!-- App Reviews Section -->
@@ -181,17 +184,17 @@ five_star_rating, approved_badge -%}
 				<div class="pb-3">
 					<div class="mb-2 mt-3 flex flex-row items-center">
 						<h3 class="text-gray-900 font-semibold text-lg">
-							{{ review.title }}
+					{{ review.title | e }}
 						</h3>
 						<div class="ml-3">
 							{{ five_star_rating(review.rating) }}
 						</div>
 					</div>
 					<p class="text-base text-gray-900 mb-2">
-						{{ review.review }}
+					{{ review.review | e }}
 					</p>
 					<div class="text-base text-gray-600">
-						{{ review.user_name }} &bull; {{ frappe.utils.pretty_date(review.creation) }}
+					{{ review.user_name | e }} &bull; {{ frappe.utils.pretty_date(review.creation) }}
 						&bull; {{ link('Reply', url='/dashboard/developer-reply/' + app.name + '/' + review.name) }}
 						<div class="flex flex-col mt-4">
 							{% for reply in review.developer_reply %}
@@ -201,9 +204,9 @@ five_star_rating, approved_badge -%}
 
 <div>
 							{% if reply[0] == ',' %}
-								{{ reply[1:] }}
+							{{ reply[1:] | e }}
 							{% else %}
-								{{ reply }}
+							{{ reply | e }}
 							{% endif %}
 							{% if reply %}
 							<span class="text-gray-600"></br>Developer
@@ -229,11 +232,11 @@ five_star_rating, approved_badge -%}
 
 {% macro app_image(app, class='') %}
 <div class="w-12 h-12 lg:w-16 lg:h-16 mr-2 {{ class }}">
-	{%- if app.image -%}
-	<img class="object-cover border border-gray-200 rounded-lg" src="{{ app.image }}" alt="{{ app.title }}" />
+	{%- if app.image and (frappe.utils.validate_url(app.image, valid_schemes=['http', 'https']) or app.image.startswith('/files/')) -%}
+	<img class="object-cover border border-gray-200 rounded-lg" src="{{ app.image | e }}" alt="{{ app.title | e }}" />
 	{%- else -%}
 	<div class="flex items-center justify-center text-gray-500 bg-gray-100 border border-gray-200 rounded-lg">
-		{{ app.title[0].upper() }}
+		{{ app.title[0].upper() | e }}
 	</div>
 	{%- endif -%}
 </div>
@@ -289,7 +292,7 @@ five_star_rating, approved_badge -%}
 				</svg>
 			</div>
 		</div>
-		{{ feature }}
+		{{ feature | e }}
 	</li>
 	{%- endfor -%}
 </ul>

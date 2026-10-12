@@ -14,15 +14,23 @@ from press.api.site import (
 	is_prepaid_marketplace_app,
 	protected,
 )
+from press.guards.role_guard import roles_enabled, skip_roles
 from press.press.doctype.app.app import new_app as new_app_doc
 from press.press.doctype.marketplace_app.marketplace_app import (
 	MarketplaceApp,
 	get_plans_for_app,
 	get_total_installs_by_app,
 )
-from press.utils import get_app_tag, get_current_team, get_last_doc, unique
+from press.utils import (
+	get_app_tag,
+	get_current_team,
+	get_last_doc,
+	is_user_part_of_team,
+	unique,
+)
 from press.utils.billing import get_frappe_io_connection
 from press.utils.marketplace_app_plan_permissions import can_manage_marketplace_app_plans
+from press.utils import user as user_utils
 
 if TYPE_CHECKING:
 	from press.marketplace.doctype.marketplace_app_plan.marketplace_app_plan import MarketplaceAppPlan
@@ -1098,10 +1106,36 @@ def update_app_plan(app_plan_name: str, updated_plan_data: dict):
 def _get_marketplace_app_for_plan_write(marketplace_app: str) -> MarketplaceApp:
 	app = frappe.get_doc("Marketplace App", marketplace_app)
 	team = frappe.get_doc("Team", app.team) if app.team else None
+	has_global_permission = frappe.has_permission("Marketplace App Plan", ptype="write")
+	is_team_owner = bool(team and team.is_team_owner())
+	is_team_admin = bool(team and team.is_admin_user())
+	if can_manage_marketplace_app_plans(
+		has_global_permission=has_global_permission,
+		is_team_owner=is_team_owner,
+		is_team_admin=is_team_admin,
+	):
+		return app
+	if user_utils.is_system_manager():
+		return app
+
+	current_team = get_current_team()
+	is_team_member = bool(
+		team
+		and current_team == app.team
+		and (
+			getattr(team, "user", None) == frappe.session.user
+			or is_user_part_of_team(frappe.session.user, app.team)
+		)
+	)
+	team_roles_enabled = roles_enabled(current_team) if is_team_member else True
+	skip_role_checks = skip_roles(current_team) if is_team_member else False
 	if not can_manage_marketplace_app_plans(
-		has_global_permission=frappe.has_permission("Marketplace App Plan", ptype="write"),
-		is_team_owner=bool(team and team.is_team_owner()),
-		is_team_admin=bool(team and team.is_admin_user()),
+		has_global_permission=False,
+		is_team_owner=False,
+		is_team_admin=False,
+		is_team_member=is_team_member,
+		team_roles_enabled=team_roles_enabled,
+		skip_role_checks=skip_role_checks,
 	):
 		frappe.throw("Not permitted", frappe.PermissionError)
 	return app

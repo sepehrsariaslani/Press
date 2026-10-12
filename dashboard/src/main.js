@@ -26,6 +26,8 @@ const request = (options) => {
 		localStorage.getItem('current_team') || window.default_team;
 	if (currentTeam) {
 		_options.headers['X-Press-Team'] = currentTeam;
+		const secureCookie = window.location.protocol === 'https:' ? '; Secure' : '';
+		document.cookie = `press_current_team=${encodeURIComponent(currentTeam)}; Path=/; SameSite=Lax${secureCookie}`;
 	}
 	return frappeRequest(_options);
 };

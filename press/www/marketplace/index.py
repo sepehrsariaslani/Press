@@ -3,69 +3,27 @@
 
 import frappe
 
+from press.www.saas.catalog import add_app_categories, get_public_marketplace_catalog
+
 
 def get_context(context):
 	context.no_cache = 1
-	context.apps = {}
-
-	featured = frappe.get_all(
-		"Featured App",
-		filters={"parent": "Marketplace Settings", "parentfield": "featured_apps"},
-		pluck="app",
-		order_by="idx",
+	context.marketplace_apps = get_public_marketplace_catalog(frappe.get_all)
+	app_names = [app["id"] for app in context.marketplace_apps]
+	category_rows = (
+		frappe.get_all(
+			"Marketplace App Categories",
+			filters={"parent": ["in", app_names]},
+			fields=["parent", "category"],
+			order_by="parent asc, idx asc",
+		)
+		if app_names
+		else []
 	)
-	context.apps["Featured Apps"] = sorted(
-		filter(
-			lambda x: x.name in featured,
-			frappe.get_all(
-				"Marketplace App",
-				{"name": ("in", featured), "status": "Published"},
-				["name", "title", "description", "image", "route"],
-			),
-		),
-		key=lambda y: featured.index(y.name),
-	)
-
-	context.apps["Most Installed"] = frappe.db.sql(
-		"""
-		SELECT
-			marketplace.name,
-			marketplace.title,
-			marketplace.image,
-			marketplace.route,
-			marketplace.description,
-			COUNT(*) AS total_installs
-		FROM
-			`tabMarketplace App` marketplace
-		LEFT JOIN
-			`tabSite App` site
-		ON
-			site.app = marketplace.app
-		WHERE
-			marketplace.status = "Published"
-		GROUP BY
-			marketplace.name
-		ORDER BY
-			total_installs DESC
-		LIMIT 6
-	""",
-		as_dict=True,
-	)
-
-	context.apps["Recently Added"] = frappe.get_all(
-		"Marketplace App",
-		{"status": "Published"},
-		["name", "title", "description", "image", "route"],
-		order_by="creation DESC",
-		limit=6,
-	)
-
-	context.categories = sorted(
-		frappe.db.get_all("Marketplace App Categories", pluck="category", distinct=True)
-	)
+	context.categories = add_app_categories(context.marketplace_apps, category_rows)
 	context.metatags = {
-		"title": "Frappe Cloud Marketplace",
-		"description": "One Click Apps for your Frappe Sites",
+		"title": "مارکت‌پلیس اپلیکیشن‌های آسومی",
+		"description": "اپلیکیشن‌های منتشرشده و پلن‌های ثبت‌شده در مارکت‌پلیس آسومی.",
 		"og:type": "website",
 	}
 

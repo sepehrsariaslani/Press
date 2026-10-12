@@ -195,34 +195,39 @@ def permitted_documents(document_type: str) -> list[str]:
 	return document_check(base_query(), document_type)
 
 
-def roles_enabled() -> bool:
+def roles_enabled(team: str | None = None) -> bool:
 	"""
-	Check if role-based access control is enabled for the current team. This is
-	done by checking if any roles exist for the team.
+	Check whether role-based access control is enabled for the specified team,
+	or the current team when no team is provided.
 	"""
+	team = team or get_current_team()
 	return bool(
 		frappe.db.exists(
 			{
 				"doctype": "Press Role",
-				"team": get_current_team(),
+				"team": team,
 			}
 		)
 	)
 
 
-def is_relaxed_mode() -> bool:
+def is_relaxed_mode(team: str | None = None) -> bool:
 	"""
-	Check if the current team is in relaxed permissions mode, which allows
-	users to bypass role checks if they don't have any roles assigned.
+	Check whether the specified team allows users without assigned roles to
+	bypass role checks, or the current team when no team is provided.
 	"""
-	return bool(int(frappe.get_value("Team", get_current_team(), "relaxed_permissions")))
+	team = team or get_current_team()
+	return bool(int(frappe.get_value("Team", team, "relaxed_permissions")))
 
 
-def skip_roles() -> bool:
+def skip_roles(team: str | None = None, user: str | None = None) -> bool:
 	"""
-	Check if the current user has no roles assigned in the current team.
+	Check whether the user has no roles assigned in the specified team and can
+	bypass role checks under that team's relaxed permissions setting.
 	"""
-	if not is_relaxed_mode():
+	team = team or get_current_team()
+	user = user or frappe.session.user
+	if not is_relaxed_mode(team):
 		return False
 	PressRole = frappe.qb.DocType("Press Role")
 	PressRoleUser = frappe.qb.DocType("Press Role User")
@@ -231,8 +236,8 @@ def skip_roles() -> bool:
 		.inner_join(PressRoleUser)
 		.on(PressRoleUser.parent == PressRole.name)
 		.select(Count(PressRole.name).as_("roles_count"))
-		.where(PressRole.team == get_current_team())
-		.where(PressRoleUser.user == frappe.session.user)
+		.where(PressRole.team == team)
+		.where(PressRoleUser.user == user)
 		.run(as_dict=True)
 		.pop()
 		.get("roles_count")

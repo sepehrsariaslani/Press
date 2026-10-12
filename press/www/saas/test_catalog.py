@@ -1,5 +1,7 @@
 from pathlib import Path
+from decimal import Decimal
 import unittest
+from unittest.mock import Mock, call, patch
 
 from press.www.saas.catalog import (
 	build_marketplace_catalog,
@@ -10,6 +12,190 @@ from press.www.saas.catalog import (
 
 
 class MarketplaceCatalogTest(unittest.TestCase):
+	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
+	@patch("press.www.saas.index.skip_roles", return_value=False, create=True)
+	@patch("press.www.saas.index.roles_enabled", return_value=False, create=True)
+	@patch("press.www.saas.index.is_user_part_of_team", return_value=True, create=True)
+	@patch("press.www.saas.index.frappe")
+	def test_team_member_can_manage_prices_when_team_roles_are_disabled(
+		self,
+		frappe_mock,
+		team_membership_mock,
+		roles_enabled_mock,
+		skip_roles_mock,
+		_is_system_manager,
+	):
+		frappe_mock.has_permission.return_value = False
+		frappe_mock.session.user = "member@example.com"
+		frappe_mock.local.request.cookies.get.return_value = "team-a"
+		frappe_mock.db.exists.return_value = True
+		frappe_mock.db.get_value.return_value = "owner@example.com"
+		team = Mock()
+		team.name = "team-a"
+		team.is_team_owner.return_value = False
+		team.is_admin_user.return_value = False
+		frappe_mock.get_doc.return_value = team
+
+		from press.www.saas.index import get_context
+
+		context = {}
+		get_context(context)
+
+		self.assertTrue(context["can_manage_prices"])
+		roles_enabled_mock.assert_called_once_with("team-a")
+		skip_roles_mock.assert_called_once_with("team-a")
+		team_membership_mock.assert_has_calls(
+			[
+				call("member@example.com", "team-a"),
+				call("member@example.com", "team-a"),
+			]
+		)
+
+	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
+	@patch("press.www.saas.index.is_user_part_of_team", return_value=True, create=True)
+	@patch("press.www.saas.index.frappe")
+	def test_request_team_header_takes_precedence_over_selected_team_cookie(
+		self, frappe_mock, team_membership_mock, _is_system_manager
+	):
+		frappe_mock.has_permission.return_value = False
+		frappe_mock.session.user = "admin@example.com"
+		frappe_mock.get_request_header.return_value = "header-team"
+		frappe_mock.local.request.cookies.get.return_value = "cookie-team"
+		frappe_mock.db.exists.return_value = True
+		team = Mock()
+		team.is_team_owner.return_value = False
+		team.is_admin_user.return_value = True
+		frappe_mock.get_doc.return_value = team
+
+		from press.www.saas.index import get_context
+
+		context = {}
+		get_context(context)
+
+		self.assertTrue(context["can_manage_prices"])
+		frappe_mock.get_doc.assert_called_with("Team", "header-team")
+		team_membership_mock.assert_called_with("admin@example.com", "header-team")
+
+	@patch("press.www.saas.index.is_user_part_of_team", return_value=True, create=True)
+	@patch("press.www.saas.index.get_current_team", return_value="default-team", create=True)
+	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
+	@patch("press.www.saas.index.frappe")
+	def test_selected_dashboard_team_scopes_price_management_link(
+		self, frappe_mock, _is_system_manager, current_team_mock, team_membership_mock
+	):
+		frappe_mock.has_permission.return_value = False
+		frappe_mock.session.user = "admin@example.com"
+		frappe_mock.local.request.cookies.get.return_value = "selected-team"
+		frappe_mock.db.exists.return_value = True
+		team = Mock()
+		team.is_team_owner.return_value = False
+		team.is_admin_user.return_value = True
+		frappe_mock.get_doc.return_value = team
+
+		from press.www.saas.index import get_context
+
+		context = {}
+		get_context(context)
+
+		self.assertTrue(context["can_manage_prices"])
+		frappe_mock.get_doc.assert_called_with("Team", "selected-team")
+		team_membership_mock.assert_called_with("admin@example.com", "selected-team")
+		current_team_mock.assert_not_called()
+
+	@patch("press.www.saas.index.get_current_team", return_value="app-team", create=True)
+	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
+	@patch("press.www.saas.index.frappe")
+	def test_app_team_owner_can_see_price_management_link(
+		self, frappe_mock, _is_system_manager, current_team_mock
+	):
+		frappe_mock.has_permission.return_value = False
+		frappe_mock.get_all.side_effect = lambda doctype, **kwargs: (
+			["app-team"]
+			if doctype == "Marketplace App" and kwargs.get("fields") == ["team"]
+			else []
+		)
+		team = Mock()
+		team.is_team_owner.return_value = True
+		team.is_admin_user.return_value = False
+		frappe_mock.get_doc.return_value = team
+
+		from press.www.saas.index import get_context
+
+		context = {}
+		get_context(context)
+
+		self.assertTrue(context["can_manage_prices"])
+
+	@patch("press.www.saas.index.get_current_team", return_value="app-team", create=True)
+	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
+	@patch("press.www.saas.index.frappe")
+	def test_app_team_admin_can_see_price_management_link(
+		self, frappe_mock, _is_system_manager, current_team_mock
+	):
+		frappe_mock.has_permission.return_value = False
+		frappe_mock.get_all.side_effect = lambda doctype, **kwargs: (
+			["app-team"]
+			if doctype == "Marketplace App" and kwargs.get("fields") == ["team"]
+			else []
+		)
+		team = Mock()
+		team.is_team_owner.return_value = False
+		team.is_admin_user.return_value = True
+		frappe_mock.get_doc.return_value = team
+
+		from press.www.saas.index import get_context
+
+		context = {}
+		get_context(context)
+
+		self.assertTrue(context["can_manage_prices"])
+
+	@patch("press.www.saas.index.get_current_team", create=True)
+	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
+	@patch("press.www.saas.index.is_user_part_of_team", return_value=False, create=True)
+	@patch("press.www.saas.index.frappe")
+	def test_price_link_is_hidden_for_admins_on_another_active_team(
+		self, frappe_mock, _team_membership, _is_system_manager, current_team_mock
+	):
+		frappe_mock.has_permission.return_value = False
+		frappe_mock.get_all.side_effect = lambda doctype, **kwargs: (
+			["publisher-team"]
+			if doctype == "Marketplace App" and kwargs.get("fields") == ["team"]
+			else []
+		)
+		current_team_mock.return_value = "active-team"
+		publisher_team = Mock()
+		publisher_team.is_team_owner.return_value = False
+		publisher_team.is_admin_user.return_value = True
+		active_team = Mock()
+		active_team.is_team_owner.return_value = False
+		active_team.is_admin_user.return_value = False
+		frappe_mock.get_doc.side_effect = lambda doctype, name: {
+			"publisher-team": publisher_team,
+			"active-team": active_team,
+		}[name]
+
+		from press.www.saas.index import get_context
+
+		context = {}
+		get_context(context)
+
+		self.assertFalse(context["can_manage_prices"])
+
+	def test_fractional_prices_preserve_decimal_precision(self):
+		price = Decimal("0.123456789123456789")
+
+		formatted = format_plan_prices(
+			{
+				"interval": "Monthly",
+				"price_inr": price,
+				"price_usd": Decimal("2.000000000000000001"),
+			}
+		)
+
+		self.assertEqual(formatted["price_inr"], price)
+		self.assertEqual(formatted["price_usd"], Decimal("2.000000000000000001"))
+
 	def test_page_context_has_real_apps_and_does_not_invent_hosting_offers(self):
 		def get_all(doctype, **kwargs):
 			if doctype == "Marketplace App":

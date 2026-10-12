@@ -3,6 +3,7 @@ import { getTeam } from './data/team';
 import generateRoutes from './objects/generateRoutes';
 import session from './data/session';
 import { privateSourceOnly } from './data/security';
+import { canAccessSellerDashboard } from './data/sellerAccess';
 
 async function ensureSellerOwnerAccess(to, from, next) {
 	if (!session.isLoggedIn) {
@@ -16,7 +17,13 @@ async function ensureSellerOwnerAccess(to, from, next) {
 		console.warn('Unable to load user permissions for seller dashboard:', e);
 	}
 
-	if (session.userPermissions.data.owner || session.isSystemUser) {
+	if (
+		canAccessSellerDashboard({
+			owner: session.userPermissions.data.owner,
+			admin: session.userPermissions.data.admin,
+			isSystemUser: session.isSystemUser,
+		})
+	) {
 		next();
 		return;
 	}
