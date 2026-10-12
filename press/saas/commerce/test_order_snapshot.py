@@ -46,6 +46,40 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 		self.assertEqual(snapshot["currency"], "IRR")
 		self.assertEqual(snapshot["amount"], 125000)
 
+	def test_marketplace_order_can_target_an_owned_docker_control_site(self):
+		docker_site = {
+			"name": "veederakht.ir",
+			"team": "team-1",
+			"status": "Active",
+			"enabled": 1,
+			"site_type": "Docker Control Site",
+			"installed_apps": ["APP-1"],
+		}
+		snapshot = marketplace_app_order_snapshot(
+			self.plan, self.app, docker_site, self.team, "buyer@example.com"
+		)
+		self.assertEqual(snapshot["docker_site"], "veederakht.ir")
+		self.assertNotIn("site", snapshot)
+
+	def test_marketplace_order_rejects_disabled_or_unowned_docker_site(self):
+		docker_site = {
+			"name": "veederakht.ir",
+			"team": "team-1",
+			"status": "Active",
+			"enabled": 0,
+			"site_type": "Docker Control Site",
+			"installed_apps": ["APP-1"],
+		}
+		with self.assertRaises(ValueError):
+			marketplace_app_order_snapshot(
+				self.plan, self.app, docker_site, self.team, "buyer@example.com"
+			)
+		docker_site.update(enabled=1, team="another-team")
+		with self.assertRaises(ValueError):
+			marketplace_app_order_snapshot(
+				self.plan, self.app, docker_site, self.team, "buyer@example.com"
+			)
+
 	def test_accepts_whole_number_currency_values_from_database(self):
 		self.plan["price_irr"] = 125000.0
 		snapshot = marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")

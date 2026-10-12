@@ -8,13 +8,15 @@ from urllib.parse import urlsplit
 
 from . import __version__
 from .auth import AuthenticationError, verify_request
-from .config import MAX_BODY_BYTES, AgentConfig, load_config
+from .config import CUSTOMER_SITES, MAX_BODY_BYTES, AgentConfig, load_config
 from .inventory import get_inventory, get_resources
 from .operations import (
 	OperationError,
 	OperationManager,
 	connect,
 	preflight_app_revision,
+	_installed_apps,
+	write_site_subscription_key,
 )
 from .operations import (
 	database as database_context,
@@ -76,7 +78,7 @@ class ControlHandler(BaseHTTPRequestHandler):
 			return
 		path = parsed.path
 		preflight = re.fullmatch(r"/v1/preflight/(accounts|restaurant)/([a-f0-9]{40})", path)
-		if not preflight and not re.fullmatch(
+		if not preflight and path != "/v1/site-subscription" and not re.fullmatch(
 			r"/v1/(health|inventory|resources|operations(?:/[a-f0-9-]{36,48})?)", path
 		):
 			self._send(404, {"error": "Not found"})
@@ -106,6 +108,34 @@ class ControlHandler(BaseHTTPRequestHandler):
 				return
 			if self.command == "GET" and path.startswith("/v1/operations/"):
 				self._send(200, self.manager.get(path.rsplit("/", 1)[-1]))
+				return
+			if self.command == "POST" and path == "/v1/site-subscription":
+				try:
+					payload = json.loads(body)
+				except json.JSONDecodeError as error:
+					raise ValueError("Invalid request") from error
+				if not isinstance(payload, dict) or set(payload) != {"site", "app", "secret_key"}:
+					raise ValueError("Invalid request")
+				secret_key = payload.get("secret_key")
+				if (
+					payload.get("site") not in CUSTOMER_SITES
+					or not isinstance(payload.get("app"), str)
+					or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", payload.get("app", ""))
+					or (
+						secret_key is not None
+						and (not isinstance(secret_key, str) or not re.fullmatch(r"[a-f0-9]{40}", secret_key))
+					)
+				):
+					raise OperationError("Site, app, or subscription key is not allowed")
+				installed_apps = _installed_apps(self.config, payload.get("site"))
+				result = write_site_subscription_key(
+					self.config.sites_root,
+					payload.get("site"),
+					payload.get("app"),
+					secret_key,
+					installed_apps=installed_apps,
+				)
+				self._send(200, result)
 				return
 			if self.command == "POST" and path == "/v1/operations":
 				try:

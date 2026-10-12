@@ -32,7 +32,8 @@ class DeveloperApiHandler:
 		self.app_subscription_doc = frappe.get_doc("Subscription", self.app_subscription_name)
 
 	def get_subscription_status(self) -> str:
-		return self.app_subscription_doc.status
+		status = getattr(self.app_subscription_doc, "status", None)
+		return status or ("Active" if self.app_subscription_doc.enabled else "Disabled")
 
 	def get_subscription_info(self) -> dict:
 		"""Important rule for security: Send info back carefully"""
@@ -41,10 +42,10 @@ class DeveloperApiHandler:
 			"document_name",
 			"enabled",
 			"plan",
-			"site",
 		]
-
-		return {x: app_subscription_dict[x] for x in app_subscription_dict if x in fields_to_send}
+		response = {x: app_subscription_dict[x] for x in app_subscription_dict if x in fields_to_send}
+		response["site"] = self.app_subscription_doc.docker_site or self.app_subscription_doc.site
+		return response
 
 	def get_subscription(self) -> dict:
 		team = self.app_subscription_doc.team
@@ -67,7 +68,11 @@ class DeveloperApiHandler:
 				"has_billing_info": (
 					team_doc.default_payment_method or team_doc.get_balance() > 0 or team_doc.free_account
 				),
-				"current_plan": frappe.db.get_value("Site", self.app_subscription_doc.site, "plan"),
+				"current_plan": (
+					frappe.db.get_value("Site", self.app_subscription_doc.site, "plan")
+					if self.app_subscription_doc.site
+					else None
+				),
 			}
 
 			capture("attempted", "fc_subscribe", team)
@@ -97,6 +102,8 @@ class DeveloperApiHandler:
 			return setup_intent_success(setup_intent)
 
 	def change_site_plan(self, plan):
+		if self.app_subscription_doc.docker_site:
+			frappe.throw("تغییر پلن سایت‌های مدیریت‌شده از این روش پشتیبانی نمی‌شود.")
 		team = self.app_subscription_doc.team
 		with SessionManager(team) as _:
 			site = frappe.get_doc("Site", self.app_subscription_doc.site)

@@ -24,7 +24,7 @@
 					سایت
 					<select v-model="selectedSite" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
 						<option value="">انتخاب سایت</option>
-						<option v-for="site in sites.data || []" :key="site.name" :value="site.name">{{ site.subdomain }}.{{ site.domain }}</option>
+						<option v-for="site in sites.data || []" :key="site.key" :value="site.key">{{ site.label }}{{ site.site_type === 'Docker Control Site' ? ' · سایت متصل' : '' }}</option>
 					</select>
 				</label>
 			</div>
@@ -357,7 +357,7 @@
 					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">سفارش</th><th>مشتری / تیم</th><th>مبلغ</th><th>وضعیت</th><th>خطای تحویل</th><th></th></tr></thead>
 					<tbody class="divide-y divide-gray-100">
 						<tr v-for="order in adminOrders.data" :key="order.name">
-							<td class="py-3 pr-2"><strong>{{ order.name }}</strong><span class="block text-xs text-gray-500">{{ order.plan }} · {{ order.site }}</span></td>
+							<td class="py-3 pr-2"><strong>{{ order.name }}</strong><span class="block text-xs text-gray-500">{{ order.plan }} · {{ order.docker_site || order.site || order.subdomain }}</span></td>
 							<td>{{ order.customer }}<span class="block text-xs text-gray-500">{{ order.team }}</span></td>
 							<td>{{ money(order.amount) }} {{ order.currency }}</td>
 							<td>{{ statusLabel(order.status) }}<span v-if="order.refund_reference" class="block text-xs text-gray-500">مرجع بازپرداخت: {{ order.refund_reference }}</span></td>
@@ -383,9 +383,11 @@ import { computed, reactive, ref, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 import { session } from '@/data/session';
 import { canManageAsumiCommerce } from '@/utils/commerceAccess';
+import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const selectedSite = ref('');
+const selectedSiteTarget = computed(() => resolveCommercePurchaseSite(sites.data, selectedSite.value));
 const merchantId = ref('');
 const busyPlan = ref('');
 const hostingSiteByPlan = reactive({});
@@ -451,15 +453,18 @@ const newPlanApps = computed(() => {
 watch(selectedSite, async (site) => {
 	if (!site) return;
 	error.value = '';
-	try { await plans.fetch({ site }); } catch (failure) { showError(failure); }
+	const target = selectedSiteTarget.value;
+	if (!target) return;
+	try { await plans.fetch({ site: target.name, site_type: target.site_type }); } catch (failure) { showError(failure); }
 });
 
 async function purchase(plan) {
-	if (!selectedSite.value || busy.value) return;
+	const target = selectedSiteTarget.value;
+	if (!target || busy.value) return;
 	error.value = '';
 	busyPlan.value = plan.name;
 	try {
-		const result = await startPurchaseResource.submit({ plan: plan.name, site: selectedSite.value });
+		const result = await startPurchaseResource.submit({ plan: plan.name, ...commercePurchaseSiteParams(target) });
 		const checkout = result?.checkout_url || result?.message?.checkout_url;
 		if (!checkout || !checkout.startsWith('https://')) throw new Error('نشانی امن پرداخت از سرور دریافت نشد.');
 		window.location.assign(checkout);
@@ -638,7 +643,7 @@ async function refresh() {
 	try {
 		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
 		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch());
-		if (selectedSite.value) calls.push(plans.fetch({ site: selectedSite.value }));
+		if (selectedSiteTarget.value) calls.push(plans.fetch({ site: selectedSiteTarget.value.name, site_type: selectedSiteTarget.value.site_type }));
 		await Promise.all(calls);
 	} catch (failure) { showError(failure); }
 }

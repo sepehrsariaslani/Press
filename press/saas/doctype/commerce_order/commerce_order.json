@@ -15,6 +15,7 @@
   "marketplace_app",
   "app",
   "site",
+  "docker_site",
   "subdomain",
   "original_plan",
   "agent_job",
@@ -139,6 +140,14 @@
    "options": "Site",
    "read_only": 1,
    "reqd": 0
+  },
+  {
+   "fieldname": "docker_site",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Docker Managed Site",
+   "options": "Docker Control Site",
+   "read_only": 1
   },
   {
    "fieldname": "team",

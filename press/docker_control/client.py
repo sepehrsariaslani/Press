@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import time
 from urllib.parse import urlsplit
@@ -77,6 +78,24 @@ class DockerControlClient:
 
 	def resources(self) -> dict:
 		return self.request("GET", "/v1/resources", timeout=(2, 5))
+
+	def set_site_subscription(self, site: str, app: str, secret_key: str | None) -> dict:
+		"""Update one installed marketplace key without persisting the secret as an operation."""
+		if site not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}:
+			raise DockerControlError("سایت برای به‌روزرسانی اشتراک مجاز نیست.")
+		if not isinstance(app, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", app):
+			raise DockerControlError("برنامه برای به‌روزرسانی اشتراک مجاز نیست.")
+		if secret_key is not None and not re.fullmatch(r"[a-f0-9]{40}", secret_key):
+			raise DockerControlError("کلید اشتراک نامعتبر است.")
+		result = self.request(
+			"POST",
+			"/v1/site-subscription",
+			{"site": site, "app": app, "secret_key": secret_key},
+			timeout=(5, 30),
+		)
+		if result != {"site": site, "app": app, "enabled": secret_key is not None}:
+			raise DockerControlError("عامل میزبان نتیجهٔ به‌روزرسانی اشتراک را تأیید نکرد.")
+		return result
 
 	def inventory(self) -> dict:
 		return self.request("GET", "/v1/inventory", timeout=(5, 360))

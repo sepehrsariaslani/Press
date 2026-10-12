@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sqlite3
+import stat
 import subprocess
+import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .config import ALLOWED_APPS, ALLOWED_SERVICES, CUSTOMER_SITES, IMPACT_SITES, AgentConfig
@@ -20,6 +24,7 @@ if TYPE_CHECKING:
 
 OPERATION_ID_RE = re.compile(r"^[a-f0-9-]{36,48}$")
 COMMIT_RE = re.compile(r"^[a-f0-9]{40}$")
+APP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 STACK_RESTART_ORDER = (
 	"db",
 	"redis-cache",
@@ -44,6 +49,73 @@ REDACTIONS = (
 
 class OperationError(Exception):
 	pass
+
+
+def write_site_subscription_key(
+	sites_root: Path,
+	site: str,
+	app: str,
+	secret_key: str | None,
+	*,
+	installed_apps: list[str],
+) -> dict:
+	"""Set or remove one marketplace key in an allowlisted site's config atomically."""
+	if site not in CUSTOMER_SITES or not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
+		raise OperationError("Site or app is not allowed")
+	if app not in installed_apps:
+		raise OperationError("Site or installed app is not allowed")
+	if secret_key is not None and not re.fullmatch(r"[a-f0-9]{40}", secret_key):
+		raise OperationError("Subscription key is invalid")
+
+	try:
+		root = sites_root.resolve(strict=True)
+		site_path = (root / site).resolve(strict=True)
+		if not site_path.is_relative_to(root) or not site_path.is_dir():
+			raise OperationError("Site config path is invalid")
+		config_path = site_path / "site_config.json"
+		config_stat = config_path.lstat()
+		if not stat.S_ISREG(config_stat.st_mode):
+			raise OperationError("Site config file is invalid")
+		config = json.loads(config_path.read_text(encoding="utf-8"))
+		if not isinstance(config, dict):
+			raise OperationError("Site config file is invalid")
+	except OperationError:
+		raise
+	except (OSError, ValueError, json.JSONDecodeError) as error:
+		raise OperationError("Site config file is unavailable") from error
+
+	key_name = f"sk_{app}"
+	if secret_key is None:
+		config.pop(key_name, None)
+	else:
+		config[key_name] = secret_key
+
+	file_descriptor = -1
+	temporary_path = None
+	try:
+		file_descriptor, temporary_name = tempfile.mkstemp(prefix=".site-config-", dir=site_path)
+		temporary_path = Path(temporary_name)
+		with os.fdopen(file_descriptor, "w", encoding="utf-8") as temporary_file:
+			file_descriptor = -1
+			os.fchmod(temporary_file.fileno(), 0o600)
+			if os.geteuid() == 0:
+				os.fchown(temporary_file.fileno(), config_stat.st_uid, config_stat.st_gid)
+			temporary_file.write(json.dumps(config, indent=1, ensure_ascii=False) + "\n")
+			temporary_file.flush()
+			os.fsync(temporary_file.fileno())
+		os.replace(temporary_path, config_path)
+		directory_fd = os.open(site_path, os.O_RDONLY)
+		try:
+			os.fsync(directory_fd)
+		finally:
+			os.close(directory_fd)
+	except (OSError, ValueError, TypeError) as error:
+		if file_descriptor >= 0:
+			os.close(file_descriptor)
+		if temporary_path:
+			temporary_path.unlink(missing_ok=True)
+		raise OperationError("Site config update failed") from error
+	return {"site": site, "app": app, "enabled": secret_key is not None}
 
 
 def init_database(connection: sqlite3.Connection) -> None:

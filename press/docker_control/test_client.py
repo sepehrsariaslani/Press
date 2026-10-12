@@ -2,7 +2,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from press.docker_control.client import DockerControlClient
+from press.docker_control.client import DockerControlClient, DockerControlError
 
 
 class DockerControlClientTest(unittest.TestCase):
@@ -20,6 +20,36 @@ class DockerControlClientTest(unittest.TestCase):
 		self.assertEqual(result, {"protocol_version": 1, "resources": {"disk_free_bytes": 123}})
 		self.assertEqual(request.call_args.args[:2], ("GET", "http://172.18.0.1:8769/v1/resources"))
 		self.assertLessEqual(request.call_args.kwargs["timeout"][1], 10)
+
+	@patch("press.docker_control.client.requests.request")
+	def test_site_subscription_uses_a_nonpersistent_private_endpoint(self, request):
+		response = SimpleNamespace(
+			status_code=200,
+			json=lambda: {"site": "veederakht.ir", "app": "accounts", "enabled": True},
+		)
+		request.return_value = response
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+
+		result = DockerControlClient(host).set_site_subscription("veederakht.ir", "accounts", "a" * 40)
+
+		self.assertEqual(result["enabled"], True)
+		self.assertEqual(request.call_args.args[:2], ("POST", "http://172.18.0.1:8769/v1/site-subscription"))
+		self.assertEqual(
+			request.call_args.kwargs["data"],
+			b'{"app":"accounts","secret_key":"' + b"a" * 40 + b'","site":"veederakht.ir"}',
+		)
+		self.assertEqual(request.call_args.kwargs["timeout"], (5, 30))
+
+	def test_site_subscription_rejects_unknown_site_app_and_key_before_network_access(self):
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+		client = DockerControlClient(host)
+		for site, app, secret in (
+			("other.asumi.ir", "accounts", "a" * 40),
+			("veederakht.ir", "unknown", "a" * 40),
+			("veederakht.ir", "accounts", "invalid"),
+		):
+			with self.subTest(site=site, app=app), self.assertRaises(DockerControlError):
+				client.set_site_subscription(site, app, secret)
 
 
 if __name__ == "__main__":

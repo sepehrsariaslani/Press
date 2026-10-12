@@ -24,6 +24,11 @@ def marketplace_app_order_snapshot(plan, app, site, team, customer):
 		raise ValueError("این برنامه برای خرید منتشر نشده است")
 	if site.get("team") != team.get("name") or site.get("status") != "Active":
 		raise ValueError("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد")
+	site_type = site.get("site_type", "Site")
+	if site_type == "Docker Control Site" and not site.get("enabled"):
+		raise ValueError("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد")
+	if site_type not in {"Site", "Docker Control Site"}:
+		raise ValueError("نوع سایت برای خرید برنامه معتبر نیست")
 	if app.get("app") not in site.get("installed_apps", []):
 		raise ValueError("ابتدا باید برنامه را روی این سایت نصب کنید")
 
@@ -41,19 +46,23 @@ def marketplace_app_order_snapshot(plan, app, site, team, customer):
 	if plan.get("interval") not in {"Daily", "Monthly", "Yearly"}:
 		raise ValueError("دورهٔ تعرفه معتبر نیست")
 
-	return {
+	snapshot = {
 		"order_type": "Marketplace App",
 		"plan_type": "Marketplace App Plan",
 		"plan": plan["name"],
 		"interval": plan.get("interval"),
 		"marketplace_app": app["name"],
 		"app": app["app"],
-		"site": site["name"],
 		"team": team["name"],
 		"customer": customer,
 		"currency": "IRR",
 		"amount": amount,
 	}
+	if site_type == "Docker Control Site":
+		snapshot["docker_site"] = site["name"]
+	else:
+		snapshot["site"] = site["name"]
+	return snapshot
 
 
 def hosting_order_snapshot(

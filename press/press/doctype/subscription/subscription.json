@@ -14,6 +14,7 @@
   "plan",
   "interval",
   "site",
+  "docker_site",
   "marketplace_app_subscription",
   "additional_storage",
   "secret_key"
@@ -86,6 +87,13 @@
    "fieldtype": "Link",
    "label": "Site",
    "options": "Site",
+   "search_index": 1
+  },
+  {
+   "fieldname": "docker_site",
+   "fieldtype": "Link",
+   "label": "Docker Managed Site",
+   "options": "Docker Control Site",
    "search_index": 1
   },
   {

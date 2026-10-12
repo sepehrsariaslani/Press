@@ -340,7 +340,7 @@ def my_purchase_sites() -> list[dict]:
 	if frappe.session.user == "Guest":
 		frappe.throw(_("Please sign in to purchase an app plan."), frappe.AuthenticationError)
 	team = get_current_team()
-	return frappe.get_all(
+	sites = frappe.get_all(
 		"Site",
 		filters={"team": team, "status": "Active"},
 		fields=["name", "subdomain", "domain"],
@@ -348,6 +348,72 @@ def my_purchase_sites() -> list[dict]:
 		limit_page_length=100,
 		ignore_permissions=True,
 	)
+	for site in sites:
+		site.update(
+			{
+				"site_type": "Site",
+				"key": f"Site:{site.name}",
+				"label": f"{site.subdomain}.{site.domain}" if site.subdomain else site.name,
+			}
+		)
+	docker_sites = frappe.get_all(
+		"Docker Control Site",
+		filters={"team": team, "enabled": 1},
+		fields=["domain"],
+		order_by="domain asc",
+		limit_page_length=100,
+		ignore_permissions=True,
+	)
+	for site in docker_sites:
+		sites.append(
+			{
+				"name": site.domain,
+				"site_type": "Docker Control Site",
+				"key": f"Docker Control Site:{site.domain}",
+				"label": site.domain,
+			}
+		)
+	return sites
+
+
+def _marketplace_purchase_site(site_name: str, site_type: str, team: str) -> dict:
+	if site_type == "Docker Control Site":
+		site = frappe.db.get_value(
+			"Docker Control Site",
+			{"domain": site_name, "team": team, "enabled": 1},
+			["domain", "team", "enabled"],
+			as_dict=True,
+		)
+		if not site:
+			frappe.throw(_("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد."), frappe.PermissionError)
+		installed_apps = frappe.get_all(
+			"Docker Control Site App",
+			filters={"parent": site_name, "parenttype": "Docker Control Site", "parentfield": "apps"},
+			pluck="app",
+			ignore_permissions=True,
+		)
+		return {
+			"name": site.domain,
+			"team": site.team,
+			"enabled": site.enabled,
+			"status": "Active",
+			"site_type": "Docker Control Site",
+			"installed_apps": installed_apps,
+		}
+	if site_type != "Site":
+		frappe.throw(_("نوع سایت برای خرید برنامه معتبر نیست."))
+	site = frappe.db.get_value(
+		"Site", site_name, ["name", "team", "status"], as_dict=True
+	)
+	if not site or site.team != team or site.status != "Active":
+		frappe.throw(_("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد."), frappe.PermissionError)
+	return {
+		**site,
+		"site_type": "Site",
+		"installed_apps": frappe.get_all(
+			"Site App", filters={"parent": site_name, "parenttype": "Site"}, pluck="app"
+		),
+	}
 
 
 def _new_site_plan_config(
@@ -594,18 +660,15 @@ def available_site_plan_offers() -> dict:
 
 
 @frappe.whitelist()
-def available_app_plans(site: str) -> dict:
+def available_app_plans(site: str, site_type: str = "Site") -> dict:
 	if frappe.session.user == "Guest":
 		frappe.throw(_("Please sign in to purchase an app plan."), frappe.AuthenticationError)
 	team = get_current_team(get_doc=True)
-	site_values = frappe.db.get_value("Site", site, ["name", "team", "status"], as_dict=True)
-	if not site_values or site_values.team != team.name or site_values.status != "Active":
-		frappe.throw(_("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد."), frappe.PermissionError)
+	site_values = _marketplace_purchase_site(site, site_type, team.name)
 	settings = _get_settings()
-	app_names = frappe.get_all("Site App", filters={"parent": site, "parenttype": "Site"}, pluck="app")
 	apps = frappe.get_all(
 		"Marketplace App",
-		filters={"app": ["in", app_names or [""]], "status": "Published"},
+		filters={"app": ["in", site_values["installed_apps"] or [""]], "status": "Published"},
 		fields=["name", "app", "title", "route"],
 	)
 	app_by_name = {app.name: app for app in apps}
@@ -620,6 +683,7 @@ def available_app_plans(site: str) -> dict:
 		plan.update({"app_title": app.title, "app_route": app.route})
 	return {
 		"site": site,
+		"site_type": site_type,
 		"plans": plans,
 		"checkout_enabled": _checkout_enabled(settings),
 		"message": "" if _checkout_enabled(settings) else "پرداخت آنلاین هنوز توسط مدیر آسومی پیکربندی نشده است.",
@@ -627,7 +691,7 @@ def available_app_plans(site: str) -> dict:
 
 
 @frappe.whitelist()
-def start_marketplace_app_purchase(plan: str, site: str) -> dict:
+def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site") -> dict:
 	if frappe.session.user == "Guest":
 		frappe.throw(_("Please sign in before purchasing an app plan."), frappe.AuthenticationError)
 	team_doc = get_current_team(get_doc=True)
@@ -641,24 +705,25 @@ def start_marketplace_app_purchase(plan: str, site: str) -> dict:
 
 	plan_doc = frappe.get_doc("Marketplace App Plan", plan)
 	app_doc = frappe.get_doc("Marketplace App", plan_doc.app)
-	site_values = frappe.db.get_value("Site", site, ["name", "team", "status"], as_dict=True)
-	if not site_values:
-		frappe.throw(_("سایت انتخاب‌شده پیدا نشد."))
-	installed_apps = frappe.get_all("Site App", filters={"parent": site, "parenttype": "Site"}, pluck="app")
+	site_values = _marketplace_purchase_site(site, site_type, team_doc.name)
 	snapshot = marketplace_app_order_snapshot(
 		plan_doc.as_dict(),
 		app_doc.as_dict(),
-		{**site_values, "installed_apps": installed_apps},
+		site_values,
 		{"name": team_doc.name, "currency": team_doc.currency},
 		frappe.session.user,
 	)
+	target_field = "docker_site" if site_type == "Docker Control Site" else "site"
+	target_filters = {target_field: site}
 	active_plan = frappe.db.exists(
 		"Subscription",
-		{"site": site, "plan_type": "Marketplace App Plan", "plan": plan_doc.name, "enabled": 1},
+		target_filters
+		| {"plan_type": "Marketplace App Plan", "plan": plan_doc.name, "enabled": 1},
 	)
 	active_commerce_plan = frappe.db.exists(
 		"Commerce Order",
-		{"site": site, "plan": plan_doc.name, "order_type": "Marketplace App", "status": "Active"},
+		target_filters
+		| {"plan": plan_doc.name, "order_type": "Marketplace App", "status": "Active"},
 	)
 	if active_plan and not active_commerce_plan:
 		frappe.throw(_("این تعرفه همین حالا روی سایت شما فعال است."))
@@ -668,7 +733,7 @@ def start_marketplace_app_purchase(plan: str, site: str) -> dict:
 			"customer": frappe.session.user,
 			"team": team_doc.name,
 			"plan": plan_doc.name,
-			"site": site,
+			target_field: site,
 			"order_type": "Marketplace App",
 			"status": "Pending Payment",
 		},
@@ -1038,10 +1103,19 @@ def provision_paid_order(order_name: str):
 			return _provision_hosting_order(order)
 		plan = frappe.get_doc("Marketplace App Plan", order.plan)
 		app = frappe.get_doc("Marketplace App", order.marketplace_app)
-		site = frappe.get_doc("Site", order.site)
-		if not site or site.team != order.team or site.status != "Active":
-			frappe.throw(_("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست."))
-		if not any(row.app == app.app for row in site.apps):
+		if order.docker_site:
+			site = frappe.get_doc("Docker Control Site", order.docker_site)
+			installed_apps = [row.app for row in site.apps]
+			if not site.enabled or site.team != order.team:
+				frappe.throw(_("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست."))
+		else:
+			if not order.site:
+				frappe.throw(_("سایت سفارش ثبت نشده است."))
+			site = frappe.get_doc("Site", order.site)
+			installed_apps = [row.app for row in site.apps]
+			if not site or site.team != order.team or site.status != "Active":
+				frappe.throw(_("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست."))
+		if app.app not in installed_apps:
 			frappe.throw(_("برنامهٔ خریداری‌شده دیگر روی سایت نصب نیست."))
 		if (
 			plan.app != app.name
@@ -1058,23 +1132,27 @@ def provision_paid_order(order_name: str):
 			subscription.team = order.team
 			subscription.save(ignore_permissions=True)
 		else:
-			subscription = frappe.get_doc(
-				{
-					"doctype": "Subscription",
-					"document_type": "Marketplace App",
-					"document_name": app.app,
-					"plan_type": "Marketplace App Plan",
-					"plan": plan.name,
-					"site": site.name,
-					"team": order.team,
-					"enabled": 1,
-				}
-			).insert(ignore_permissions=True)
+			subscription_values = {
+				"doctype": "Subscription",
+				"document_type": "Marketplace App",
+				"document_name": app.app,
+				"plan_type": "Marketplace App Plan",
+				"plan": plan.name,
+				"team": order.team,
+				"enabled": 1,
+			}
+			if order.docker_site:
+				subscription_values["docker_site"] = order.docker_site
+			else:
+				subscription_values["site"] = site.name
+			subscription = frappe.get_doc(subscription_values).insert(ignore_permissions=True)
+		_sync_marketplace_subscription_config(order, app, subscription.secret_key)
 		service_start = frappe.utils.now_datetime()
+		target_field = "docker_site" if order.docker_site else "site"
 		previous_orders = frappe.get_all(
 			"Commerce Order",
 			filters={
-				"site": order.site,
+				target_field: order.docker_site or order.site,
 				"marketplace_app": order.marketplace_app,
 				"plan": order.plan,
 				"status": "Active",
@@ -1098,6 +1176,18 @@ def provision_paid_order(order_name: str):
 			}
 		)
 	except Exception as error:
+		failed_subscription = locals().get("subscription")
+		if failed_subscription:
+			try:
+				failed_subscription.enabled = 0
+				failed_subscription.save(ignore_permissions=True)
+				if order.docker_site:
+					_sync_docker_site_subscription(order.docker_site, order.app, None)
+			except Exception:
+				frappe.log_error(
+					f"Could not disable marketplace access after order {order.name} failed.",
+					"Asumi Commerce",
+				)
 		order.db_set(
 			{
 				"status": transition_order("Provisioning", "Provisioning Failed"),
@@ -1268,11 +1358,31 @@ def activate_new_site_commerce_orders(doc, method=None):
 			_activate_hosting_order(order)
 
 
+def _sync_docker_site_subscription(site: str, app: str, secret_key: str | None) -> dict:
+	from press.api.docker_control import _client, _host_doc
+
+	return _client(_host_doc()).set_site_subscription(site, app, secret_key)
+
+
+def _sync_marketplace_subscription_config(order, app, secret_key: str) -> None:
+	if not secret_key:
+		frappe.throw(_("کلید اشتراک برنامه ایجاد نشده است."))
+	if order.docker_site:
+		_sync_docker_site_subscription(order.docker_site, app.app, secret_key)
+		return
+	site = frappe.get_doc("Site", order.site)
+	site.update_site_config(
+		[{"key": f"sk_{app.app}", "value": secret_key, "type": "String"}]
+	)
+
+
 def _get_app_subscription(order, app):
+	target_field = "docker_site" if order.docker_site else "site"
+	target = order.docker_site or order.site
 	rows = frappe.get_all(
 		"Subscription",
 		filters={
-			"site": order.site,
+			target_field: target,
 			"document_type": "Marketplace App",
 			"plan_type": "Marketplace App Plan",
 		},
@@ -1295,7 +1405,7 @@ def expire_commerce_orders():
 	expired_orders = frappe.get_all(
 		"Commerce Order",
 		filters={"status": "Active", "service_ends_at": ["<=", now]},
-		fields=["name", "site", "plan", "marketplace_app", "subscription", "order_type", "original_plan"],
+		fields=["name", "site", "docker_site", "app", "plan", "marketplace_app", "subscription", "order_type", "original_plan"],
 		limit_page_length=500,
 		ignore_permissions=True,
 	)
@@ -1316,10 +1426,11 @@ def expire_commerce_orders():
 			continue
 		subscription = frappe.get_doc("Subscription", order.subscription) if order.subscription else None
 		if subscription and subscription.plan == order.plan:
+			target_field = "docker_site" if order.docker_site else "site"
 			future_orders = frappe.get_all(
 				"Commerce Order",
 				filters={
-					"site": order.site,
+					target_field: order.docker_site or order.site,
 					"marketplace_app": order.marketplace_app,
 					"plan": order.plan,
 					"status": "Active",
@@ -1332,6 +1443,14 @@ def expire_commerce_orders():
 			if not future_orders:
 				subscription.enabled = 0
 				subscription.save(ignore_permissions=True)
+				if order.docker_site:
+					try:
+						_sync_docker_site_subscription(order.docker_site, order.app, None)
+					except Exception:
+						frappe.log_error(
+							f"Could not remove the expired app key for order {order.name}.",
+							"Asumi Commerce",
+						)
 		order.db_set("status", transition_order("Active", "Expired"))
 
 
@@ -1391,13 +1510,13 @@ def my_orders(limit: int = 50) -> list[dict]:
 	rows = frappe.get_all(
 		"Commerce Order",
 		filters={"customer": frappe.session.user, "team": team},
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "subdomain", "service_delivery_mode", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "docker_site", "subdomain", "service_delivery_mode", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 50), 1), 100),
 		ignore_permissions=True,
 	)
 	for row in rows:
-		row.site_label = row.site or (f"{row.subdomain}.{ASUMI_ROOT_DOMAIN}" if row.subdomain else "")
+		row.site_label = row.site or row.docker_site or (f"{row.subdomain}.{ASUMI_ROOT_DOMAIN}" if row.subdomain else "")
 		row.provisioning_error = customer_provisioning_message(row.status)
 		if row.status == "Pending Payment" and row.authority:
 			row.checkout_url = checkout_url(row.authority, sandbox=bool(row.sandbox_mode))
@@ -1411,7 +1530,7 @@ def admin_orders(limit: int = 100) -> list[dict]:
 	_require_commerce_admin()
 	return frappe.get_all(
 		"Commerce Order",
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "subdomain", "service_delivery_mode", "team", "customer", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "docker_site", "subdomain", "service_delivery_mode", "team", "customer", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 100), 1), 200),
 		ignore_permissions=True,
@@ -1458,10 +1577,11 @@ def record_refund(order: str, refund_reference: str, refund_note: str = "") -> d
 	elif doc.status == "Active" and doc.subscription:
 		subscription = frappe.get_doc("Subscription", doc.subscription, for_update=True)
 		if subscription.plan == doc.plan:
+			target_field = "docker_site" if doc.docker_site else "site"
 			other_active_orders = frappe.get_all(
 				"Commerce Order",
 				filters={
-					"site": doc.site,
+					target_field: doc.docker_site or doc.site,
 					"marketplace_app": doc.marketplace_app,
 					"plan": doc.plan,
 					"status": "Active",
@@ -1475,6 +1595,14 @@ def record_refund(order: str, refund_reference: str, refund_note: str = "") -> d
 			if not other_active_orders:
 				subscription.enabled = 0
 				subscription.save(ignore_permissions=True)
+				if doc.docker_site:
+					try:
+						_sync_docker_site_subscription(doc.docker_site, doc.app, None)
+					except Exception:
+						frappe.log_error(
+							f"Could not remove the refunded app key for order {doc.name}.",
+							"Asumi Commerce",
+						)
 
 	doc.db_set(refund_fields)
 	return {"name": doc.name, "status": "Refunded", "refund_reference": refund_fields["refund_reference"]}

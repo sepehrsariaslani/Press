@@ -32,6 +32,7 @@ class Subscription(Document):
 		additional_storage: DF.Data | None
 		document_name: DF.DynamicLink
 		document_type: DF.Link
+		docker_site: DF.Link | None
 		enabled: DF.Check
 		interval: DF.Literal["Hourly", "Daily", "Monthly"]
 		marketplace_app_subscription: DF.Link | None
@@ -66,7 +67,7 @@ class Subscription(Document):
 			.on(UsageRecord.subscription == Subscription.name)
 			.groupby(Subscription.name)
 			.select(
-				Subscription.site,
+				Coalesce(Subscription.site, Subscription.docker_site).as_("site"),
 				Subscription.enabled,
 				price_field.as_("price"),
 				Coalesce(Count(UsageRecord.subscription), 0).as_("active_for"),
@@ -74,7 +75,7 @@ class Subscription(Document):
 			.where(
 				(Subscription.document_type == "Marketplace App")
 				& (Subscription.document_name == filters["document_name"])
-				& (Subscription.site != "")
+				& ((Subscription.site != "") | (Subscription.docker_site != ""))
 				& (price_field > 0)
 			)
 			.limit(list_args["limit"])
@@ -297,6 +298,7 @@ class Subscription(Document):
 		}
 		if self.document_type == "Marketplace App":
 			filters.update({"marketplace_app_subscription": self.marketplace_app_subscription})
+			filters.update({"site": self.site or "", "docker_site": self.docker_site or ""})
 
 		results = frappe.db.get_all(
 			"Subscription",
