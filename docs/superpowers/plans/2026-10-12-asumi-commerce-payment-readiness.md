@@ -104,7 +104,7 @@
 - [x] Keep Site Plan checkout disabled unless its separate admin switch, ZarinPal settings, and required delivery configuration are ready.
 - [x] Prevent Press usage invoices from charging the same Site Plan while its verified Commerce Order term is active; on expiry restore the prior plan or suspend a new site with no prior plan.
 - [x] Show Site Plan offers and the required site/subdomain input on `/dashboard/orders`; preserve app-plan checkout.
-- [ ] Complete a Frappe integration run for delivery, renewal, invoice suppression, refund, and expiry against an isolated test database. Pure commerce and dashboard tests pass; production-site tests were not run.
+- [x] Complete five Frappe database integration tests for new-site delivery activation, hosting renewal, duplicate-invoice suppression, refund recording, and expiry on an isolated temporary site; all passed. Production-site tests were not run.
 
 ### Task 6: Verify the delivered surfaces and preserve deployment state
 
