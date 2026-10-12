@@ -383,12 +383,12 @@ class VirtualMachine(Document):
 
 	def _handle_updated_addon_storage(self, server: Server, increment: int) -> None:
 		if frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{"document_name": server.name, "team": server.team, "plan_type": "Server Storage Plan"},
 		):
 			# update the existing subscription
 			frappe.db.set_value(
-				"Subscription",
+				"Press Subscription",
 				{
 					"document_name": server.name,
 					"team": server.team,
@@ -402,7 +402,7 @@ class VirtualMachine(Document):
 		else:
 			# create a new subscription
 			frappe.get_doc(
-				doctype="Subscription",
+				doctype="Press Subscription",
 				team=server.team,
 				plan_type="Server Storage Plan",
 				plan="Add-on Storage plan",
@@ -414,11 +414,11 @@ class VirtualMachine(Document):
 
 	def _plan_change_addon_storage(self, server: Server) -> None:
 		if frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{"document_name": server.name, "team": server.team, "plan_type": "Server Storage Plan"},
 		):
 			frappe.db.set_value(
-				"Subscription",
+				"Press Subscription",
 				{
 					"document_name": server.name,
 					"team": server.team,

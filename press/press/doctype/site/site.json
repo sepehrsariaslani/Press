@@ -803,7 +803,7 @@
   },
   {
    "group": "Related Documents",
-   "link_doctype": "Subscription",
+   "link_doctype": "Press Subscription",
    "link_fieldname": "document_name"
   },
   {

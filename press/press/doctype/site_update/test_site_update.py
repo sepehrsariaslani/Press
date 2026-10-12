@@ -23,7 +23,7 @@ from press.press.doctype.site.site import Site
 from press.press.doctype.site.test_site import create_test_bench, create_test_site
 from press.press.doctype.site_plan.test_site_plan import create_test_plan
 from press.press.doctype.site_update.site_update import SiteUpdate
-from press.press.doctype.subscription.test_subscription import create_test_subscription
+from press.press.doctype.press_subscription.test_press_subscription import create_test_subscription
 
 
 @patch.object(SiteUpdate, "start", new=Mock())

@@ -525,7 +525,7 @@ class AutoScaleRecord(Document, AutoScaleStepFailureHandler, StepHandler):
 			plan=secondary_server_plan,
 			date=frappe.utils.now_datetime(),
 			subscription=frappe.db.get_value(
-				"Subscription",
+				"Press Subscription",
 				{
 					"document_type": "Server",
 					"document_name": self.secondary_server,

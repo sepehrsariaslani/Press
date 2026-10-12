@@ -293,11 +293,11 @@ class NFSVolumeDetachment(Document, AutoScaleStepFailureHandler, StepHandler):
 		team = frappe.db.get_value("Server", self.primary_server, "team")
 
 		if frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{"document_name": self.secondary_server, "team": team, "plan_type": "Server Plan"},
 		):
 			frappe.db.set_value(
-				"Subscription",
+				"Press Subscription",
 				{"document_name": self.secondary_server, "team": team, "plan_type": "Server Plan"},
 				"enabled",
 				0,

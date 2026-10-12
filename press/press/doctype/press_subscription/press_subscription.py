@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 	from frappe.types import DF
 
 
-class Subscription(Document):
+class PressSubscription(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
 
@@ -53,7 +53,7 @@ class Subscription(Document):
 
 	@staticmethod
 	def get_list_query(query, **list_args):
-		Subscription = frappe.qb.DocType("Subscription")
+		Subscription = frappe.qb.DocType("Press Subscription")
 		UsageRecord = frappe.qb.DocType("Usage Record")
 		Plan = frappe.qb.DocType("Marketplace App Plan")
 		price_field = Plan.price_inr if frappe.local.team().currency == "INR" else Plan.price_usd
@@ -301,14 +301,14 @@ class Subscription(Document):
 			filters.update({"site": self.site or "", "docker_site": self.docker_site or ""})
 
 		results = frappe.db.get_all(
-			"Subscription",
+			"Press Subscription",
 			filters,
 			pluck="name",
 			limit=1,
 			ignore_ifnull=True,
 		)
 		if results:
-			link = frappe.utils.get_link_to_form("Subscription", results[0])
+			link = frappe.utils.get_link_to_form("Press Subscription", results[0])
 			frappe.throw(f"A Subscription already exists: {link}", frappe.DuplicateEntryError)
 
 	def get_subscribed_document(self):
@@ -320,7 +320,7 @@ class Subscription(Document):
 	def get_sites_without_offsite_backups(cls) -> list[str]:
 		plans = SitePlan.get_ones_without_offsite_backups()
 		return frappe.get_all(
-			"Subscription",
+			"Press Subscription",
 			filters={"document_type": "Site", "plan": ("in", plans)},
 			pluck="document_name",
 		)
@@ -342,7 +342,7 @@ def create_usage_records_of_date(
 	free_sites = sites_with_free_hosting()
 	settings = frappe.get_single("Press Settings")
 	subscriptions = frappe.db.get_all(
-		"Subscription",
+		"Press Subscription",
 		filters={
 			"enabled": True,
 			"plan": ("in", paid_plans()),
@@ -358,7 +358,7 @@ def create_usage_records_of_date(
 	for name in subscriptions:
 		if has_job_timeout_exceeded():
 			return
-		subscription = frappe.get_cached_doc("Subscription", name)
+		subscription = frappe.get_cached_doc("Press Subscription", name)
 		try:
 			subscription.create_usage_record(date=date)
 			frappe.db.commit()
@@ -453,4 +453,4 @@ def created_usage_records(free_sites, date=None):
 	)
 
 
-get_permission_query_conditions = get_permission_query_conditions_for_doctype("Subscription")
+get_permission_query_conditions = get_permission_query_conditions_for_doctype("Press Subscription")

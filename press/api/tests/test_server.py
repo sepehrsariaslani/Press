@@ -216,7 +216,7 @@ class TestAPIServer(FrappeTestCase):
 		server = frappe.get_last_doc("Server")
 		self.assertEqual(server.plan, self.app_plan.name)
 		app_subscription = frappe.get_doc(
-			"Subscription", {"document_type": "Server", "document_name": server.name}
+			"Press Subscription", {"document_type": "Server", "document_name": server.name}
 		)
 		self.assertTrue(app_subscription.enabled)
 		self.assertEqual(app_subscription.plan, self.app_plan.name)
@@ -224,7 +224,7 @@ class TestAPIServer(FrappeTestCase):
 		db_server = frappe.get_last_doc("Database Server")
 		self.assertEqual(db_server.plan, self.db_plan.name)
 		db_subscription = frappe.get_doc(
-			"Subscription",
+			"Press Subscription",
 			{"document_type": "Database Server", "document_name": db_server.name},
 		)
 		self.assertTrue(db_subscription.enabled)
@@ -266,7 +266,7 @@ class TestAPIServer(FrappeTestCase):
 
 		server.reload()
 		app_subscription = frappe.get_doc(
-			"Subscription", {"document_type": "Server", "document_name": server.name}
+			"Press Subscription", {"document_type": "Server", "document_name": server.name}
 		)
 		self.assertEqual(app_subscription.plan, app_plan_2.name)
 		self.assertTrue(app_subscription.enabled)
@@ -283,7 +283,7 @@ class TestAPIServer(FrappeTestCase):
 
 		db_server.reload()
 		db_subscription = frappe.get_doc(
-			"Subscription",
+			"Press Subscription",
 			{"document_type": "Database Server", "document_name": db_server.name},
 		)
 		self.assertEqual(db_subscription.plan, db_plan_2.name)

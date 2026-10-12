@@ -24,7 +24,7 @@ from press.press.doctype.site_migration.site_migration import (
 	run_scheduled_migrations,
 )
 from press.press.doctype.site_plan.test_site_plan import create_test_plan
-from press.press.doctype.subscription.test_subscription import create_test_subscription
+from press.press.doctype.press_subscription.test_press_subscription import create_test_subscription
 
 BACKUP_JOB_RES = {
 	"backups": {

@@ -983,7 +983,7 @@ def calculate_total_amount(server_name: str) -> float:
 
 
 def calculate_total_team_amount(team_name: str) -> float:
-	subscriptions = frappe.get_all("Subscription", {"team": team_name, "enabled": 1}, ["plan_type", "plan"])
+	subscriptions = frappe.get_all("Press Subscription", {"team": team_name, "enabled": 1}, ["plan_type", "plan"])
 
 	total_amount = 0
 	for d in subscriptions:

@@ -281,7 +281,7 @@ def event_log():
 			return None
 		message_id = headers["message-id"]
 		site = (
-			frappe.get_cached_value("Subscription", {"secret_key": secret_key}, "site")
+			frappe.get_cached_value("Press Subscription", {"secret_key": secret_key}, "site")
 			or message_id.split("@")[1]
 		)
 		status = event_data["event"]

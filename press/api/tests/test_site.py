@@ -102,7 +102,7 @@ class TestAPISite(FrappeTestCase):
 		)
 
 		created_site = frappe.get_last_doc("Site")
-		subscription = frappe.get_last_doc("Subscription")
+		subscription = frappe.get_last_doc("Press Subscription")
 		self.assertEqual(new_site["site"], created_site.name)
 		self.assertEqual(subscription.document_name, created_site.name)
 		self.assertEqual(subscription.plan, plan.name)

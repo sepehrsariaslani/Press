@@ -52,7 +52,7 @@ class MarketplaceAppPlan(Plan):
 		if not price_changed and not interval_changed:
 			return
 		active_subscriptions = frappe.db.count(
-			"Subscription",
+			"Press Subscription",
 			{
 				"document_type": "Marketplace App",
 				"plan_type": "Marketplace App Plan",
@@ -104,7 +104,7 @@ class MarketplaceAppPlan(Plan):
 	):
 		marketplace_app = frappe.db.get_value("Marketplace App", {"app": app_name})
 		subscription = frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{
 				"site": site_name,
 				"document_type": "Marketplace App",
@@ -115,7 +115,7 @@ class MarketplaceAppPlan(Plan):
 		# If already exists, update the plan and activate
 		if subscription:
 			subscription = frappe.get_doc(
-				"Subscription",
+				"Press Subscription",
 				subscription,
 				for_update=True,
 			)
@@ -129,7 +129,7 @@ class MarketplaceAppPlan(Plan):
 
 		return frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"document_type": "Marketplace App",
 				"document_name": app_name,
 				"plan_type": "Marketplace App Plan",

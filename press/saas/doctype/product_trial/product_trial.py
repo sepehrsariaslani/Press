@@ -502,7 +502,7 @@ def create_free_app_subscription(app: str, site: str | None = None):
 		return None
 	return frappe.get_doc(
 		{
-			"doctype": "Subscription",
+			"doctype": "Press Subscription",
 			"document_type": "Marketplace App",
 			"document_name": app,
 			"plan_type": "Marketplace App Plan",

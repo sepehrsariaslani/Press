@@ -654,9 +654,9 @@ class SelfHostedServer(Document):
 	@property
 	def subscription(self):
 		name = frappe.db.get_value(
-			"Subscription", {"document_type": self.doctype, "document_name": self.name}
+			"Press Subscription", {"document_type": self.doctype, "document_name": self.name}
 		)
-		return frappe.get_doc("Subscription", name) if name else None
+		return frappe.get_doc("Press Subscription", name) if name else None
 
 	def can_charge_for_subscription(self, subscription=None):
 		return (

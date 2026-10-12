@@ -12,7 +12,7 @@ from frappe.utils import add_days, rounded, today
 from press.agent import Agent
 from press.press.doctype.server.server import Server
 from press.press.doctype.site.site import TRANSITORY_STATES
-from press.press.doctype.subscription.subscription import (
+from press.press.doctype.press_subscription.press_subscription import (
 	created_usage_records,
 	paid_plans,
 	sites_with_free_hosting,
@@ -374,7 +374,7 @@ class BillingAudit(Audit):
 		free_teams = frappe.get_all("Team", filters={"free_account": True, "enabled": True}, pluck="name")
 
 		return frappe.db.get_all(
-			"Subscription",
+			"Press Subscription",
 			filters={
 				"team": ("not in", free_teams),
 				"enabled": True,

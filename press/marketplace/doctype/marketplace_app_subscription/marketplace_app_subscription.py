@@ -61,14 +61,14 @@ class MarketplaceAppSubscription(Document):
 			self.plan = frappe.db.get_value(
 				"Marketplace App Plan", self.marketplace_app_plan, "plan"
 			)
-			frappe.db.set_value("Subscription", self.subscription, "plan", self.plan)
+			frappe.db.set_value("Press Subscription", self.subscription, "plan", self.plan)
 
 		if self.has_value_changed("team"):
-			frappe.db.set_value("Subscription", self.subscription, "team", self.team)
+			frappe.db.set_value("Press Subscription", self.subscription, "team", self.team)
 
 		if self.has_value_changed("status"):
 			frappe.db.set_value(
-				"Subscription", self.subscription, "enabled", 1 if self.status == "Active" else 0
+				"Press Subscription", self.subscription, "enabled", 1 if self.status == "Active" else 0
 			)
 
 	def after_insert(self):
@@ -78,7 +78,7 @@ class MarketplaceAppSubscription(Document):
 
 		subscription = frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"team": self.team,
 				"document_type": "Marketplace App",
 				"document_name": self.app,
@@ -141,7 +141,7 @@ class MarketplaceAppSubscription(Document):
 			return
 		self.status = "Disabled"
 		self.save(ignore_permissions=True)
-		frappe.db.set_value("Subscription", self.subscription, "enabled", 0)
+		frappe.db.set_value("Press Subscription", self.subscription, "enabled", 0)
 
 	def update_subscription_hook(self):
 		# sends app name and plan whenever a subscription is created for other apps

@@ -43,7 +43,7 @@ def migrate_team(team):
 def cancel_subscription(team):
 	stripe = get_stripe()
 	subscription_id = frappe.db.get_value(
-		"Subscription", {"team": team}, "stripe_subscription_id"
+		"Press Subscription", {"team": team}, "stripe_subscription_id"
 	)
 	if subscription_id:
 		try:

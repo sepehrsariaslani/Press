@@ -76,7 +76,7 @@ class SitePlanChange(Document):
 
 	def create_subscription(self):
 		frappe.get_doc(
-			doctype="Subscription",
+			doctype="Press Subscription",
 			team=self.team,
 			document_type="Site",
 			document_name=self.site,

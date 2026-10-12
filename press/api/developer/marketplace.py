@@ -18,7 +18,7 @@ class DeveloperApiHandler:
 			raise_invalid_key_error()
 
 		app_subscription_name = frappe.db.exists(
-			"Subscription", {"secret_key": self.secret_key, "enabled": 1}
+			"Press Subscription", {"secret_key": self.secret_key, "enabled": 1}
 		)
 
 		if not app_subscription_name:
@@ -29,7 +29,7 @@ class DeveloperApiHandler:
 
 	def set_subscription_doc(self):
 		"""To be called after `secret_key` validation"""
-		self.app_subscription_doc = frappe.get_doc("Subscription", self.app_subscription_name)
+		self.app_subscription_doc = frappe.get_doc("Press Subscription", self.app_subscription_name)
 
 	def get_subscription_status(self) -> str:
 		status = getattr(self.app_subscription_doc, "status", None)

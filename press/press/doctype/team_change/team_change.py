@@ -35,7 +35,7 @@ class TeamChange(Document):
 			frappe.db.set_value("Site", self.document_name, "team", self.to_team)
 
 			frappe.db.set_value(
-				"Subscription",
+				"Press Subscription",
 				{"document_name": self.document_name},
 				"team",
 				self.to_team,

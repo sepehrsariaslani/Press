@@ -1212,7 +1212,7 @@ class BaseServer(Document, TagHelpers):
 	@property
 	def subscription(self):
 		name = frappe.db.get_value(
-			"Subscription",
+			"Press Subscription",
 			{
 				"document_type": self.doctype,
 				"document_name": self.name,
@@ -1220,19 +1220,19 @@ class BaseServer(Document, TagHelpers):
 				"plan": self.plan,
 			},
 		)
-		return frappe.get_doc("Subscription", name) if name else None
+		return frappe.get_doc("Press Subscription", name) if name else None
 
 	@property
 	def add_on_storage_subscription(self):
 		name = frappe.db.get_value(
-			"Subscription",
+			"Press Subscription",
 			{
 				"document_type": self.doctype,
 				"document_name": self.name,
 				"plan_type": "Server Storage Plan",
 			},
 		)
-		return frappe.get_doc("Subscription", name) if name else None
+		return frappe.get_doc("Press Subscription", name) if name else None
 
 	@frappe.whitelist()
 	def rename_server(self):
@@ -2821,7 +2821,7 @@ class Server(BaseServer):
 		subscription = self.subscription
 		if subscription:
 			if sub := frappe.db.get_value(
-				"Subscription",
+				"Press Subscription",
 				{
 					"document_type": self.doctype,
 					"document_name": self.name,
@@ -2830,10 +2830,10 @@ class Server(BaseServer):
 					"plan": self.plan,
 				},
 			):
-				frappe.db.set_value("Subscription", sub, "enabled", 1)
+				frappe.db.set_value("Press Subscription", sub, "enabled", 1)
 				subscription.disable()
 			else:
-				frappe.db.set_value("Subscription", subscription.name, {"team": self.team, "enabled": 1})
+				frappe.db.set_value("Press Subscription", subscription.name, {"team": self.team, "enabled": 1})
 		else:
 			try:
 				# create new subscription
@@ -2845,7 +2845,7 @@ class Server(BaseServer):
 		add_on_storage_subscription = self.add_on_storage_subscription
 		if add_on_storage_subscription:
 			if existing_subscription := frappe.db.get_value(
-				"Subscription",
+				"Press Subscription",
 				filters={
 					"document_type": self.doctype,
 					"document_name": self.name,
@@ -2854,7 +2854,7 @@ class Server(BaseServer):
 				},
 			):
 				frappe.db.set_value(
-					"Subscription",
+					"Press Subscription",
 					existing_subscription,
 					{
 						"enabled": 1,
@@ -2864,7 +2864,7 @@ class Server(BaseServer):
 				add_on_storage_subscription.disable()
 			else:
 				frappe.db.set_value(
-					"Subscription", add_on_storage_subscription.name, {"team": self.team, "enabled": 1}
+					"Press Subscription", add_on_storage_subscription.name, {"team": self.team, "enabled": 1}
 				)
 
 	def create_secondary_server(self, plan_name: str) -> None:

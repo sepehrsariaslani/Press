@@ -228,7 +228,7 @@ def get_app_subscriptions(apps=None, standby_for=None):
 		if free_plan:
 			new_subscription = frappe.get_doc(
 				{
-					"doctype": "Subscription",
+					"doctype": "Press Subscription",
 					"document_type": "Marketplace App",
 					"document_name": app,
 					"plan_type": "Marketplace App Plan",

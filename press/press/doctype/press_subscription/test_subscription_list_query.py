@@ -4,7 +4,7 @@ from unittest.mock import patch
 import frappe
 from frappe.query_builder.builder import QueryBuilder
 
-from press.press.doctype.subscription.subscription import Subscription
+from press.press.doctype.press_subscription.press_subscription import PressSubscription
 
 
 class SubscriptionListQueryTest(unittest.TestCase):
@@ -24,7 +24,7 @@ class SubscriptionListQueryTest(unittest.TestCase):
 			),
 			patch.object(QueryBuilder, "run", capture_query),
 		):
-			Subscription.get_list_query(
+			PressSubscription.get_list_query(
 				None,
 				filters={"document_name": "accounts"},
 				limit=10,
@@ -32,8 +32,8 @@ class SubscriptionListQueryTest(unittest.TestCase):
 			)
 
 		sql = captured["sql"].lower()
-		self.assertIn("coalesce(`tabsubscription`.`site`,`tabsubscription`.`docker_site`)", sql)
-		self.assertIn("`tabsubscription`.`docker_site`<>''", sql)
+		self.assertIn("coalesce(`tabpress subscription`.`site`,`tabpress subscription`.`docker_site`)", sql)
+		self.assertIn("`tabpress subscription`.`docker_site`<>''", sql)
 		self.assertIn(" or ", sql)
 
 

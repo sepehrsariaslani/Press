@@ -163,7 +163,7 @@ class TestServer(FrappeTestCase):
 		self.assertEqual(plan_disk_size + increment, new_actual_disk_size)
 
 		subscription_doc = frappe.get_doc(
-			"Subscription",
+			"Press Subscription",
 			{
 				"team": server.team,
 				"plan_type": "Server Storage Plan",
@@ -184,7 +184,7 @@ class TestServer(FrappeTestCase):
 		self.assertEqual(plan_disk_size + increment + increment, new_actual_disk_size)
 
 		subscription_doc = frappe.get_doc(
-			"Subscription",
+			"Press Subscription",
 			{
 				"team": server.team,
 				"plan_type": "Server Storage Plan",

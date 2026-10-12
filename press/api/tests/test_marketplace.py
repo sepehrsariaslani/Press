@@ -219,7 +219,7 @@ class TestAPIMarketplace(FrappeTestCase):
 
 		self.assertEqual(
 			new_plan.name,
-			frappe.db.get_value("Subscription", subscription.name, "plan"),
+			frappe.db.get_value("Press Subscription", subscription.name, "plan"),
 		)
 
 	def test_change_app_plan_checks_inr_price_for_inr_team(self):

@@ -1435,7 +1435,7 @@ def _calculate_forecast_data(
 
 def _get_active_subscriptions(team: str):
 	"""Get all active subscriptions for a team."""
-	Subscription = frappe.qb.DocType("Subscription")
+	Subscription = frappe.qb.DocType("Press Subscription")
 
 	return (
 		frappe.qb.from_(Subscription)

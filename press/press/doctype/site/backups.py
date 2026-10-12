@@ -17,7 +17,7 @@ from press.press.doctype.press_settings.press_settings import PressSettings
 from press.press.doctype.remote_file.remote_file import delete_remote_backup_objects
 from press.press.doctype.site.site import Literal, Site
 from press.press.doctype.site_backup.site_backup import SiteBackup
-from press.press.doctype.subscription.subscription import Subscription
+from press.press.doctype.press_subscription.press_subscription import PressSubscription
 from press.utils import log_error
 
 
@@ -260,7 +260,7 @@ class ScheduledBackupJob:
 		self.server_time = datetime.now()
 		self.sites = Site.get_sites_for_backup(self.interval, backup_type=self.backup_type)
 		if self.backup_type == "Logical":
-			self.sites_without_offsite = Subscription.get_sites_without_offsite_backups()
+			self.sites_without_offsite = PressSubscription.get_sites_without_offsite_backups()
 		else:
 			self.sites_without_offsite = []
 

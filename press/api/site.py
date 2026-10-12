@@ -558,7 +558,7 @@ def get_app_subscriptions(app_plans, team_name: str):
 
 		new_subscription = frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"document_type": "Marketplace App",
 				"document_name": app_name,
 				"plan_type": "Marketplace App Plan",
@@ -1817,7 +1817,7 @@ def get_installed_apps(site, query_filters: dict | None = None):
 		)
 		app_source.billing_type = is_prepaid_marketplace_app(app.app)
 		if frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{
 				"site": site.name,
 				"document_type": "Marketplace App",
@@ -1826,7 +1826,7 @@ def get_installed_apps(site, query_filters: dict | None = None):
 			},
 		):
 			subscription = frappe.get_value(
-				"Subscription",
+				"Press Subscription",
 				{
 					"site": site.name,
 					"document_type": "Marketplace App",

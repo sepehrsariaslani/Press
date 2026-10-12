@@ -16,7 +16,7 @@ def execute():
 			server = frappe.get_doc(doctype, server_name)
 
 			subscription = frappe.get_all(
-				"Subscription", ["name", "plan"], {"enabled": True, "document_name": server.name}
+				"Press Subscription", ["name", "plan"], {"enabled": True, "document_name": server.name}
 			)
 
 			if subscription and server.plan:

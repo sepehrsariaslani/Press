@@ -39,7 +39,7 @@ from press.press.doctype.server.server import Server, scale_workers
 from press.press.doctype.site.test_site import create_test_bench, create_test_site
 from press.press.doctype.site_plan.test_site_plan import create_test_plan
 from press.press.doctype.site_update.test_site_update import create_test_site_update
-from press.press.doctype.subscription.test_subscription import create_test_subscription
+from press.press.doctype.press_subscription.test_press_subscription import create_test_subscription
 from press.press.doctype.version_upgrade.test_version_upgrade import (
 	create_test_version_upgrade,
 )

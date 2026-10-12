@@ -43,7 +43,7 @@ class PlanChange(Document):
 
 	def create_subscription(self):
 		frappe.get_doc(
-			doctype="Subscription",
+			doctype="Press Subscription",
 			team=self.team,
 			plan_type="Server Plan",
 			plan=self.to_plan,

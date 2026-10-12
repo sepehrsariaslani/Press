@@ -5,7 +5,7 @@ import frappe
 
 
 def execute():
-	subscription = frappe.qb.DocType("Subscription")
+	subscription = frappe.qb.DocType("Press Subscription")
 	site = frappe.qb.DocType("Site")
 
 	inactive_sites = (
@@ -17,5 +17,5 @@ def execute():
 	).run(pluck=True)
 
 	frappe.db.set_value(
-		"Subscription", {"enabled": 1, "name": ("in", inactive_sites)}, "enabled", 0
+		"Press Subscription", {"enabled": 1, "name": ("in", inactive_sites)}, "enabled", 0
 	)

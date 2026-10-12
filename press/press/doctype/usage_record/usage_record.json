@@ -97,8 +97,8 @@
   {
    "fieldname": "subscription",
    "fieldtype": "Link",
-   "label": "Subscription",
-   "options": "Subscription"
+   "label": "Press Subscription",
+   "options": "Press Subscription"
   },
   {
    "fieldname": "column_break_13",

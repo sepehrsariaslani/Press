@@ -24,7 +24,7 @@ def create_test_marketplace_app_subscription(
 	site = site if site else create_test_site(team=team).name
 	return frappe.get_doc(
 		{
-			"doctype": "Subscription",
+			"doctype": "Press Subscription",
 			"document_type": "Marketplace App",
 			"document_name": app,
 			"plan_type": "Marketplace App Plan",

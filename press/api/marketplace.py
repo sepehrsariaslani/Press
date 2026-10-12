@@ -860,7 +860,7 @@ def get_promotional_banners() -> list:
 @frappe.whitelist()
 def get_marketplace_subscriptions_for_site(site: str):
 	subscriptions = frappe.db.get_all(
-		"Subscription",
+		"Press Subscription",
 		filters={"site": site, "enabled": 1, "document_type": "Marketplace App"},
 		fields=["name", "document_name as app", "enabled", "plan"],
 	)
@@ -939,7 +939,7 @@ def change_app_plan(subscription: str, new_plan: str):
 				"You cannot upgrade to paid plan on Free Credits. Please buy credits before trying to upgrade plan."
 			)
 
-	subscription_doc = frappe.get_doc("Subscription", subscription)
+	subscription_doc = frappe.get_doc("Press Subscription", subscription)
 	subscription_doc.enabled = 1
 	subscription_doc.plan = new_plan
 	subscription_doc.save(ignore_permissions=True)
@@ -1008,7 +1008,7 @@ def submit_developer_reply(review: str, reply: str):
 
 @frappe.whitelist()
 def get_subscriptions_list(marketplace_app: str) -> list:
-	app_sub = frappe.qb.DocType("Subscription")
+	app_sub = frappe.qb.DocType("Press Subscription")
 	app_plan = frappe.qb.DocType("Marketplace App Plan")
 	site = frappe.qb.DocType("Site")
 	usage_record = frappe.qb.DocType("Usage Record")
@@ -1083,7 +1083,7 @@ def update_app_plan(app_plan_name: str, updated_plan_data: dict):
 		frappe.throw("Plan title is required")
 
 	no_of_active_subscriptions = frappe.db.count(
-		"Subscription",
+		"Press Subscription",
 		{
 			"document_type": "Marketplace App",
 			"plan_type": "Marketplace App Plan",
@@ -1294,7 +1294,7 @@ def subscriptions():
 	price_field = {"INR": "price_inr", "IRR": "price_irr"}.get(team.currency, "price_usd")
 	free_plans = frappe.get_all("Marketplace App Plan", {price_field: ("<=", 0)}, pluck="name")
 	subscriptions = frappe.get_all(
-		"Subscription",
+		"Press Subscription",
 		{
 			"team": team.name,
 			"enabled": 1,

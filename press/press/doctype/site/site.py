@@ -938,7 +938,7 @@ class Site(Document, TagHelpers):
 		# disable marketplace plan if it exists
 		marketplace_app_name = frappe.db.get_value("Marketplace App", {"app": app})
 		app_subscription = frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{
 				"team": self.team,
 				"site": self.name,
@@ -947,7 +947,7 @@ class Site(Document, TagHelpers):
 			},
 		)
 		if marketplace_app_name and app_subscription:
-			frappe.db.set_value("Subscription", app_subscription, "enabled", 0)
+			frappe.db.set_value("Press Subscription", app_subscription, "enabled", 0)
 
 	def check_marketplace_app_installable(self, plan: str | None = None, app: str | None = None):
 		check_marketplace_app_plan_installable(plan, app, self.team)
@@ -2713,7 +2713,7 @@ class Site(Document, TagHelpers):
 	def disable_subscription(self):
 		subscription = self.subscription
 		if subscription:
-			frappe.db.set_value("Subscription", subscription.name, "enabled", False)
+			frappe.db.set_value("Press Subscription", subscription.name, "enabled", False)
 
 	def disable_marketplace_subscriptions(self):
 		app_subscriptions = frappe.get_all(
@@ -2726,9 +2726,9 @@ class Site(Document, TagHelpers):
 			subscription_doc = frappe.get_doc("Marketplace App Subscription", subscription)
 			subscription_doc.disable()
 
-		subscriptions = frappe.get_all("Subscription", {"site": self.name, "enabled": 1}, pluck="name")
+		subscriptions = frappe.get_all("Press Subscription", {"site": self.name, "enabled": 1}, pluck="name")
 		for subscription in subscriptions:
-			subscription_doc = frappe.get_doc("Subscription", subscription)
+			subscription_doc = frappe.get_doc("Press Subscription", subscription)
 			subscription_doc.disable()
 
 	def can_change_plan(self, ignore_card_setup):
@@ -2980,8 +2980,8 @@ class Site(Document, TagHelpers):
 
 	@property
 	def subscription(self):
-		name = frappe.db.get_value("Subscription", {"document_type": "Site", "document_name": self.name})
-		return frappe.get_doc("Subscription", name) if name else None
+		name = frappe.db.get_value("Press Subscription", {"document_type": "Site", "document_name": self.name})
+		return frappe.get_doc("Press Subscription", name) if name else None
 
 	def can_charge_for_subscription(self, subscription=None):
 		today = frappe.utils.getdate()
@@ -5471,7 +5471,7 @@ def suspend_sites_exceeding_disk_usage_for_last_14_days():
 
 def create_subscription_for_trial_sites():
 	# Get sites that are in "Site Created" status and has no entry in "Site Plan Change"
-	# For those sites, invoke "Create Subscription" that puts entry into "Site Plan Change" and "Subscription"
+	# For those sites, invoke "Create Subscription" that puts entry into "Site Plan Change" and "Press Subscription"
 	active_sites = frappe.db.sql(
 		"""
 		SELECT trial.site, producttrial.trial_plan

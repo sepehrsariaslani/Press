@@ -168,7 +168,7 @@ class ServerSnapshot(Document):
 	@property
 	def subscription(self) -> str | None:
 		return frappe.db.get_value(
-			"Subscription", {"document_type": "Server Snapshot", "document_name": self.name}
+			"Press Subscription", {"document_type": "Server Snapshot", "document_name": self.name}
 		)
 
 	def validate(self):
@@ -610,12 +610,12 @@ class ServerSnapshot(Document):
 		if not plan:
 			frappe.throw(f"No active Server Snapshot Plan found for provider {self.provider}.")
 
-		if frappe.db.exists("Subscription", {"document_type": "Server Snapshot", "document_name": self.name}):
+		if frappe.db.exists("Press Subscription", {"document_type": "Server Snapshot", "document_name": self.name}):
 			return
 
 		frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"enabled": 1,
 				"team": self.team,
 				"document_type": "Server Snapshot",
@@ -632,7 +632,7 @@ class ServerSnapshot(Document):
 		This method can be called when the server snapshot is archived or deleted.
 		"""
 		frappe.db.set_value(
-			"Subscription",
+			"Press Subscription",
 			self.subscription,
 			"enabled",
 			0,

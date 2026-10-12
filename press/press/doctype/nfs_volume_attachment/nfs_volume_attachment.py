@@ -295,11 +295,11 @@ class NFSVolumeAttachment(Document, AutoScaleStepFailureHandler, StepHandler):
 		team = frappe.db.get_value("Server", self.primary_server, "team")
 
 		if not frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{"document_name": self.secondary_server, "team": team, "plan_type": "Server Plan"},
 		):
 			frappe.get_doc(
-				doctype="Subscription",
+				doctype="Press Subscription",
 				team=team,
 				plan_type="Server Plan",
 				plan=frappe.db.get_value("Server", self.secondary_server, "plan"),

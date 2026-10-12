@@ -716,7 +716,7 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 	target_field = "docker_site" if site_type == "Docker Control Site" else "site"
 	target_filters = {target_field: site}
 	active_plan = frappe.db.exists(
-		"Subscription",
+		"Press Subscription",
 		target_filters
 		| {"plan_type": "Marketplace App Plan", "plan": plan_doc.name, "enabled": 1},
 	)
@@ -1133,7 +1133,7 @@ def provision_paid_order(order_name: str):
 			subscription.save(ignore_permissions=True)
 		else:
 			subscription_values = {
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"document_type": "Marketplace App",
 				"document_name": app.app,
 				"plan_type": "Marketplace App Plan",
@@ -1380,7 +1380,7 @@ def _get_app_subscription(order, app):
 	target_field = "docker_site" if order.docker_site else "site"
 	target = order.docker_site or order.site
 	rows = frappe.get_all(
-		"Subscription",
+		"Press Subscription",
 		filters={
 			target_field: target,
 			"document_type": "Marketplace App",
@@ -1391,9 +1391,9 @@ def _get_app_subscription(order, app):
 	)
 	for row in rows:
 		if row.document_name in {app.name, app.app}:
-			return frappe.get_doc("Subscription", row.name)
+			return frappe.get_doc("Press Subscription", row.name)
 		if row.plan and frappe.db.get_value("Marketplace App Plan", row.plan, "app") == app.name:
-			return frappe.get_doc("Subscription", row.name)
+			return frappe.get_doc("Press Subscription", row.name)
 	return None
 
 
@@ -1424,7 +1424,7 @@ def expire_commerce_orders():
 				continue
 			order.db_set("status", transition_order("Active", "Expired"))
 			continue
-		subscription = frappe.get_doc("Subscription", order.subscription) if order.subscription else None
+		subscription = frappe.get_doc("Press Subscription", order.subscription) if order.subscription else None
 		if subscription and subscription.plan == order.plan:
 			target_field = "docker_site" if order.docker_site else "site"
 			future_orders = frappe.get_all(
@@ -1575,7 +1575,7 @@ def record_refund(order: str, refund_reference: str, refund_note: str = "") -> d
 	if doc.order_type == "Hosting" and doc.status in {"Active", "Provisioning Failed"}:
 		_restore_hosting_site_after_term(doc, frappe.utils.now_datetime())
 	elif doc.status == "Active" and doc.subscription:
-		subscription = frappe.get_doc("Subscription", doc.subscription, for_update=True)
+		subscription = frappe.get_doc("Press Subscription", doc.subscription, for_update=True)
 		if subscription.plan == doc.plan:
 			target_field = "docker_site" if doc.docker_site else "site"
 			other_active_orders = frappe.get_all(
@@ -1696,7 +1696,7 @@ def save_marketplace_plan_prices(
 	_require_commerce_admin()
 	doc = frappe.get_doc("Marketplace App Plan", plan, for_update=True)
 	active_subscriptions = frappe.db.count(
-		"Subscription",
+		"Press Subscription",
 		{"document_type": "Marketplace App", "plan_type": "Marketplace App Plan", "plan": plan, "enabled": 1},
 	)
 	pending_orders = frappe.db.count(
@@ -1908,7 +1908,7 @@ def save_site_plan_prices(
 	):
 		if value is not None:
 			payload[field] = value
-	active_subscriptions = frappe.db.count("Subscription", {"document_type": "Site", "plan": plan, "enabled": 1})
+	active_subscriptions = frappe.db.count("Press Subscription", {"document_type": "Site", "plan": plan, "enabled": 1})
 	pending_orders = frappe.db.count(
 		"Commerce Order",
 		{

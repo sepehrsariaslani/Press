@@ -104,7 +104,7 @@ class SitePlan(Plan):
 	def validate_active_subscriptions(self):
 		old_doc = self.get_doc_before_save()
 		if old_doc and old_doc.enabled and not self.enabled and not self.legacy_plan:
-			active_sub_count = frappe.db.count("Subscription", {"enabled": 1, "plan": self.name})
+			active_sub_count = frappe.db.count("Press Subscription", {"enabled": 1, "plan": self.name})
 			if active_sub_count > 0:
 				frappe.throw(
 					f"Cannot disable this plan. This plan is used in {active_sub_count} active subscription(s)."

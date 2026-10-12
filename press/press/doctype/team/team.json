@@ -729,7 +729,7 @@
   },
   {
    "group": "Billing",
-   "link_doctype": "Subscription",
+   "link_doctype": "Press Subscription",
    "link_fieldname": "team"
   },
   {

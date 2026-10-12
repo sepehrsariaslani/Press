@@ -8,7 +8,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from press.press.doctype.site.test_site import create_test_site
-from press.press.doctype.subscription.subscription import sites_with_free_hosting
+from press.press.doctype.press_subscription.press_subscription import sites_with_free_hosting
 from press.press.doctype.team.test_team import create_test_team
 
 
@@ -21,7 +21,7 @@ def create_test_subscription(
 ):
 	subscription = frappe.get_doc(
 		{
-			"doctype": "Subscription",
+			"doctype": "Press Subscription",
 			"document_type": document_type,
 			"document_name": document_name,
 			"team": team,
@@ -51,7 +51,7 @@ class TestSubscription(FrappeTestCase):
 	def test_directly_paid_marketplace_plan_is_not_billed_again_as_usage(self):
 		subscription = frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"name": "commerce-test-subscription",
 				"document_type": "Marketplace App",
 				"document_name": "test-app",
@@ -73,7 +73,7 @@ class TestSubscription(FrappeTestCase):
 	def test_marketplace_subscription_without_commerce_doctype_follows_legacy_billing(self):
 		subscription = frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"name": "legacy-test-subscription",
 				"document_type": "Marketplace App",
 				"document_name": "test-app",
@@ -90,7 +90,7 @@ class TestSubscription(FrappeTestCase):
 	def test_paid_hosting_order_is_not_billed_again_as_site_plan_usage(self):
 		subscription = frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"name": "commerce-hosting-test-subscription",
 				"document_type": "Site",
 				"document_name": "hosting-test.asumi.ir",
@@ -117,7 +117,7 @@ class TestSubscription(FrappeTestCase):
 	def test_active_hosting_order_covers_site_plan_only_until_its_term_ends(self):
 		subscription = frappe.get_doc(
 			{
-				"doctype": "Subscription",
+				"doctype": "Press Subscription",
 				"name": "commerce-hosting-active-test-subscription",
 				"document_type": "Site",
 				"document_name": "active-hosting-test.asumi.ir",
@@ -146,7 +146,7 @@ class TestSubscription(FrappeTestCase):
 		).insert()
 
 		subscription = frappe.get_doc(
-			doctype="Subscription",
+			doctype="Press Subscription",
 			team=self.team.name,
 			document_type="ToDo",
 			document_name=todo.name,
@@ -192,7 +192,7 @@ class TestSubscription(FrappeTestCase):
 		).insert()
 
 		subscription = frappe.get_doc(
-			doctype="Subscription",
+			doctype="Press Subscription",
 			team=self.team.name,
 			document_type="ToDo",
 			document_name=todo.name,
@@ -230,7 +230,7 @@ class TestSubscription(FrappeTestCase):
 		).insert()
 
 		subscription = frappe.get_doc(
-			doctype="Subscription",
+			doctype="Press Subscription",
 			team=self.team.name,
 			document_type="Site",
 			document_name=site.name,

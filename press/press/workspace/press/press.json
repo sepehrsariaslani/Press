@@ -2627,9 +2627,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Subscription",
+   "label": "Press Subscription",
    "link_count": 0,
-   "link_to": "Subscription",
+   "link_to": "Press Subscription",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -3546,8 +3546,8 @@
   {
    "color": "Green",
    "doc_view": "List",
-   "label": "Subscription",
-   "link_to": "Subscription",
+   "label": "Press Subscription",
+   "link_to": "Press Subscription",
    "stats_filter": "[]",
    "type": "DocType"
   },

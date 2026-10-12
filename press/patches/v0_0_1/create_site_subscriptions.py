@@ -22,14 +22,14 @@ def execute():
 
 		# skip if already exists
 		if frappe.db.exists(
-			"Subscription",
+			"Press Subscription",
 			{"team": site.team, "document_type": "Site", "document_name": site.name},
 		):
 			continue
 
 		try:
 			frappe.get_doc(
-				doctype="Subscription",
+				doctype="Press Subscription",
 				enabled=1,
 				team=site.team,
 				document_type="Site",

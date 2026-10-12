@@ -110,7 +110,7 @@ def get_data():
 		{
 			"label": _("Billing & Payments"),
 			"items": [
-				_dt("Subscription"),
+				_dt("Press Subscription"),
 				_dt("Usage Record"),
 				_dt("Invoice"),
 				_dt("Invoice Item"),
