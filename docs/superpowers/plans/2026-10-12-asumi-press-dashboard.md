@@ -6,7 +6,7 @@
 
 **Architecture:** Add a scoped dashboard token and compatibility layer after the existing Frappe UI stylesheet. Apply it at the Vue application root so all routed pages inherit the same surfaces, typography, controls, and responsive behavior. Refine the shared navigation and reusable components where CSS alone cannot provide the intended hierarchy; leave page business logic and routing unchanged.
 
-**Tech Stack:** Vue 3, Vite, Tailwind CSS 3, Frappe UI, CSS custom properties, local Vazirmatn and Manrope variable fonts, existing Peyda fallback fonts.
+**Tech Stack:** Vue 3, Vite, Tailwind CSS 3, Frappe UI, CSS custom properties, local Vazirmatn and Manrope variable fonts, existing Peyda fallback fonts, the published Asumi mark.
 
 ## Global Constraints
 
@@ -40,7 +40,8 @@
 - Produces: `.asumi-dashboard` root class and the `--asumi-*` color, spacing, focus, and surface tokens used by all dashboard routes.
 - Consumes: local Asumi variable fonts, existing Peyda fallback declarations, Tailwind utility classes, and Frappe UI variables imported by `style.css`.
 
-- [x] Define dark dashboard tokens for page background `#080808`, raised surface `#171414`, hover surface `#211c1c`, text `#ede9e4`, muted text `#a9a3a0`, and Asumi reds `#c63140` / `#ff6670`.
+- [x] Define the dashboard dark tokens from the published home design system: page background `#080808`, surface `#141212`, red `#c63140`, accent `#ff6670`, text `#ede9e4`, muted text `#a9a3a0`, and fine border `#ffffff21`.
+- [x] Match home-page action, geometry, and motion tokens while retaining dense dashboard behavior: primary action `#aa2330` with `#c32c3a` hover, 3px standard corners, and the Asumi easing curve.
 - [x] Copy Vazirmatn Arabic/Latin and Manrope Latin variable font files plus their OFL licenses from the existing `dashboard/asumi/node_modules/@fontsource-variable/` packages into `dashboard/public/fonts/asumi/`.
 - [x] Declare local `@font-face` ranges in `asumi-dashboard.css`; use Vazirmatn for Persian, Manrope for Latin and identifiers, and Peyda as fallback.
 - [x] Override Frappe UI surface, ink, outline, and primary variables beneath `.asumi-dashboard` so built-in components inherit the same palette.
@@ -66,7 +67,7 @@
 - Produces: shared dark sidebar, mobile navigation, page header, active route, hover, team switcher, and notification surfaces.
 
 - [x] Style the authenticated sidebar with a charcoal surface, quiet border, readable labels, and a red active-route marker without changing its navigation data or team permissions.
-- [x] Use an Asumi wordmark treatment in the shared desktop and mobile shell while retaining the existing team switcher, help, notification, search, and logout controls.
+- [x] Use the published Asumi SVG mark and wordmark in the shared desktop, mobile, and standalone auth shell while retaining the existing team switcher, help, notification, search, and logout controls.
 - [x] Style page headers and mobile navigation as matching dark surfaces with visible dividers and focus states.
 - [x] Preserve standalone login, onboarding, and site-login layouts when `App.vue` hides the sidebar.
 

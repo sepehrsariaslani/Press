@@ -6,7 +6,9 @@ Apply Asumi's red-and-black visual identity consistently across the Press dashbo
 
 ## Design Direction
 
-- Use the live Asumi identity: near-black `#080808`, charcoal `#171414`, Asumi red `#c63140`, bright red `#ff6670`, warm light text `#ede9e4`, and muted text `#a9a3a0`.
+- Use the currently published Asumi homepage tokens: near-black `#080808`, surface `#141212`, Asumi red `#c63140`, bright red `#ff6670`, warm light text `#ede9e4`, muted text `#a9a3a0`, and the fine white line `#ffffff21`.
+- Match the homepage's compact geometry and motion: 3px corner radius, a restrained red primary action (`#aa2330`, hover `#c32c3a`), and its `cubic-bezier(0.22, 1, 0.36, 1)` easing. Keep operational content surfaces dark; do not copy the marketing page's light story sections into Press.
+- Use the published Asumi mark at `/assets/press/asumi_site/asumi-mark.svg` alongside the wordmark.
 - Do not use gold, gold gradients, or gold status accents.
 - Use black and charcoal for the dashboard frame and surfaces. Reserve red for primary actions, selected navigation, links, and high-priority emphasis; do not make every panel or control red.
 - Keep the visual language operational and calm. Use clear typography, deliberate spacing, subtle borders, and restrained elevation rather than cinematic effects or decorative glow.
