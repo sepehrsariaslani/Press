@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 VALID_BILLING_INTERVALS = {"Daily", "Monthly", "Yearly"}
+ZARINPAL_MINIMUM_AMOUNT_IRR = 10_000
 
 
 def normalize_interval(value, default: str = "Daily") -> str:
@@ -24,6 +25,14 @@ def normalize_price(value, currency: str) -> int | float:
 			raise ValueError("قیمت ریالی باید عدد صحیح باشد")
 		return int(amount)
 	return float(amount)
+
+
+def normalize_zarinpal_price(value) -> int:
+	"""Allow free catalog entries, but reject paid amounts below ZarinPal's minimum."""
+	amount = normalize_price(value, "IRR")
+	if amount and amount < ZARINPAL_MINIMUM_AMOUNT_IRR:
+		raise ValueError("حداقل مبلغ پرداخت زرین‌پال ۱۰٬۰۰۰ ریال است")
+	return amount
 
 
 def normalize_marketplace_app_plan_prices(prices: dict) -> dict[str, int | float]:

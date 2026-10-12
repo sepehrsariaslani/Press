@@ -7,6 +7,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from press.saas.commerce.pricing import ZARINPAL_MINIMUM_AMOUNT_IRR
+
 PRODUCTION_API = "https://api.zarinpal.com/pg/v4/payment"
 SANDBOX_API = "https://sandbox.zarinpal.com/pg/v4/payment"
 PRODUCTION_CHECKOUT = "https://www.zarinpal.com/pg/StartPay"
@@ -24,8 +26,8 @@ def build_payment_request(
 	"""Build a ZarinPal request using integer Rials and an HTTPS callback."""
 	if not merchant_id or not isinstance(merchant_id, str):
 		raise ValueError("A merchant ID is required")
-	if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
-		raise ValueError("The amount must be a positive integer in Rials")
+	if isinstance(amount, bool) or not isinstance(amount, int) or amount < ZARINPAL_MINIMUM_AMOUNT_IRR:
+		raise ValueError("The amount must be at least 10,000 integer Rials")
 	parsed_callback = urlparse(callback_url)
 	if parsed_callback.scheme != "https" or not parsed_callback.netloc:
 		raise ValueError("The payment callback must use HTTPS")
@@ -41,6 +43,7 @@ def build_payment_request(
 	return {
 		"merchant_id": merchant_id.strip(),
 		"amount": amount,
+		"currency": "IRR",
 		"callback_url": callback_url,
 		"description": description[:255],
 		"metadata": metadata,

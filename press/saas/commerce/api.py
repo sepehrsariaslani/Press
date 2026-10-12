@@ -12,7 +12,8 @@ from press.saas.commerce.order_lifecycle import (
 )
 from press.saas.commerce.order_snapshot import marketplace_app_order_snapshot
 from press.saas.commerce.periods import period_end
-from press.saas.commerce.pricing import normalize_interval, normalize_price
+from press.saas.commerce.pricing import normalize_interval, normalize_price, normalize_zarinpal_price
+from press.saas.commerce.service_delivery import normalize_site_plan_delivery_mode
 from press.saas.commerce.zarinpal import (
 	build_payment_request,
 	checkout_url,
@@ -558,7 +559,7 @@ def save_marketplace_plan_prices(
 	prices = {
 		"price_inr": normalize_price(price_inr, "INR"),
 		"price_usd": normalize_price(price_usd, "USD"),
-		"price_irr": normalize_price(price_irr, "IRR"),
+		"price_irr": normalize_zarinpal_price(price_irr),
 	}
 	updated_interval = normalize_interval(interval, doc.interval)
 	if (
@@ -585,18 +586,37 @@ def save_marketplace_plan_prices(
 @frappe.whitelist()
 def admin_site_plans() -> list[dict]:
 	_require_commerce_admin()
-	return frappe.get_all(
+	plans = frappe.get_all(
 		"Site Plan",
 		filters={"document_type": "Site"},
-		fields=["name", "plan_title", "plan_description", "enabled", "interval", "price_inr", "price_usd", "price_irr"],
+		fields=[
+			"name",
+			"plan_title",
+			"plan_description",
+			"enabled",
+			"interval",
+			"price_inr",
+			"price_usd",
+			"price_irr",
+			"commerce_delivery_mode",
+		],
 		order_by="plan_title asc",
 		limit_page_length=500,
 		ignore_permissions=True,
 	)
+	for plan in plans:
+		plan.commerce_delivery_mode = normalize_site_plan_delivery_mode(plan.commerce_delivery_mode)
+	return plans
 
 
 @frappe.whitelist()
-def save_site_plan_prices(plan: str, price_inr, price_usd, price_irr) -> dict:
+def save_site_plan_prices(
+	plan: str,
+	price_inr,
+	price_usd,
+	price_irr,
+	delivery_mode: str | None = None,
+) -> dict:
 	_require_commerce_admin()
 	doc = frappe.get_doc("Site Plan", plan, for_update=True)
 	if doc.document_type != "Site":
@@ -604,7 +624,7 @@ def save_site_plan_prices(plan: str, price_inr, price_usd, price_irr) -> dict:
 	prices = {
 		"price_inr": normalize_price(price_inr, "INR"),
 		"price_usd": normalize_price(price_usd, "USD"),
-		"price_irr": normalize_price(price_irr, "IRR"),
+		"price_irr": normalize_zarinpal_price(price_irr),
 	}
 	active_subscriptions = frappe.db.count("Subscription", {"document_type": "Site", "plan": plan, "enabled": 1})
 	pending_orders = frappe.db.count(
@@ -614,8 +634,17 @@ def save_site_plan_prices(plan: str, price_inr, price_usd, price_irr) -> dict:
 	if any(prices[field] != float(getattr(doc, field) or 0) for field in prices) and (active_subscriptions or pending_orders):
 		frappe.throw(_("این تعرفه مشترک فعال دارد؛ برای تغییر قیمت، تعرفهٔ جدید بسازید."))
 	doc.update(prices)
+	if delivery_mode is not None:
+		try:
+			doc.commerce_delivery_mode = normalize_site_plan_delivery_mode(delivery_mode)
+		except ValueError as error:
+			frappe.throw(str(error))
 	doc.save(ignore_permissions=True)
-	return {"name": doc.name, **prices}
+	return {
+		"name": doc.name,
+		**prices,
+		"commerce_delivery_mode": normalize_site_plan_delivery_mode(doc.commerce_delivery_mode),
+	}
 
 
 @frappe.whitelist()

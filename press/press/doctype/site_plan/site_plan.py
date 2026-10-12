@@ -27,6 +27,7 @@ class SitePlan(Plan):
 		allowed_apps: DF.Table[SitePlanAllowedApp]
 		cloud_providers: DF.Table[CloudProviders]
 		cluster: DF.Link | None
+		commerce_delivery_mode: DF.Literal["Upgrade Existing Site", "Create New Site"]
 		cpu_time_per_day: DF.Float
 		database_access: DF.Check
 		dedicated_server_plan: DF.Check

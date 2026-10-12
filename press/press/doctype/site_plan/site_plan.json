@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "enabled",
+  "commerce_delivery_mode",
   "section_break_2",
   "document_type",
   "plan_title",
@@ -57,6 +58,15 @@
    "fieldname": "enabled",
    "fieldtype": "Check",
    "label": "Enabled"
+  },
+  {
+   "default": "Upgrade Existing Site",
+   "depends_on": "eval:doc.document_type == 'Site'",
+   "description": "Used by Asumi paid hosting checkout to decide how this service is delivered.",
+   "fieldname": "commerce_delivery_mode",
+   "fieldtype": "Select",
+   "label": "Asumi Service Delivery",
+   "options": "Upgrade Existing Site\nCreate New Site"
   },
   {
    "fieldname": "section_break_2",

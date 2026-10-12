@@ -45,6 +45,18 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 		snapshot = marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
 		self.assertEqual(snapshot["amount"], 125000)
 
+	def test_accepts_zarinpal_minimum_and_rejects_lower_positive_prices(self):
+		self.plan["price_irr"] = 10000
+		self.assertEqual(
+			marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")["amount"],
+			10000,
+		)
+		for amount in (1, 9999):
+			with self.subTest(amount=amount):
+				self.plan["price_irr"] = amount
+				with self.assertRaises(ValueError):
+					marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
+
 	def test_rejects_missing_billing_interval(self):
 		self.plan["interval"] = None
 		with self.assertRaises(ValueError):

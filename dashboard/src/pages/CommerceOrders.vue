@@ -103,7 +103,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">تعرفهٔ برنامه‌های Marketplace</h2>
-					<p class="mt-1 text-sm text-gray-600">برای رایگان‌ماندن، مبلغ هر ارز را صفر نگه دارید. تغییر قیمت تعرفه‌ای با مشترک فعال رد می‌شود؛ تعرفهٔ تازه بسازید.</p>
+					<p class="mt-1 text-sm text-gray-600">برای رایگان‌ماندن، مبلغ هر ارز را صفر نگه دارید. پرداخت ریالی زرین‌پال برای مبلغ‌های پولی از ۱۰٬۰۰۰ ریال شروع می‌شود. تغییر قیمت تعرفه‌ای با مشترک فعال رد می‌شود؛ تعرفهٔ تازه بسازید.</p>
 				</div>
 				<Button label="دریافت فهرست" :loading="appPlans.loading" @click="appPlans.fetch()" />
 			</div>
@@ -129,14 +129,15 @@
 		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 			<div>
 				<h2 class="text-lg font-semibold text-gray-950">تعرفه‌های میزبانی</h2>
-				<p class="mt-1 text-sm leading-6 text-gray-600">محل قیمت‌گذاری اینجاست. تا زمان آماده‌شدن ظرفیت و provisioning خودکار، هیچ دکمهٔ خرید میزبانی نمایش داده نمی‌شود.</p>
+				<p class="mt-1 text-sm leading-6 text-gray-600">روش تحویل هر پلن را انتخاب کن. مبلغ صفر یعنی رایگان؛ پرداخت ریالی پولی باید حداقل ۱۰٬۰۰۰ ریال باشد. خرید میزبانی تا آماده‌شدن ظرفیت و مسیر تحویل خودکار غیرفعال است.</p>
 			</div>
 			<div v-if="sitePlans.data?.length" class="mt-4 overflow-x-auto">
-				<table class="w-full min-w-[760px] text-sm">
-					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">تعرفه</th><th>INR</th><th>USD</th><th>IRR</th><th>دوره</th><th></th></tr></thead>
+				<table class="w-full min-w-[1000px] text-sm">
+					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">تعرفه</th><th>روش تحویل</th><th>INR</th><th>USD</th><th>IRR</th><th>دوره</th><th></th></tr></thead>
 					<tbody class="divide-y divide-gray-100">
 						<tr v-for="row in sitePlans.data" :key="row.name">
 							<td class="py-3 pr-2"><strong>{{ row.plan_title || row.name }}</strong><span class="block text-xs text-gray-500">{{ row.enabled ? 'فعال' : 'غیرفعال' }}</span></td>
+							<td><select v-model="row.commerce_delivery_mode" class="min-w-44 rounded-md border border-gray-300 px-2 py-1" :aria-label="`روش تحویل ${row.plan_title || row.name}`"><option value="Upgrade Existing Site">ارتقای سایت موجود</option><option value="Create New Site">ساخت سایت جدید</option></select></td>
 							<td><input v-model="row.price_inr" type="number" min="0" step="0.01" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
 							<td><input v-model="row.price_usd" type="number" min="0" step="0.01" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
 							<td><input v-model="row.price_irr" type="number" min="0" step="1" class="w-32 rounded-md border border-gray-300 px-2 py-1" /></td>
@@ -264,7 +265,7 @@ async function saveAppPrices(row) {
 async function saveSitePrices(row) {
 	error.value = '';
 	try {
-		await saveSitePriceResource.submit({ plan: row.name, price_inr: row.price_inr, price_usd: row.price_usd, price_irr: row.price_irr });
+		await saveSitePriceResource.submit({ plan: row.name, price_inr: row.price_inr, price_usd: row.price_usd, price_irr: row.price_irr, delivery_mode: row.commerce_delivery_mode });
 		await sitePlans.fetch();
 		notice.value = 'قیمت تعرفهٔ میزبانی ذخیره شد.';
 	} catch (failure) { showError(failure); }

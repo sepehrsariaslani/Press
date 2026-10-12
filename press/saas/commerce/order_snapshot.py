@@ -2,6 +2,8 @@
 
 from decimal import Decimal, InvalidOperation
 
+from press.saas.commerce.pricing import ZARINPAL_MINIMUM_AMOUNT_IRR
+
 
 def marketplace_app_order_snapshot(plan, app, site, team, customer):
 	if not plan or not app or not site or not team or not customer:
@@ -22,6 +24,8 @@ def marketplace_app_order_snapshot(plan, app, site, team, customer):
 	if isinstance(plan.get("price_irr"), bool) or decimal_amount <= 0 or decimal_amount != decimal_amount.to_integral_value():
 		raise ValueError("مبلغ تعرفه معتبر نیست")
 	amount = int(decimal_amount)
+	if amount < ZARINPAL_MINIMUM_AMOUNT_IRR:
+		raise ValueError("حداقل مبلغ پرداخت زرین‌پال ۱۰٬۰۰۰ ریال است")
 	if plan.get("app") != app.get("name"):
 		raise ValueError("این تعرفه به برنامهٔ انتخاب‌شده تعلق ندارد")
 	if plan.get("interval") not in {"Daily", "Monthly", "Yearly"}:
