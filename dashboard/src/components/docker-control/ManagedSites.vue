@@ -24,7 +24,7 @@
 					<p class="mt-1 text-xs font-normal text-gray-500">مالک یا مدیر این تیم در آسومی می‌تواند عملیات همین سایت را اجرا کند.</p>
 					<Button class="mt-2" size="sm" :disabled="locked || selectedTeams[site.domain] === (site.team || '')" label="ذخیرهٔ دسترسی تیم" @click="saveTeam(site)" />
 				</div>
-				<p v-else class="mt-2 text-xs text-gray-500">تیم دسترسی: {{ site.team || 'تیمی به این سایت متصل نشده' }}</p>
+				<p v-else class="mt-2 text-xs text-gray-500">تیم دسترسی: {{ site.team_title || site.team || 'تیمی به این سایت متصل نشده' }}</p>
 				<div class="mt-4 flex flex-wrap gap-2">
 					<span v-for="app in site.apps" :key="app.app" class="rounded-md bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
 						{{ app.app }} <span class="text-gray-400">{{ app.version }}</span>

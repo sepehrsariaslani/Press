@@ -118,11 +118,13 @@ def _dashboard_payload(
 	for domain in allowed_domains:
 		if frappe.db.exists("Docker Control Site", domain):
 			doc = frappe.get_doc("Docker Control Site", domain)
+			team_title = frappe.db.get_value("Team", doc.team, "team_title") if doc.team else None
 			sites.append(
 				{
 					"domain": doc.domain,
 					"enabled": bool(doc.enabled),
 					"team": doc.team or None,
+					"team_title": team_title or (domain.split(".", 1)[0].capitalize() if doc.team else None),
 					"last_inventory_at": str(doc.last_inventory_at or ""),
 					"apps": [
 						{"app": row.app, "version": row.version, "branch": row.branch} for row in doc.apps
@@ -162,16 +164,18 @@ def _dashboard_payload(
 			operation[field] = (
 				json.loads(operation[field]) if operation[field] else ([] if field.endswith("sites") else {})
 			)
+	teams = []
+	if can_manage_host:
+		teams = frappe.get_all(
+			"Team", filters={"enabled": 1}, fields=["name", "team_title"], order_by="team_title asc, name asc"
+		)
+		assigned_team_titles = {site["team"]: site["team_title"] for site in sites if site["team"]}
+		for team in teams:
+			team["team_title"] = team.team_title or assigned_team_titles.get(team.name)
 	return {
 		"can_manage_host": can_manage_host,
 		"can_manage_site_teams": can_manage_host,
-	"teams": (
-			frappe.get_all(
-				"Team", filters={"enabled": 1}, fields=["name", "team_title"], order_by="team_title asc, name asc"
-			)
-			if can_manage_host
-			else []
-		),
+		"teams": teams,
 		"host": {
 			"name": host.host_name,
 			"status": host.connection_status,
