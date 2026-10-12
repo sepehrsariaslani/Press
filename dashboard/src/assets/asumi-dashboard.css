@@ -215,12 +215,38 @@ html[data-theme='dark'] #app {
 		[class~='rounded-2xl'],
 		[class~='rounded-[7px]'],
 		[class~='rounded-[10px]']
-	):not([class~='rounded-t-none']):not([class~='rounded-b-none']):not(
-		[class~='rounded-l-none']
-	):not([class~='rounded-r-none']):not([class~='rounded-tl-none']):not(
-		[class~='rounded-tr-none']
-	):not([class~='rounded-bl-none']):not([class~='rounded-br-none']) {
+	) {
 	border-radius: var(--case-radius) !important;
+}
+
+/* Keep directional corners crisp too, including embedded editors and cards. */
+.asumi-dashboard :is(
+		[class~='rounded-t'],
+		[class~='rounded-t-sm'],
+		[class~='rounded-t-md']
+	) {
+	border-top-left-radius: var(--case-radius) !important;
+	border-top-right-radius: var(--case-radius) !important;
+}
+
+.asumi-dashboard :is(
+		[class~='rounded-b'],
+		[class~='rounded-b-sm'],
+		[class~='rounded-b-md'],
+		[class~='rounded-b-lg']
+	) {
+	border-bottom-left-radius: var(--case-radius) !important;
+	border-bottom-right-radius: var(--case-radius) !important;
+}
+
+.asumi-dashboard :is([class~='rounded-l'], [class~='rounded-l-md']) {
+	border-top-left-radius: var(--case-radius) !important;
+	border-bottom-left-radius: var(--case-radius) !important;
+}
+
+.asumi-dashboard :is([class~='rounded-r'], [class~='rounded-r-md']) {
+	border-top-right-radius: var(--case-radius) !important;
+	border-bottom-right-radius: var(--case-radius) !important;
 }
 
 .asumi-dashboard [class~='rounded-t-none'] {
@@ -257,6 +283,31 @@ html[data-theme='dark'] #app {
 
 .asumi-dashboard [class~='rounded-br-none'] {
 	border-bottom-right-radius: 0 !important;
+}
+
+/* Tailwind's sm variants only affect the layout from its 640px breakpoint. */
+@media (min-width: 640px) {
+	.asumi-dashboard :is([class~='sm:rounded-lg'], [class~='sm:rounded-2xl']) {
+		border-radius: var(--case-radius) !important;
+	}
+
+	.asumi-dashboard [class~='sm:rounded-l-md'] {
+		border-top-left-radius: var(--case-radius) !important;
+		border-bottom-left-radius: var(--case-radius) !important;
+	}
+
+	.asumi-dashboard [class~='sm:rounded-r-md'] {
+		border-top-right-radius: var(--case-radius) !important;
+		border-bottom-right-radius: var(--case-radius) !important;
+	}
+
+	.asumi-dashboard [class~='sm:rounded-tr-none'] {
+		border-top-right-radius: 0 !important;
+	}
+
+	.asumi-dashboard [class~='sm:rounded-bl-none'] {
+		border-bottom-left-radius: 0 !important;
+	}
 }
 
 .asumi-dashboard #scrollContainer {
