@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { AsumiApp } from '../../App';
 import { WebsiteDesignPricingPage } from './WebsiteDesignPricingPage';
 
@@ -32,6 +32,18 @@ test('shows package-specific scope and calculates the selected package with its 
 	expect(container.querySelector('.web-design-estimate')).toHaveTextContent('۳۴٬۰۰۰٬۰۰۰ تومان');
 	expect(container.querySelector('.web-design-selected-list')).toHaveTextContent('فروشگاه پایه و صفحات محصول');
 	expect(container.querySelector('.web-design-selected-list')).toHaveTextContent('علاقه‌مندی، مقایسه و نظر');
+});
+
+test('sends the selected website estimate to the service inquiry flow', () => {
+	window.history.replaceState(null, '', '#website-design');
+	const onRequestQuote = vi.fn();
+	render(<WebsiteDesignPricingPage onReturnToModules={() => undefined} onRequestQuote={onRequestQuote} />);
+
+	fireEvent.click(screen.getByRole('button', { name: 'درخواست بررسی این برآورد' }));
+
+	expect(onRequestQuote).toHaveBeenCalledWith(expect.stringContaining('برآورد خدمات طراحی سایت'));
+	expect(onRequestQuote.mock.calls[0][0]).toContain('بسته: ساده');
+	expect(onRequestQuote.mock.calls[0][0]).toContain('راه‌اندازی');
 });
 
 test('requires the advanced website package for ERP integration and separates monthly service costs', () => {

@@ -17,7 +17,7 @@ type AsumiAppProps = {
 export function AsumiApp({ marketplaceApps = [], canManageMarketplacePrices = false }: AsumiAppProps = {}) {
 	const { activeModuleId, openModule, openPricing, openOrderCenter, returnToModules, showPricing, showWebsiteDesign } = useModuleNavigation();
 	if (showWebsiteDesign) {
-		return <WebsiteDesignPricingPage onReturnToModules={returnToModules} />;
+		return <WebsiteDesignPricingPage onReturnToModules={returnToModules} onRequestQuote={context => openOrderCenter([], context, 'website_design')} />;
 	}
 	if (showPricing) {
 		return <ModulePricingPage onOpenModule={openModule} onReturnToModules={returnToModules} onRequestPurchase={openOrderCenter} />;

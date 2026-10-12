@@ -45,6 +45,10 @@ from press.saas.commerce.site_plan_admin import (
 	build_site_plan_draft,
 	normalize_site_plan_admin_update,
 )
+from press.saas.commerce.service_requests import (
+	build_service_request_lead,
+	normalize_service_request_status,
+)
 from press.saas.commerce.zarinpal import (
 	build_payment_request,
 	checkout_url,
@@ -1717,6 +1721,75 @@ def admin_orders(limit: int = 100) -> list[dict]:
 		limit_page_length=min(max(int(limit or 100), 1), 200),
 		ignore_permissions=True,
 	)
+
+
+@frappe.whitelist(methods=["POST"])
+def submit_service_request(
+	service: str,
+	full_name: str,
+	phone: str,
+	company: str = "",
+	context: str = "",
+) -> dict:
+	"""Save an authenticated service inquiry; this never creates a commerce order."""
+	if frappe.session.user == "Guest":
+		frappe.throw(_("برای ثبت درخواست بررسی، ابتدا وارد حساب آسومی شوید."), frappe.AuthenticationError)
+	if not frappe.db.exists("DocType", "Erpyar Lead"):
+		frappe.throw(_("ساختار ثبت درخواست در حال حاضر آماده نیست."))
+	try:
+		lead_values = build_service_request_lead(
+			service=service,
+			full_name=full_name,
+			phone=phone,
+			company=company,
+			context=context,
+			source_path="/#website-design" if service == "website_design" else "/#pricing",
+			source_host=frappe.local.request.host if getattr(frappe.local, "request", None) else "",
+		)
+	except ValueError as error:
+		frappe.throw(_(str(error)))
+
+	lead = frappe.get_doc({"doctype": "Erpyar Lead", **lead_values}).insert(ignore_permissions=True)
+	return {"name": lead.name, "status": lead.status}
+
+
+@frappe.whitelist()
+def admin_service_requests(limit: int = 100) -> list[dict]:
+	_require_commerce_admin()
+	return frappe.get_all(
+		"Erpyar Lead",
+		filters=[["product_interest", "like", "asumi_service_request:%"]],
+		fields=[
+			"name",
+			"full_name",
+			"phone",
+			"email",
+			"company",
+			"product_interest",
+			"message",
+			"status",
+			"creation",
+		],
+		order_by="creation desc",
+		limit_page_length=min(max(int(limit or 100), 1), 200),
+		ignore_permissions=True,
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def update_service_request_status(name: str, status: str) -> dict:
+	_require_commerce_admin()
+	try:
+		status = normalize_service_request_status(status)
+	except ValueError as error:
+		frappe.throw(_(str(error)))
+
+	lead = frappe.get_doc("Erpyar Lead", name, for_update=True)
+	if not (lead.product_interest or "").startswith("asumi_service_request:"):
+		frappe.throw(_("این سرنخ مربوط به درخواست خدمات آسومی نیست."), frappe.PermissionError)
+	lead.status = status
+	lead.save(ignore_permissions=True)
+	return {"name": lead.name, "status": lead.status}
 
 
 @frappe.whitelist()

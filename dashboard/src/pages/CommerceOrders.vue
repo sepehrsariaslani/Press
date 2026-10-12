@@ -14,6 +14,31 @@
 		<div v-if="notice" class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950" role="status">{{ notice }}</div>
 		<div v-if="error" class="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-950" role="alert">{{ error }}</div>
 
+		<section v-if="serviceRequest" class="rounded-2xl border border-rose-200 bg-rose-50/60 p-5 shadow-sm" aria-labelledby="asumi-service-request-title">
+			<div>
+				<p class="text-sm font-medium text-rose-700">درخواست خدمات آسومی</p>
+				<h2 id="asumi-service-request-title" class="mt-1 text-lg font-semibold text-gray-950">بررسی {{ serviceRequest.service === 'website_design' ? 'برآورد طراحی سایت' : 'ترکیب ماژول‌های انتخابی' }}</h2>
+				<p class="mt-2 text-sm leading-6 text-gray-700">این فرم فقط درخواست تماس و بررسی است؛ فاکتور، سفارش مالی یا پرداختی ایجاد نمی‌کند.</p>
+			</div>
+			<div v-if="serviceRequest.context" class="mt-4 whitespace-pre-line rounded-xl border border-rose-100 bg-white px-4 py-3 text-sm leading-6 text-gray-700">{{ serviceRequest.context }}</div>
+			<div v-if="serviceRequestResult" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900" role="status">درخواستت ثبت شد. شمارهٔ پیگیری: <strong>{{ serviceRequestResult.name }}</strong> · پس از بررسی با شما تماس می‌گیریم.</div>
+			<form v-else class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="submitServiceRequest">
+				<label class="text-sm font-medium text-gray-700">نام و نام خانوادگی
+					<input v-model="serviceRequestForm.full_name" required maxlength="140" autocomplete="name" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+				</label>
+				<label class="text-sm font-medium text-gray-700">شماره تماس
+					<input v-model="serviceRequestForm.phone" required maxlength="32" inputmode="tel" autocomplete="tel" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="مثلاً ۰۹۱۲۱۲۳۴۵۶۷" />
+				</label>
+				<label class="text-sm font-medium text-gray-700 sm:col-span-2">نام کسب‌وکار (اختیاری)
+					<input v-model="serviceRequestForm.company" maxlength="140" autocomplete="organization" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+				</label>
+				<div class="flex flex-wrap items-center gap-3 sm:col-span-2">
+					<button type="submit" :disabled="submittingServiceRequest" class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:cursor-wait disabled:opacity-60">{{ submittingServiceRequest ? 'در حال ثبت…' : 'ثبت درخواست بررسی' }}</button>
+					<span class="text-xs leading-5 text-gray-600">هیچ مبلغی دریافت نمی‌شود؛ نتیجه پس از بررسی برای شما اعلام خواهد شد.</span>
+				</div>
+			</form>
+		</section>
+
 		<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 			<div class="flex flex-wrap items-end justify-between gap-4">
 				<div>
@@ -167,6 +192,31 @@
 				<p class="text-xs leading-5 text-gray-400">فروش میزبانی فقط پس از آماده‌شدن دامنه، بنچ و پلن فعال می‌شود. پرداخت هر بازه جداگانه است و خودکار تمدید نمی‌شود.</p>
 				<Button variant="solid" label="ذخیره تنظیمات پرداخت" :loading="savingSettings" @click="saveSettings" />
 			</div>
+		</section>
+
+		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h2 class="text-lg font-semibold text-gray-950">درخواست‌های بررسی خدمات</h2>
+					<p class="mt-1 text-sm leading-6 text-gray-600">برآوردهای ماژول‌ها و طراحی سایت به‌صورت سرنخ ثبت می‌شوند و هیچ‌کدام سفارش یا فاکتور نیستند.</p>
+				</div>
+				<Button label="دریافت درخواست‌ها" :loading="adminServiceRequests.loading" @click="adminServiceRequests.fetch()" />
+			</div>
+			<div v-if="adminServiceRequests.data?.length" class="mt-4 overflow-x-auto">
+				<table class="w-full min-w-[900px] text-sm">
+					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">درخواست</th><th>نام و کسب‌وکار</th><th>راه تماس</th><th>خلاصهٔ انتخاب</th><th>وضعیت</th></tr></thead>
+					<tbody class="divide-y divide-gray-100">
+						<tr v-for="lead in adminServiceRequests.data" :key="lead.name" class="align-top">
+							<td class="py-3 pr-2"><strong>{{ lead.name }}</strong><span class="block text-xs text-gray-500">{{ lead.product_interest?.endsWith('website_design') ? 'طراحی سایت' : 'ماژول‌ها' }} · {{ dateLabel(lead.creation) }}</span></td>
+							<td>{{ lead.full_name }}<span v-if="lead.company" class="block text-xs text-gray-500">{{ lead.company }}</span></td>
+							<td><a :href="`tel:${lead.phone}`" class="text-rose-700 hover:text-rose-900">{{ lead.phone }}</a><a v-if="lead.email" :href="`mailto:${lead.email}`" class="block text-xs text-gray-500">{{ lead.email }}</a></td>
+							<td class="max-w-md"><details><summary class="cursor-pointer text-rose-700">نمایش جزئیات</summary><p class="mt-2 max-h-48 overflow-auto whitespace-pre-line text-xs leading-5 text-gray-600">{{ lead.message }}</p></details></td>
+							<td><select :value="lead.status" class="rounded-md border border-gray-300 px-2 py-1" :aria-label="`وضعیت درخواست ${lead.name}`" @change="updateServiceRequestStatus(lead, $event.target.value)"><option value="New">جدید</option><option value="Contacted">تماس گرفته شد</option><option value="Qualified">پیگیری واجد شرایط</option><option value="Lost">بسته شد</option></select></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<p v-else-if="!adminServiceRequests.loading" class="mt-4 rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">هنوز درخواستی برای بررسی ثبت نشده است.</p>
 		</section>
 
 		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -387,8 +437,13 @@ import { session } from '@/data/session';
 import { canManageAsumiCommerce } from '@/utils/commerceAccess';
 import { commerceGatewayState } from '@/utils/commerceGatewayState';
 import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
+import { parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
+const serviceRequest = ref(parseAsumiServiceRequest(window.location.search));
+const serviceRequestForm = reactive({ full_name: '', phone: '', company: '' });
+const serviceRequestResult = ref(null);
+const submittingServiceRequest = ref(false);
 const selectedSite = ref('');
 const selectedSiteTarget = computed(() => resolveCommercePurchaseSite(sites.data, selectedSite.value));
 const merchantId = ref('');
@@ -437,6 +492,7 @@ const marketplacePlanOptions = createResource({ url: 'press.saas.commerce.api.ad
 const sitePlans = createResource({ url: 'press.saas.commerce.api.admin_site_plans', auto: isCommerceAdmin.value });
 const sitePlanOptions = createResource({ url: 'press.saas.commerce.api.admin_site_plan_options', auto: isCommerceAdmin.value });
 const adminOrders = createResource({ url: 'press.saas.commerce.api.admin_orders', auto: isCommerceAdmin.value });
+const adminServiceRequests = createResource({ url: 'press.saas.commerce.api.admin_service_requests', auto: isCommerceAdmin.value });
 const saveSettingsResource = createResource({ url: 'press.saas.commerce.api.save_admin_settings' });
 const saveAppPriceResource = createResource({ url: 'press.saas.commerce.api.save_marketplace_plan_prices' });
 const saveSitePriceResource = createResource({ url: 'press.saas.commerce.api.save_site_plan_prices' });
@@ -446,6 +502,8 @@ const retryResource = createResource({ url: 'press.saas.commerce.api.retry_provi
 const refundResource = createResource({ url: 'press.saas.commerce.api.record_refund' });
 const startPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_marketplace_app_purchase' });
 const startHostingPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_site_plan_purchase' });
+const submitServiceRequestResource = createResource({ url: 'press.saas.commerce.api.submit_service_request' });
+const updateServiceRequestStatusResource = createResource({ url: 'press.saas.commerce.api.update_service_request_status' });
 
 const loading = computed(() => sites.loading || orders.loading || hostingOffers.loading);
 const busy = computed(() => Boolean(busyPlan.value));
@@ -461,6 +519,33 @@ watch(selectedSite, async (site) => {
 	if (!target) return;
 	try { await plans.fetch({ site: target.name, site_type: target.site_type }); } catch (failure) { showError(failure); }
 });
+
+async function submitServiceRequest() {
+	if (!serviceRequest.value || submittingServiceRequest.value) return;
+	error.value = '';
+	submittingServiceRequest.value = true;
+	try {
+		const result = await submitServiceRequestResource.submit({
+			service: serviceRequest.value.service,
+			context: serviceRequest.value.context,
+			full_name: serviceRequestForm.full_name.trim(),
+			phone: serviceRequestForm.phone.trim(),
+			company: serviceRequestForm.company.trim(),
+		});
+		serviceRequestResult.value = result?.message || result;
+		const nextUrl = new URL(window.location.href);
+		for (const key of ['asumi_service_request', 'service', 'context', 'modules']) nextUrl.searchParams.delete(key);
+		window.history.replaceState(null, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+	} catch (failure) { showError(failure); } finally { submittingServiceRequest.value = false; }
+}
+
+async function updateServiceRequestStatus(lead, status) {
+	error.value = '';
+	try {
+		const result = await updateServiceRequestStatusResource.submit({ name: lead.name, status });
+		lead.status = result?.status || result?.message?.status || status;
+	} catch (failure) { showError(failure); await adminServiceRequests.fetch(); }
+}
 
 async function purchase(plan) {
 	const target = selectedSiteTarget.value;
@@ -653,7 +738,7 @@ async function refresh() {
 	error.value = '';
 	try {
 		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
-		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch());
+		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch(), adminServiceRequests.fetch());
 		if (selectedSiteTarget.value) calls.push(plans.fetch({ site: selectedSiteTarget.value.name, site_type: selectedSiteTarget.value.site_type }));
 		await Promise.all(calls);
 	} catch (failure) { showError(failure); }

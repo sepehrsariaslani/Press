@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { buildServiceRequestHref, type ServiceRequestKind } from './serviceRequestRoute';
 
 function resolveModuleId(moduleId: string) {
   const normalizedId = moduleId.toLowerCase();
@@ -58,8 +59,8 @@ export function useModuleNavigation() {
     document.body.scrollTop = 0;
   }
 
-  function openOrderCenter(_moduleIds: string[], _context: string) {
-    window.location.assign('/dashboard/orders');
+  function openOrderCenter(moduleIds: string[], context: string, service: ServiceRequestKind = 'module_pricing') {
+    window.location.assign(buildServiceRequestHref(service, context, moduleIds));
   }
 
   function returnToModules() {

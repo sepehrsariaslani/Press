@@ -7,9 +7,12 @@ import { AddonCard, EstimateLine, RecurringCard, TierCard } from './WebsitePrici
 import { useWebsitePricingSelection } from './useWebsitePricingSelection';
 import './web-design-pricing.css';
 
-type WebsiteDesignPricingPageProps = { onReturnToModules: () => void };
+type WebsiteDesignPricingPageProps = {
+	onReturnToModules: () => void;
+	onRequestQuote?: (context: string) => void;
+};
 
-export function WebsiteDesignPricingPage({ onReturnToModules }: WebsiteDesignPricingPageProps) {
+export function WebsiteDesignPricingPage({ onReturnToModules, onRequestQuote = () => undefined }: WebsiteDesignPricingPageProps) {
 	const titleRef = useRef<HTMLHeadingElement>(null);
 	const estimateRef = useRef<HTMLElement>(null);
 	const pricing = useWebsitePricingSelection();
@@ -30,6 +33,20 @@ export function WebsiteDesignPricingPage({ onReturnToModules }: WebsiteDesignPri
 	function chooseMonthlyPlan(code: string) {
 		const service = monthlyServices.find(item => item.code === code);
 		if (service) toggleRecurring(service);
+	}
+
+	function requestEstimateReview() {
+		onRequestQuote([
+			'برآورد خدمات طراحی سایت',
+			`بسته: ${selectedTier.name} (${selectedTier.pages})`,
+			`قیمت پایه: ${formatToman(selectedTier.price)}`,
+			`هزینه‌ی راه‌اندازی: ${quoteRange(estimate.setupMin, estimate.setupMax)}`,
+			`خدمات ماهانه: ${quoteRange(estimate.monthlyMin, estimate.monthlyMax)}`,
+			`جمع ماه اول: ${quoteRange(estimate.firstMonthMin, estimate.firstMonthMax)}`,
+			`برآورد سال اول: ${quoteRange(estimate.yearOneMin, estimate.yearOneMax)}`,
+			`قابلیت‌های انتخاب‌شده: ${selectedNames.join('، ') || 'بدون افزونه'}`,
+			'این مبلغ برآورد اولیه است؛ درخواست فاکتور یا پرداخت نیست و پس از بررسی نهایی می‌شود.',
+		].join('\n'));
 	}
 
 	return <main className="web-design-pricing-page" dir="rtl" aria-labelledby="website-pricing-title">
@@ -98,6 +115,7 @@ export function WebsiteDesignPricingPage({ onReturnToModules }: WebsiteDesignPri
 					</div>
 					{estimate.marketRateCount > 0 && <p className="web-design-market-note">هزینه‌ی VPS با نرخ روز جدا از این جمع محاسبه می‌شود.</p>}
 					<div className="web-design-estimate-actions">
+						<button type="button" className="web-design-copy-button" onClick={requestEstimateReview}>درخواست بررسی این برآورد</button>
 						<button type="button" className="web-design-copy-button" onClick={copyEstimate}>کپی خلاصه‌ی برآورد</button>
 						<button type="button" className="web-design-reset-button" onClick={clearSelection}>پاک‌کردن انتخاب‌ها</button>
 					</div>
