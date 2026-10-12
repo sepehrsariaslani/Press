@@ -224,27 +224,101 @@
 		</section>
 
 		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-			<div>
-				<h2 class="text-lg font-semibold text-gray-950">تعرفه‌های میزبانی</h2>
-				<p class="mt-1 text-sm leading-6 text-gray-600">روش تحویل هر پلن را انتخاب کن. مبلغ صفر یعنی رایگان؛ پرداخت ریالی پولی باید حداقل ۱۰٬۰۰۰ ریال باشد. خرید میزبانی تا آماده‌شدن ظرفیت و مسیر تحویل خودکار غیرفعال است.</p>
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h2 class="text-lg font-semibold text-gray-950">تعرفه‌های میزبانی</h2>
+					<p class="mt-1 text-sm leading-6 text-gray-600">پلن را بساز، روش تحویل و ظرفیتش را تنظیم کن و بعد فعالش کن. پلن تازه غیرفعال و رایگان ساخته می‌شود؛ برای پرداخت ریالی، مبلغ حداقل ۱۰٬۰۰۰ ریال لازم است.</p>
+				</div>
+				<Button label="ساخت پلن میزبانی" :disabled="!sitePlanOptions.data" @click="showCreateSitePlan = !showCreateSitePlan" />
 			</div>
+			<form v-if="showCreateSitePlan" class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4" @submit.prevent="createSitePlan">
+				<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+					<label class="text-sm font-medium text-gray-700">شناسهٔ پلن
+						<input v-model="newSitePlan.name" required pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,79}" maxlength="80" autocomplete="off" placeholder="asumi_basic" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+					</label>
+					<label class="text-sm font-medium text-gray-700">نام نمایشی
+						<input v-model="newSitePlan.title" required maxlength="140" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+					</label>
+					<label class="text-sm font-medium text-gray-700">دوره
+						<select v-model="newSitePlan.interval" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"><option value="Monthly">ماهانه</option><option value="Annually">سالانه</option><option value="Daily">روزانه</option></select>
+					</label>
+					<label class="text-sm font-medium text-gray-700">روش تحویل
+						<select v-model="newSitePlan.delivery_mode" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"><option value="Upgrade Existing Site">ارتقای سایت موجود</option><option value="Create New Site">ساخت سایت جدید</option></select>
+					</label>
+					<label class="text-sm font-medium text-gray-700 md:col-span-2 xl:col-span-4">توضیحات
+						<input v-model="newSitePlan.description" maxlength="140" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+					</label>
+				</div>
+				<div v-if="newSitePlan.delivery_mode === 'Create New Site'" class="mt-4 grid gap-4 lg:grid-cols-2">
+					<div class="rounded-lg border border-gray-200 bg-white p-3">
+						<p class="text-sm font-medium text-gray-800">گروه انتشار سایت</p>
+						<div v-if="sitePlanOptions.data?.release_groups?.length" class="mt-2 flex flex-wrap gap-2">
+							<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="newSitePlan.release_groups.includes(group.name)" @change="toggleNewPlanGroup(group.name, $event.target.checked)" />{{ group.name }}</label>
+						</div>
+						<p v-else class="mt-2 text-xs leading-5 text-amber-800">هنوز گروه انتشار عمومی با بنچ فعال ثبت نشده است؛ این پیش‌نویس تا آماده‌شدن زیرساخت قابل فروش نمی‌شود.</p>
+					</div>
+					<div class="rounded-lg border border-gray-200 bg-white p-3">
+						<p class="text-sm font-medium text-gray-800">برنامه‌های قابل نصب <span class="font-normal text-gray-500">(اختیاری)</span></p>
+						<div v-if="newPlanApps.length" class="mt-2 flex flex-wrap gap-2">
+						<label v-for="app in newPlanApps" :key="app" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="newSitePlan.allowed_apps.includes(app)" @change="toggleNewPlanApp(app, $event.target.checked)" />{{ app }}</label>
+						</div>
+						<p v-else class="mt-2 text-xs leading-5 text-gray-500">بعد از آماده‌شدن گروه‌های انتشار عمومی، برنامه‌های نصب‌شده اینجا نمایش داده می‌شوند.</p>
+					</div>
+				</div>
+				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+					<p class="text-xs leading-5 text-gray-600">اگر گروهی انتخاب نکنی، پلن روی همهٔ گروه‌های انتشار عمومی اعمال می‌شود. پلن با قیمت و سقف منابع صفر و وضعیت غیرفعال ساخته می‌شود.</p>
+					<div class="flex gap-2"><Button type="button" label="انصراف" @click="showCreateSitePlan = false" /><Button type="submit" variant="solid" :loading="creatingSitePlan" label="ساخت پیش‌نویس" /></div>
+				</div>
+			</form>
 			<div v-if="sitePlans.data?.length" class="mt-4 overflow-x-auto">
-				<table class="w-full min-w-[1000px] text-sm">
-					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">تعرفه</th><th>روش تحویل</th><th>INR</th><th>USD</th><th>IRR</th><th>دوره</th><th></th></tr></thead>
+				<table class="w-full min-w-[1500px] text-sm">
+					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">تعرفه</th><th>فعال</th><th>روش تحویل</th><th>دوره</th><th>INR</th><th>USD</th><th>IRR</th><th>پایگاه داده (MiB)</th><th>فضا (MiB)</th><th>حافظه (MiB)</th><th>پردازنده (ساعت/روز)</th><th></th></tr></thead>
 					<tbody class="divide-y divide-gray-100">
-						<tr v-for="row in sitePlans.data" :key="row.name">
-							<td class="py-3 pr-2"><strong>{{ row.plan_title || row.name }}</strong><span class="block text-xs text-gray-500">{{ row.enabled ? 'فعال' : 'غیرفعال' }}</span></td>
+						<template v-for="row in sitePlans.data" :key="row.name">
+						<tr>
+							<td class="py-3 pr-2"><input v-model="row.plan_title" maxlength="140" class="mb-1 block w-36 rounded-md border border-gray-300 px-2 py-1 font-medium" /><input v-model="row.plan_description" maxlength="140" class="mb-1 block w-36 rounded-md border border-gray-300 px-2 py-1 text-xs" placeholder="توضیحات پلن" /><span class="text-xs text-gray-500">{{ row.name }}</span></td>
+							<td><input v-model="row.enabled" type="checkbox" :aria-label="`فعال‌کردن ${row.plan_title || row.name}`" /></td>
 							<td><select v-model="row.commerce_delivery_mode" class="min-w-44 rounded-md border border-gray-300 px-2 py-1" :aria-label="`روش تحویل ${row.plan_title || row.name}`"><option value="Upgrade Existing Site">ارتقای سایت موجود</option><option value="Create New Site">ساخت سایت جدید</option></select></td>
+							<td><select v-model="row.interval" class="rounded-md border border-gray-300 px-2 py-1" :aria-label="`دورهٔ ${row.plan_title || row.name}`"><option value="Daily">روزانه</option><option value="Monthly">ماهانه</option><option value="Annually">سالانه</option></select></td>
 							<td><input v-model="row.price_inr" type="number" min="0" step="0.01" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
 							<td><input v-model="row.price_usd" type="number" min="0" step="0.01" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
 							<td><input v-model="row.price_irr" type="number" min="0" step="1" class="w-32 rounded-md border border-gray-300 px-2 py-1" /></td>
-							<td>{{ intervalLabel(row.interval) }}</td>
+							<td><input v-model.number="row.max_database_usage" type="number" min="0" step="1" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
+							<td><input v-model.number="row.max_storage_usage" type="number" min="0" step="1" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
+							<td><input v-model.number="row.memory" type="number" min="0" step="1" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
+							<td><input v-model.number="row.cpu_time_per_day" type="number" min="0" step="0.1" class="w-28 rounded-md border border-gray-300 px-2 py-1" /></td>
 							<td><Button label="ذخیره" @click="saveSitePrices(row)" /></td>
 						</tr>
+						<tr>
+							<td colspan="12" class="pb-3">
+								<details class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+									<summary class="cursor-pointer text-xs font-medium text-gray-700">تنظیم گروه‌های انتشار و برنامه‌های مجاز</summary>
+									<div class="mt-3 grid gap-3 lg:grid-cols-2">
+										<div class="rounded-lg border border-gray-200 bg-white p-3">
+											<p class="text-xs font-medium text-gray-800">گروه‌های انتشار</p>
+											<div v-if="sitePlanOptions.data?.release_groups?.length" class="mt-2 flex flex-wrap gap-2">
+												<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="(row.release_groups || []).includes(group.name)" @change="toggleSitePlanGroup(row, group.name, $event.target.checked)" />{{ group.name }}</label>
+											</div>
+											<p v-else class="mt-2 text-xs leading-5 text-amber-800">گروه انتشار عمومی و بنچ فعال هنوز آماده نیست.</p>
+											<p class="mt-2 text-xs text-gray-500">خالی‌گذاشتن این فهرست به معنی اجازهٔ استفاده از همهٔ گروه‌های انتشار عمومی است.</p>
+										</div>
+										<div class="rounded-lg border border-gray-200 bg-white p-3">
+											<p class="text-xs font-medium text-gray-800">برنامه‌های مجاز</p>
+											<div v-if="sitePlanApps(row).length" class="mt-2 flex flex-wrap gap-2">
+												<label v-for="app in sitePlanApps(row)" :key="app" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="(row.allowed_apps || []).includes(app)" @change="toggleSitePlanApp(row, app, $event.target.checked)" />{{ app }}</label>
+											</div>
+											<p v-else class="mt-2 text-xs leading-5 text-gray-500">برنامه‌ای برای گروه انتخاب‌شده پیدا نشد.</p>
+											<p class="mt-2 text-xs text-gray-500">خالی‌گذاشتن این فهرست اجازهٔ نصب همهٔ برنامه‌های در دسترس را می‌دهد.</p>
+										</div>
+									</div>
+								</details>
+							</td>
+						</tr>
+						</template>
 					</tbody>
 				</table>
 			</div>
-			<p v-else class="mt-4 rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">فعلاً تعرفهٔ میزبانی ثبت نشده است. بعد از ایجاد Site Plan، قیمتش را در همین جدول وارد کنید. <a href="/app/site-plan" class="font-medium text-rose-700 underline">ساخت تعرفهٔ میزبانی</a></p>
+			<p v-else-if="!showCreateSitePlan" class="mt-4 rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">فعلاً پلن میزبانی ثبت نشده است. برای ساخت پلن از همین پنل استفاده کن.</p>
 		</section>
 
 		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -299,8 +373,11 @@ const retrying = ref('');
 const refunding = ref('');
 const refundReferences = reactive({});
 const savingSettings = ref(false);
+const showCreateSitePlan = ref(false);
+const creatingSitePlan = ref(false);
 const error = ref('');
 const notice = ref('');
+const newSitePlan = reactive({ name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', release_groups: [], allowed_apps: [] });
 const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, sandbox_mode: true, hosting_min_free_disk_gb: 0, hosting_min_free_memory_gb: 0 });
 
 const sites = createResource({ url: 'press.saas.commerce.api.my_purchase_sites', auto: true });
@@ -325,10 +402,12 @@ const settings = createResource({
 const hostingReadiness = createResource({ url: 'press.saas.commerce.api.admin_hosting_readiness', auto: isCommerceAdmin.value });
 const appPlans = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plans', auto: isCommerceAdmin.value });
 const sitePlans = createResource({ url: 'press.saas.commerce.api.admin_site_plans', auto: isCommerceAdmin.value });
+const sitePlanOptions = createResource({ url: 'press.saas.commerce.api.admin_site_plan_options', auto: isCommerceAdmin.value });
 const adminOrders = createResource({ url: 'press.saas.commerce.api.admin_orders', auto: isCommerceAdmin.value });
 const saveSettingsResource = createResource({ url: 'press.saas.commerce.api.save_admin_settings' });
 const saveAppPriceResource = createResource({ url: 'press.saas.commerce.api.save_marketplace_plan_prices' });
 const saveSitePriceResource = createResource({ url: 'press.saas.commerce.api.save_site_plan_prices' });
+const createSitePlanResource = createResource({ url: 'press.saas.commerce.api.create_site_plan' });
 const retryResource = createResource({ url: 'press.saas.commerce.api.retry_provisioning' });
 const refundResource = createResource({ url: 'press.saas.commerce.api.record_refund' });
 const startPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_marketplace_app_purchase' });
@@ -336,6 +415,10 @@ const startHostingPurchaseResource = createResource({ url: 'press.saas.commerce.
 
 const loading = computed(() => sites.loading || orders.loading || hostingOffers.loading);
 const busy = computed(() => Boolean(busyPlan.value));
+const newPlanApps = computed(() => {
+	const groups = sitePlanOptions.data?.release_groups || [];
+	return sharedSiteApps(groups.filter(group => !newSitePlan.release_groups.length || newSitePlan.release_groups.includes(group.name)));
+});
 
 watch(selectedSite, async (site) => {
 	if (!site) return;
@@ -415,10 +498,76 @@ async function saveAppPrices(row) {
 async function saveSitePrices(row) {
 	error.value = '';
 	try {
-		await saveSitePriceResource.submit({ plan: row.name, price_inr: row.price_inr, price_usd: row.price_usd, price_irr: row.price_irr, delivery_mode: row.commerce_delivery_mode });
+		await saveSitePriceResource.submit({
+			plan: row.name, plan_title: row.plan_title, plan_description: row.plan_description, price_inr: row.price_inr, price_usd: row.price_usd,
+			price_irr: row.price_irr, delivery_mode: row.commerce_delivery_mode, interval: row.interval,
+			enabled: row.enabled, max_database_usage: row.max_database_usage, max_storage_usage: row.max_storage_usage,
+			memory: row.memory, cpu_time_per_day: row.cpu_time_per_day,
+			release_groups: row.release_groups || [], allowed_apps: row.allowed_apps || [],
+		});
 		await sitePlans.fetch();
-		notice.value = 'قیمت تعرفهٔ میزبانی ذخیره شد.';
+		notice.value = 'تنظیمات تعرفهٔ میزبانی ذخیره شد.';
 	} catch (failure) { showError(failure); }
+}
+
+function sitePlanApps(row) {
+	const groups = sitePlanOptions.data?.release_groups || [];
+	const selectedGroups = row.release_groups || [];
+	return sharedSiteApps(groups.filter(group => !selectedGroups.length || selectedGroups.includes(group.name)));
+}
+
+function sharedSiteApps(groups) {
+	const appSets = groups.map(group => new Set(group.apps || []));
+	if (!appSets.length) return [];
+	return [...appSets[0]].filter(app => app !== 'frappe' && appSets.every(apps => apps.has(app))).sort();
+}
+
+function toggleSitePlanGroup(row, group, checked) {
+	const selected = new Set(row.release_groups || []);
+	if (checked) selected.add(group);
+	else selected.delete(group);
+	row.release_groups = [...selected];
+	const eligible = new Set(sitePlanApps(row));
+	row.allowed_apps = (row.allowed_apps || []).filter(app => eligible.has(app));
+}
+
+function toggleSitePlanApp(row, app, checked) {
+	const selected = new Set(row.allowed_apps || []);
+	if (checked) selected.add(app);
+	else selected.delete(app);
+	row.allowed_apps = [...selected];
+}
+
+function toggleNewPlanGroup(group, checked) {
+	const selected = new Set(newSitePlan.release_groups);
+	if (checked) selected.add(group);
+	else selected.delete(group);
+	newSitePlan.release_groups = [...selected];
+	const eligible = new Set(newPlanApps.value);
+	newSitePlan.allowed_apps = newSitePlan.allowed_apps.filter(app => eligible.has(app));
+}
+
+function toggleNewPlanApp(app, checked) {
+	const selected = new Set(newSitePlan.allowed_apps);
+	if (checked) selected.add(app);
+	else selected.delete(app);
+	newSitePlan.allowed_apps = [...selected];
+}
+
+async function createSitePlan() {
+	error.value = '';
+	creatingSitePlan.value = true;
+	try {
+		await createSitePlanResource.submit({
+			name: newSitePlan.name.trim(), title: newSitePlan.title.trim(), description: newSitePlan.description.trim(),
+			interval: newSitePlan.interval, delivery_mode: newSitePlan.delivery_mode,
+			release_groups: newSitePlan.release_groups, allowed_apps: newSitePlan.allowed_apps,
+		});
+		await Promise.all([sitePlans.fetch(), sitePlanOptions.fetch(), hostingReadiness.fetch()]);
+		Object.assign(newSitePlan, { name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', release_groups: [], allowed_apps: [] });
+		showCreateSitePlan.value = false;
+		notice.value = 'پیش‌نویس پلن ساخته شد. قیمت و سقف منابع را تنظیم کن و بعد پلن را فعال کن.';
+	} catch (failure) { showError(failure); } finally { creatingSitePlan.value = false; }
 }
 
 async function retry(order) {
@@ -448,7 +597,7 @@ async function refresh() {
 	error.value = '';
 	try {
 		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
-		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), sitePlans.fetch(), adminOrders.fetch());
+		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch());
 		if (selectedSite.value) calls.push(plans.fetch({ site: selectedSite.value }));
 		await Promise.all(calls);
 	} catch (failure) { showError(failure); }

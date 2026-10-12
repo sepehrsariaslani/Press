@@ -120,6 +120,20 @@
 - [x] Commit the code and plan with a Persian commit subject/body; leave the existing `press/routing.py` changes preserved.
 - [x] List the five affected sites before the soft web reload and use the user's prior approval for this shared-Bench deployment. The latest HUP replaced all six Gunicorn workers without restarting the database or queues.
 
+### Task 7: Make hosting plans fully manageable from the Asumi commerce panel
+
+**Files:**
+- Modify: `press/saas/commerce/api.py`
+- Add: `press/saas/commerce/site_plan_admin.py`
+- Modify: `dashboard/src/pages/CommerceOrders.vue`
+- Test: `press/saas/commerce/test_site_plan_admin.py`
+
+- [x] Create disabled, zero-price hosting-plan drafts in the panel, with delivery mode, public release groups, and eligible apps.
+- [x] Edit a plan's title, description, prices, term, capacity, enabled state, release groups, and allowed apps in the same panel.
+- [x] Validate every selected app against all selected release groups and prevent material changes while orders or subscriptions are active.
+- [x] Keep new-site checkout bound to a customer-chosen subdomain under `asumi.ir`; leave payment and hosting checkout off until DNS, TLS, Press provisioning, capacity, and the real payment credential are configured.
+- [x] Run 12 Site Plan administration tests, 62 other isolated commerce tests, Python syntax checks, the dashboard commerce-access test, and the production dashboard build. The DNS-readiness module could not import in the container because `dnspython` is absent; the older ESLint/Prettier integration also crashes before reporting lint findings.
+
 ## Known external completion conditions
 
 - Live payment cannot be enabled or fully exercised until the administrator enters the real Merchant ID through `/dashboard/orders`; this plan never invents or embeds one.

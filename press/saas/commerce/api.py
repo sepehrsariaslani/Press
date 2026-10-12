@@ -34,6 +34,10 @@ from press.saas.commerce.service_delivery import (
 	new_site_hosting_order_action,
 	normalize_site_plan_delivery_mode,
 )
+from press.saas.commerce.site_plan_admin import (
+	build_site_plan_draft,
+	normalize_site_plan_admin_update,
+)
 from press.saas.commerce.zarinpal import (
 	build_payment_request,
 	checkout_url,
@@ -1565,14 +1569,125 @@ def admin_site_plans() -> list[dict]:
 			"price_usd",
 			"price_irr",
 			"commerce_delivery_mode",
+			"max_database_usage",
+			"max_storage_usage",
+			"memory",
+			"cpu_time_per_day",
 		],
 		order_by="plan_title asc",
 		limit_page_length=500,
 		ignore_permissions=True,
 	)
+	plan_names = [plan.name for plan in plans]
+	if plan_names:
+		release_groups = frappe.get_all(
+			"Site Plan Release Group",
+			filters={"parent": ["in", plan_names], "parenttype": "Site Plan"},
+			fields=["parent", "release_group", "idx"],
+			order_by="parent asc, idx asc",
+			limit_page_length=5000,
+			ignore_permissions=True,
+		)
+		allowed_apps = frappe.get_all(
+			"Site Plan Allowed App",
+			filters={"parent": ["in", plan_names], "parenttype": "Site Plan"},
+			fields=["parent", "app", "idx"],
+			order_by="parent asc, idx asc",
+			limit_page_length=5000,
+			ignore_permissions=True,
+		)
+		groups_by_plan = {}
+		apps_by_plan = {}
+		for row in release_groups:
+			groups_by_plan.setdefault(row.parent, []).append(row.release_group)
+		for row in allowed_apps:
+			if row.app != "frappe":
+				apps_by_plan.setdefault(row.parent, []).append(row.app)
+		for plan in plans:
+			plan.release_groups = groups_by_plan.get(plan.name, [])
+			plan.allowed_apps = apps_by_plan.get(plan.name, [])
 	for plan in plans:
 		plan.commerce_delivery_mode = normalize_site_plan_delivery_mode(plan.commerce_delivery_mode)
 	return plans
+
+
+def _site_plan_app_choices() -> dict[str, list[str]]:
+	choices = {}
+	groups = frappe.get_all(
+		"Release Group",
+		filters={"enabled": 1, "public": 1},
+		fields=["name", "version"],
+		order_by="name asc",
+		limit_page_length=200,
+		ignore_permissions=True,
+	)
+	for group in groups:
+		benches = frappe.get_all(
+			"Bench",
+			filters={"group": group.name, "status": "Active"},
+			fields=["name"],
+			limit_page_length=200,
+			ignore_permissions=True,
+		)
+		apps = set()
+		for bench in benches:
+			apps.update(frappe.get_all("Bench App", filters={"parent": bench.name}, pluck="app"))
+		if "frappe" in apps:
+			choices[group.name] = sorted(apps)
+	return choices
+
+
+@frappe.whitelist()
+def admin_site_plan_options() -> dict:
+	_require_commerce_admin()
+	apps_by_group = _site_plan_app_choices()
+	return {
+		"domain": ASUMI_ROOT_DOMAIN,
+		"release_groups": [
+			{"name": name, "apps": apps} for name, apps in sorted(apps_by_group.items())
+		],
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_site_plan(
+	name: str,
+	title: str,
+	interval: str,
+	delivery_mode: str,
+	description: str | None = None,
+	release_groups=None,
+	allowed_apps=None,
+) -> dict:
+	_require_commerce_admin()
+	apps_by_group = _site_plan_app_choices()
+	try:
+		if isinstance(release_groups, str):
+			release_groups = frappe.parse_json(release_groups)
+		if isinstance(allowed_apps, str):
+			allowed_apps = frappe.parse_json(allowed_apps)
+		values = build_site_plan_draft(
+			name=name,
+			title=title,
+			description=description,
+			interval=interval,
+			delivery_mode=delivery_mode,
+			release_groups=release_groups,
+			allowed_apps=allowed_apps,
+			available_apps_by_group=apps_by_group,
+		)
+	except (TypeError, ValueError) as error:
+		frappe.throw(str(error))
+	if frappe.db.exists("Site Plan", values["name"]):
+		frappe.throw(_("این شناسهٔ پلن قبلاً استفاده شده است."))
+	doc = frappe.get_doc({"doctype": "Site Plan", **values})
+	doc.insert(ignore_permissions=True)
+	return {
+		"name": doc.name,
+		"plan_title": doc.plan_title,
+		"enabled": bool(doc.enabled),
+		"commerce_delivery_mode": normalize_site_plan_delivery_mode(doc.commerce_delivery_mode),
+	}
 
 
 @frappe.whitelist()
@@ -1582,16 +1697,36 @@ def save_site_plan_prices(
 	price_usd,
 	price_irr,
 	delivery_mode: str | None = None,
+	interval: str | None = None,
+	enabled: bool | None = None,
+	plan_title: str | None = None,
+	plan_description: str | None = None,
+	max_database_usage: int | str | None = None,
+	max_storage_usage: int | str | None = None,
+	memory: int | str | None = None,
+	cpu_time_per_day: float | str | None = None,
+	release_groups=None,
+	allowed_apps=None,
 ) -> dict:
 	_require_commerce_admin()
 	doc = frappe.get_doc("Site Plan", plan, for_update=True)
 	if doc.document_type != "Site":
 		frappe.throw(_("این تعرفه برای فروش سرویس میزبانی نیست."))
-	prices = {
-		"price_inr": normalize_price(price_inr, "INR"),
-		"price_usd": normalize_price(price_usd, "USD"),
-		"price_irr": normalize_zarinpal_price(price_irr),
-	}
+	current = {field: getattr(doc, field, None) for field in (
+		"price_inr", "price_usd", "price_irr", "interval", "enabled", "commerce_delivery_mode",
+		"max_database_usage", "max_storage_usage", "memory", "cpu_time_per_day",
+	)}
+	current["release_groups"] = [row.release_group for row in doc.release_groups]
+	current["allowed_apps"] = [row.app for row in doc.allowed_apps]
+	current["commerce_delivery_mode"] = normalize_site_plan_delivery_mode(current["commerce_delivery_mode"])
+	payload = {"price_inr": price_inr, "price_usd": price_usd, "price_irr": price_irr}
+	for field, value in (
+		("delivery_mode", delivery_mode), ("interval", interval), ("enabled", enabled),
+		("max_database_usage", max_database_usage), ("max_storage_usage", max_storage_usage),
+		("memory", memory), ("cpu_time_per_day", cpu_time_per_day),
+	):
+		if value is not None:
+			payload[field] = value
 	active_subscriptions = frappe.db.count("Subscription", {"document_type": "Site", "plan": plan, "enabled": 1})
 	pending_orders = frappe.db.count(
 		"Commerce Order",
@@ -1610,25 +1745,49 @@ def save_site_plan_prices(
 			"service_ends_at": [">", frappe.utils.now_datetime()],
 		},
 	)
-	if any(prices[field] != float(getattr(doc, field) or 0) for field in prices) and (active_subscriptions or pending_orders):
-		frappe.throw(_("این تعرفه مشترک فعال دارد؛ برای تغییر قیمت، تعرفهٔ جدید بسازید."))
-	doc.update(prices)
-	if delivery_mode is not None:
-		try:
-			updated_delivery_mode = normalize_site_plan_delivery_mode(delivery_mode)
-		except ValueError as error:
-			frappe.throw(str(error))
-		if (
-			updated_delivery_mode != normalize_site_plan_delivery_mode(doc.commerce_delivery_mode)
-			and (pending_orders or active_orders)
-		):
-			frappe.throw(_("تا پایان سفارش‌های پرداخت‌شده و تعیین تکلیف سفارش‌های در حال تحویل، روش ارائهٔ پلن را تغییر ندهید."))
-		doc.commerce_delivery_mode = updated_delivery_mode
+	try:
+		if isinstance(release_groups, str):
+			release_groups = frappe.parse_json(release_groups)
+		if isinstance(allowed_apps, str):
+			allowed_apps = frappe.parse_json(allowed_apps)
+		if release_groups is not None:
+			payload["release_groups"] = release_groups
+		if allowed_apps is not None:
+			payload["allowed_apps"] = allowed_apps
+		update = normalize_site_plan_admin_update(
+			payload,
+			current=current,
+			has_orders=bool(active_subscriptions or pending_orders or active_orders),
+			available_apps_by_group=_site_plan_app_choices()
+			if "release_groups" in payload or "allowed_apps" in payload
+			else None,
+		)
+	except ValueError as error:
+		frappe.throw(str(error))
+	group_names = update["values"].pop("release_groups", None)
+	app_names = update["values"].pop("allowed_apps", None)
+	doc.update(update["values"])
+	if group_names is not None:
+		doc.set("release_groups", [])
+		for group in group_names:
+			doc.append("release_groups", {"release_group": group})
+	if app_names is not None:
+		doc.set("allowed_apps", [])
+		for app in app_names:
+			doc.append("allowed_apps", {"app": app})
+	if plan_title is not None:
+		doc.plan_title = str(plan_title).strip()[:140]
+	if plan_description is not None:
+		doc.plan_description = str(plan_description).strip()[:140]
 	doc.save(ignore_permissions=True)
 	return {
 		"name": doc.name,
-		**prices,
+		**update["values"],
+		"plan_title": doc.plan_title,
+		"plan_description": doc.plan_description,
 		"commerce_delivery_mode": normalize_site_plan_delivery_mode(doc.commerce_delivery_mode),
+		"release_groups": [row.release_group for row in doc.release_groups],
+		"allowed_apps": [row.app for row in doc.allowed_apps],
 	}
 
 
