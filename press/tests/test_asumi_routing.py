@@ -9,11 +9,17 @@ class TestAsumiRouting(TestCase):
 		with patch("press.routing.get_request_host", return_value="asumi.ir"):
 			self.assertEqual(resolve_path(""), "asumi")
 
-	def test_asumi_reserved_path_uses_frappe_resolver(self):
+	def test_asumi_account_path_uses_frappe_resolver(self):
 		with patch("press.routing.get_request_host", return_value="asumi.ir"):
 			with patch("press.routing.default_resolve_path", return_value="dashboard") as fallback:
-				self.assertEqual(resolve_path("dashboard"), "dashboard")
-				fallback.assert_called_once_with("dashboard")
+				self.assertEqual(resolve_path("hesab"), "dashboard")
+				fallback.assert_called_once_with("hesab")
+
+	def test_dashboard_path_stays_behind_authorization_router(self):
+		with patch("press.routing.get_request_host", return_value="asumi.ir"):
+			with patch("press.routing.default_resolve_path") as fallback:
+				self.assertEqual(resolve_path("dashboard"), "asumi")
+				fallback.assert_not_called()
 
 	def test_non_asumi_host_uses_frappe_resolver(self):
 		with patch("press.routing.get_request_host", return_value="dehati.ir"):
