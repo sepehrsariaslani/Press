@@ -23,8 +23,8 @@
 - Modify: `dashboard/asumi/src/App.test.tsx`
 - Test: `dashboard/asumi/src/App.test.tsx`
 
-- [ ] Replace the hero-only assertion with a regression assertion for the evidence board, six story chapters, and fifteen module cards.
-- [ ] Run `cd dashboard/asumi && yarn test --run src/App.test.tsx` and confirm it fails because the current app has no story or module sections.
+- [x] Replace the hero-only assertion with a regression assertion for the evidence board, six story chapters, and fifteen module cards.
+- [x] Run `cd dashboard/asumi && yarn test --run src/App.test.tsx` and confirm it fails because the current app has no story or module sections.
 
 ### Task 2: Restore the historic public site
 
@@ -33,16 +33,16 @@
 - Modify: `dashboard/asumi/src/App.tsx`, `dashboard/asumi/src/App.test.tsx`, and `dashboard/asumi/src/components/site/SiteHeader.tsx`.
 - Preserve: current `dashboard/asumi/package.json`, Vite configuration, and the existing Frappe catalog templates.
 
-- [ ] Restore the historical site, module, and pricing components without restoring the retired `customer-portal` implementation.
-- [ ] Route the site header’s customer-area link to `/dashboard/orders` and retain the historical in-page pricing and website-design estimators.
-- [ ] Run `cd dashboard/asumi && yarn test --run` and `cd dashboard/asumi && yarn build`; confirm story, pricing, type-check, and asset-shell sync pass.
+- [x] Restore the historical site, module, and pricing components without restoring the retired `customer-portal` implementation.
+- [x] Route the site header’s customer-area link to `/dashboard/orders` and retain the historical in-page pricing and website-design estimators.
+- [x] Run `cd dashboard/asumi && yarn test --run` and `cd dashboard/asumi && yarn build`; confirm story, pricing, type-check, and asset-shell sync pass.
 
 ### Task 3: Verify and publish the restored public site
 
 **Files:**
 - Build output: `press/public/asumi_site` and `press/www/asumi.html`.
 
-- [ ] Capture post-build screenshots at the same public routes and viewport as `/tmp/asumi-restore-audit/before-root.png`, `/tmp/asumi-restore-audit/before-pricing.png`, and `/tmp/asumi-restore-audit/before-marketplace.png`.
-- [ ] Verify the public root, pricing catalog, and marketplace return HTTP 200 and every root asset referenced by `press/www/asumi.html` returns HTTP 200.
-- [ ] Deploy the static build to the already-authorized shared Bench and verify the live public pages without running a database migration.
-- [ ] Keep the final screenshots under `/tmp/asumi-restore-audit` for the handoff.
+- [x] Capture post-build screenshots at the same public routes and viewport as `/tmp/asumi-restore-audit/before-root.png`, `/tmp/asumi-restore-audit/before-pricing.png`, and `/tmp/asumi-restore-audit/before-marketplace.png`.
+- [x] Verify the public root, pricing catalog, and marketplace return HTTP 200 and every root asset referenced by `press/www/asumi.html` returns HTTP 200.
+- [x] Deploy the static build to the already-authorized shared Bench and verify the live public pages without running a database migration.
+- [x] Keep the final screenshots under `/tmp/asumi-restore-audit` for the handoff.

@@ -135,17 +135,17 @@ Run: `python3 -m unittest press.www.saas.test_catalog -v`
 
 Run: `python3 -m compileall -q press/www/saas/index.py press/www/saas/catalog.py`
 
-- [ ] **Step 2: Build the Press public assets**
+- [x] **Step 2: Build the Press public assets**
 
 Run: `bench build --app press`
 
 Expected: Press build exits with status 0 and includes `asumi-commerce.css`.
 
-- [ ] **Step 3: Verify live routes and product data**
+- [x] **Step 3: Verify live routes and product data**
 
 Request `/saas`, `/pricing`, and `/marketplace`; verify HTTP 200, Asumi title and branding on the pricing route, all 24 published apps are represented through the catalog data, current zero-priced plans show as free, and no fixed infrastructure amounts appear.
 
-- [ ] **Step 4: Commit only this implementation with a Persian message**
+- [x] **Step 4: Commit only this implementation with a Persian message**
 
 Run `git diff --check`, stage only the files listed in this plan, then commit with a Persian message describing the data-backed catalog and removal of fabricated pricing.
 
