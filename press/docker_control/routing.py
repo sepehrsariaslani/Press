@@ -14,8 +14,11 @@ def resolve_path(path: str):
 	user = frappe.session.user
 	is_guest = user == "Guest"
 	route = (path or "").split("?", 1)[0].strip("/ ").lower()
+	if route == "marketplace" or route.startswith("marketplace/"):
+		return default_resolve_path(path)
+
 	can_manage_docker = False
-	if route == "dashboard/docker-control" and not is_guest:
+	if (route == "dashboard" or route.startswith("dashboard/")) and not is_guest:
 		can_manage_docker = has_document_permission(user=user)
 
 	if should_route_dashboard(

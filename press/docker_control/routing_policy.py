@@ -17,4 +17,9 @@ def should_route_dashboard(
 	if route == "dashboard/login":
 		return is_guest
 
-	return route == "dashboard/docker-control" and (is_guest or can_manage_docker)
+	if route == "dashboard/docker-control" and (is_guest or can_manage_docker):
+		return True
+
+	return not is_guest and can_manage_docker and (
+		route == "dashboard" or route.startswith("dashboard/")
+	)
