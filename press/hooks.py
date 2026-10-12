@@ -29,6 +29,11 @@ app_email = "aditya@frappe.io"
 app_license = "GNU Affero General Public License v3.0"
 version = app_version
 
+# Refresh Frappe's shared asset manifest cache after bundles change. Asset paths are
+# content-hashed, so stale cache entries can make otherwise healthy website pages
+# request files that no longer exist.
+after_build = ["press.utils.asset_manifest_cache.invalidate_assets_json_cache"]
+
 # Includes in <head>
 # ------------------
 
