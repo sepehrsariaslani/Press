@@ -14,7 +14,7 @@ This host service provides a private, typed control API for the existing Docker 
 
 Every request is signed with HMAC-SHA256 over `METHOD`, request path, Unix timestamp, nonce, and SHA-256 of the body. Timestamps older or newer than 30 seconds are rejected. Nonces are stored in SQLite and cannot be replayed. Request bodies are limited to 64 KiB.
 
-The API exposes read-only `/v1/health`, lightweight `/v1/resources`, and full `/v1/inventory` endpoints, typed operation submission at `POST /v1/operations`, and operation polling at `GET /v1/operations/<uuid>`. Commerce readiness uses `/v1/resources` so a dashboard check does not launch Bench or Git commands. Deployment preflight accepts only the configured app allowlist. Inventory reads Git metadata for installed apps only when their validated repository paths stay under `apps_root`; it grants no additional deployment permission.
+The API exposes read-only `/v1/health`, lightweight `/v1/resources`, and full `/v1/inventory` endpoints, typed operation submission at `POST /v1/operations`, and operation polling at `GET /v1/operations/<uuid>`. Commerce readiness uses `/v1/resources` so a dashboard check does not launch Bench or Git commands. Deployment preflight accepts only the configured app allowlist. Inventory reports installed-app versions from `bench version --format json`, with a Git metadata fallback for validated repository paths under `apps_root`; this read-only inventory access grants no additional deployment permission.
 
 ## Key rotation and recovery
 

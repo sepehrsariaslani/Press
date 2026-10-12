@@ -47,6 +47,38 @@ def _parse_all_apps(output: str) -> dict[str, list[str]]:
 	return {domain: sorted(set(apps)) for domain, apps in payload.items()}
 
 
+def _parse_app_versions(output: str) -> dict[str, dict[str, str]]:
+	try:
+		payload = json.loads(output)
+	except json.JSONDecodeError as error:
+		raise ValueError("Could not parse Bench app versions") from error
+	if not isinstance(payload, list):
+		raise ValueError("Bench app version inventory has an invalid structure")
+
+	versions = {}
+	for row in payload:
+		if not isinstance(row, dict):
+			raise ValueError("Bench app version inventory has an invalid row")
+		app = row.get("app")
+		version = row.get("version")
+		branch = row.get("branch")
+		commit = row.get("commit")
+		if (
+			not isinstance(app, str)
+			or not APP_NAME_RE.fullmatch(app)
+			or not isinstance(version, str)
+			or not isinstance(branch, str)
+			or not isinstance(commit, str)
+			or app in versions
+		):
+			raise ValueError("Bench app version inventory has an invalid row")
+		versions[app] = {
+			"version": version.strip() or commit.strip() or "unknown",
+			"branch": branch.strip()[:80] or "unknown",
+		}
+	return versions
+
+
 def _app_revision(config: AgentConfig, app: str) -> dict:
 	if not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
 		return {"app": app, "version": "unknown", "branch": "unknown"}
@@ -231,12 +263,38 @@ def get_inventory(config: AgentConfig) -> dict:
 	apps_by_domain = _parse_all_apps(result.stdout)
 	if set(apps_by_domain) != set(IMPACT_SITES):
 		raise RuntimeError("Bench domains differ from the fixed inventory")
+	app_versions = {}
+	try:
+		version_result = run_command(
+			config,
+			compose_command(
+				config,
+				"exec",
+				"-T",
+				config.backend_service,
+				"bench",
+				"version",
+				"--format",
+				"json",
+			),
+			timeout=45,
+		)
+		if version_result.returncode == 0:
+			app_versions = _parse_app_versions(version_result.stdout)
+	except (OSError, subprocess.SubprocessError, ValueError):
+		pass
 	for domain in IMPACT_SITES:
 		site_path = (config.sites_root / domain).resolve(strict=True)
 		if not site_path.is_relative_to(config.sites_root) or not site_path.is_dir():
 			raise RuntimeError(f"Site directory validation failed for {domain}")
+	app_revisions = {}
+	for app in sorted({app for site_apps in apps_by_domain.values() for app in site_apps}):
+		version = app_versions.get(app)
+		app_revisions[app] = (
+			{"app": app, **version} if version else _app_revision(config, app)
+		)
 	sites = [
-		{"domain": domain, "apps": [_app_revision(config, app) for app in apps_by_domain[domain]]}
+		{"domain": domain, "apps": [app_revisions[app] for app in apps_by_domain[domain]]}
 		for domain in IMPACT_SITES
 	]
 	return {

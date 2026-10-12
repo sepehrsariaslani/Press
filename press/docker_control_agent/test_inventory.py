@@ -1,12 +1,13 @@
-from pathlib import Path
+import json
 import subprocess
 import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
 from press.docker_control_agent import inventory
-from press.docker_control_agent.config import ALLOWED_APPS
+from press.docker_control_agent.config import ALLOWED_APPS, IMPACT_SITES
 
 
 class ResourceInventoryTest(unittest.TestCase):
@@ -64,6 +65,43 @@ class AppRevisionInventoryTest(unittest.TestCase):
 
 		self.assertEqual(result, {"app": "../secrets", "version": "unknown", "branch": "unknown"})
 		run.assert_not_called()
+
+
+class BenchVersionInventoryTest(unittest.TestCase):
+	def test_uses_bench_version_for_apps_without_a_git_repository(self):
+		with tempfile.TemporaryDirectory() as temporary_directory:
+			base = Path(temporary_directory)
+			apps_root = base / "apps"
+			sites_root = base / "sites"
+			apps_root.mkdir()
+			sites_root.mkdir()
+			(apps_root / "raven").mkdir()
+			for domain in IMPACT_SITES:
+				(sites_root / domain).mkdir()
+
+			installed_apps = {domain: ["raven"] for domain in IMPACT_SITES}
+			bench_versions = [{"app": "raven", "commit": "", "branch": "", "version": "2.6.5"}]
+			command_results = [
+				subprocess.CompletedProcess([], 0, stdout=json.dumps(installed_apps), stderr=""),
+				subprocess.CompletedProcess([], 0, stdout=json.dumps(bench_versions), stderr=""),
+			]
+			config = SimpleNamespace(
+				project_root=base,
+				compose_files=(),
+				backend_service="backend",
+				apps_root=apps_root,
+				sites_root=sites_root,
+			)
+			with (
+				patch.object(inventory, "run_command", side_effect=command_results) as run,
+				patch.object(inventory, "_compose_state", return_value=[]),
+				patch.object(inventory, "_resource_summary", return_value={}),
+			):
+				result = inventory.get_inventory(config)
+
+		self.assertEqual(run.call_count, 2)
+		for site in result["sites"]:
+			self.assertEqual(site["apps"], [{"app": "raven", "version": "2.6.5", "branch": "unknown"}])
 
 
 if __name__ == "__main__":
