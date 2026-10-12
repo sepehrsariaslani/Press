@@ -36,10 +36,10 @@ def marketplace_app_order_snapshot(plan, app, site, team, customer):
 		decimal_amount = Decimal(str(plan.get("price_irr")))
 	except (InvalidOperation, TypeError, ValueError):
 		decimal_amount = Decimal(0)
-	if isinstance(plan.get("price_irr"), bool) or decimal_amount <= 0 or decimal_amount != decimal_amount.to_integral_value():
+	if isinstance(plan.get("price_irr"), bool) or decimal_amount < 0 or decimal_amount != decimal_amount.to_integral_value():
 		raise ValueError("مبلغ تعرفه معتبر نیست")
 	amount = int(decimal_amount)
-	if amount < ZARINPAL_MINIMUM_AMOUNT_IRR:
+	if amount and amount < ZARINPAL_MINIMUM_AMOUNT_IRR:
 		raise ValueError("حداقل مبلغ پرداخت زرین‌پال ۱۰٬۰۰۰ ریال است")
 	if plan.get("app") != app.get("name"):
 		raise ValueError("این تعرفه به برنامهٔ انتخاب‌شده تعلق ندارد")

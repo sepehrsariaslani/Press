@@ -83,6 +83,10 @@ def _checkout_enabled(settings, sale_type: str = "marketplace") -> bool:
 	)
 
 
+def _free_marketplace_purchase_enabled(settings) -> bool:
+	return bool(settings and settings.enabled and settings.allow_marketplace_app_sales)
+
+
 def _require_commerce_admin():
 	if not (has_role("System Manager") or has_role("Press Admin")):
 		frappe.throw(_("Only a Press system administrator can manage commerce."), frappe.PermissionError)
@@ -672,21 +676,37 @@ def available_app_plans(site: str, site_type: str = "Site") -> dict:
 		fields=["name", "app", "title", "route"],
 	)
 	app_by_name = {app.name: app for app in apps}
-	plans = frappe.get_all(
+	plan_rows = frappe.get_all(
 		"Marketplace App Plan",
-		filters={"app": ["in", list(app_by_name) or [""]], "enabled": 1, "price_irr": [">", 0]},
+		filters={"app": ["in", list(app_by_name) or [""]], "enabled": 1},
 		fields=["name", "app", "title", "interval", "price_irr"],
 		order_by="price_irr asc",
 	)
-	for plan in plans:
+	plans = []
+	for plan in plan_rows:
+		try:
+			plan.price_irr = normalize_zarinpal_price(plan.price_irr)
+		except ValueError:
+			continue
 		app = app_by_name.get(plan.app)
+		if not app:
+			continue
 		plan.update({"app_title": app.title, "app_route": app.route})
+		plans.append(plan)
+	free_purchase_enabled = _free_marketplace_purchase_enabled(settings)
+	checkout_enabled = _checkout_enabled(settings)
+	message = ""
+	if any(not plan.price_irr for plan in plans) and not free_purchase_enabled:
+		message = "فعال‌سازی تعرفه‌های رایگان فعلاً توسط مدیر آسومی خاموش است."
+	elif any(plan.price_irr for plan in plans) and not checkout_enabled:
+		message = "پرداخت تعرفه‌های پولی هنوز توسط مدیر آسومی پیکربندی نشده است."
 	return {
 		"site": site,
 		"site_type": site_type,
 		"plans": plans,
-		"checkout_enabled": _checkout_enabled(settings),
-		"message": "" if _checkout_enabled(settings) else "پرداخت آنلاین هنوز توسط مدیر آسومی پیکربندی نشده است.",
+		"checkout_enabled": checkout_enabled,
+		"free_purchase_enabled": free_purchase_enabled,
+		"message": message,
 	}
 
 
@@ -699,10 +719,6 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 		frappe.throw(_("You do not have access to this team."), frappe.PermissionError)
 
 	settings = _get_settings()
-	merchant_id = _merchant_id(settings)
-	if not _checkout_enabled(settings) or not merchant_id:
-		frappe.throw(_("پرداخت آنلاین هنوز توسط مدیر آسومی پیکربندی نشده است."))
-
 	plan_doc = frappe.get_doc("Marketplace App Plan", plan)
 	app_doc = frappe.get_doc("Marketplace App", plan_doc.app)
 	site_values = _marketplace_purchase_site(site, site_type, team_doc.name)
@@ -713,6 +729,14 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 		{"name": team_doc.name, "currency": team_doc.currency},
 		frappe.session.user,
 	)
+	is_free = snapshot["amount"] == 0
+	if is_free:
+		if not _free_marketplace_purchase_enabled(settings):
+			frappe.throw(_("فعال‌سازی تعرفه‌های رایگان فعلاً توسط مدیر آسومی خاموش است."))
+	else:
+		merchant_id = _merchant_id(settings)
+		if not _checkout_enabled(settings) or not merchant_id:
+			frappe.throw(_("پرداخت آنلاین هنوز توسط مدیر آسومی پیکربندی نشده است."))
 	target_field = "docker_site" if site_type == "Docker Control Site" else "site"
 	target_filters = {target_field: site}
 	active_plan = frappe.db.exists(
@@ -723,10 +747,73 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 	active_commerce_plan = frappe.db.exists(
 		"Commerce Order",
 		target_filters
-		| {"plan": plan_doc.name, "order_type": "Marketplace App", "status": "Active"},
+		| {
+			"plan": plan_doc.name,
+			"order_type": "Marketplace App",
+			"status": ["in", ["Paid", "Provisioning", "Provisioning Failed", "Active"]],
+		},
 	)
 	if active_plan and not active_commerce_plan:
 		frappe.throw(_("این تعرفه همین حالا روی سایت شما فعال است."))
+	if is_free:
+		active_free_order = frappe.db.get_value(
+			"Commerce Order",
+			target_filters
+			| {
+				"plan": plan_doc.name,
+				"order_type": "Marketplace App",
+				"status": "Active",
+				"amount": 0,
+			},
+			"name",
+		)
+		if active_free_order:
+			return {"order": active_free_order, "free": True, "already_active": True}
+		in_flight_free_orders = frappe.get_all(
+			"Commerce Order",
+			filters=target_filters
+			| {
+				"plan": plan_doc.name,
+				"order_type": "Marketplace App",
+				"amount": 0,
+				"status": ["in", ["Paid", "Provisioning", "Provisioning Failed"]],
+			},
+			fields=["name", "status"],
+			order_by="creation desc",
+			limit_page_length=1,
+			ignore_permissions=True,
+		)
+		if in_flight_free_orders:
+			order = in_flight_free_orders[0]
+			if order.status == "Provisioning Failed":
+				frappe.enqueue(
+					"press.saas.commerce.api.provision_paid_order",
+					order_name=order.name,
+					enqueue_after_commit=True,
+				)
+			return {"order": order.name, "free": True, "already_requested": True}
+		if not frappe.db.exists("Currency", "IRR"):
+			frappe.throw(_("واحد پول ریال در تنظیمات آسومی ثبت نشده است."))
+		order = frappe.get_doc(
+			{
+				"doctype": "Commerce Order",
+				**snapshot,
+				"provider": "Free",
+				"sandbox_mode": 0,
+			}
+		).insert(ignore_permissions=True)
+		order.db_set(
+			{
+				"status": transition_order("Pending Payment", "Paid"),
+				"paid_at": frappe.utils.now_datetime(),
+			}
+		)
+		frappe.enqueue(
+			"press.saas.commerce.api.provision_paid_order",
+			order_name=order.name,
+			enqueue_after_commit=True,
+		)
+		return {"order": order.name, "free": True}
 	pending_order = frappe.get_all(
 		"Commerce Order",
 		filters={
@@ -1530,7 +1617,7 @@ def admin_orders(limit: int = 100) -> list[dict]:
 	_require_commerce_admin()
 	return frappe.get_all(
 		"Commerce Order",
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "docker_site", "subdomain", "service_delivery_mode", "team", "customer", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "docker_site", "subdomain", "service_delivery_mode", "team", "customer", "amount", "currency", "provider", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 100), 1), 200),
 		ignore_permissions=True,
@@ -1558,6 +1645,8 @@ def record_refund(order: str, refund_reference: str, refund_note: str = "") -> d
 	"""Record a refund already completed through the payment provider dashboard."""
 	_require_commerce_admin()
 	doc = frappe.get_doc("Commerce Order", order, for_update=True)
+	if doc.provider == "Free" or not int(doc.amount or 0):
+		frappe.throw(_("برای سفارش رایگان امکان ثبت بازپرداخت وجود ندارد."))
 	if doc.refund_reference:
 		frappe.throw(_("بازپرداخت این سفارش قبلاً ثبت شده است."))
 

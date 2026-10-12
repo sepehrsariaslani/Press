@@ -189,7 +189,7 @@
    "fieldname": "provider",
    "fieldtype": "Select",
    "label": "Payment Provider",
-   "options": "ZarinPal",
+   "options": "ZarinPal\nFree",
    "read_only": 1
   },
   {

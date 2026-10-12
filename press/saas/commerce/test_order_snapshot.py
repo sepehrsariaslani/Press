@@ -97,6 +97,23 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 				with self.assertRaises(ValueError):
 					marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
 
+	def test_zero_price_plan_can_be_claimed_without_payment(self):
+		self.plan["price_irr"] = 0
+		snapshot = marketplace_app_order_snapshot(
+			self.plan, self.app, self.site, self.team, "buyer@example.com"
+		)
+		self.assertEqual(snapshot["amount"], 0)
+		self.assertEqual(snapshot["currency"], "IRR")
+
+	def test_free_plan_still_rejects_negative_or_fractional_prices(self):
+		for amount in (-1, 0.5):
+			with self.subTest(amount=amount):
+				self.plan["price_irr"] = amount
+				with self.assertRaises(ValueError):
+					marketplace_app_order_snapshot(
+						self.plan, self.app, self.site, self.team, "buyer@example.com"
+					)
+
 	def test_rejects_missing_billing_interval(self):
 		self.plan["interval"] = None
 		with self.assertRaises(ValueError):

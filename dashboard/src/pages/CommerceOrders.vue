@@ -31,7 +31,7 @@
 
 			<div v-if="!selectedSite" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای دیدن تعرفه‌ها یک سایت فعال انتخاب کنید.</div>
 			<div v-else-if="plans.loading" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">در حال دریافت تعرفه‌ها…</div>
-			<div v-else-if="!(plans.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای برنامه‌های نصب‌شده روی این سایت، تعرفهٔ پولی ثبت نشده است.</div>
+			<div v-else-if="!(plans.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای برنامه‌های نصب‌شده روی این سایت، تعرفهٔ فعال ثبت نشده است.</div>
 			<div v-else class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<article v-for="plan in plans.data.plans" :key="plan.name" class="flex flex-col rounded-xl border border-gray-200 p-5">
 					<div class="flex-1">
@@ -40,10 +40,10 @@
 						<p class="mt-1 text-sm text-gray-600">دوره: {{ intervalLabel(plan.interval) }}</p>
 					</div>
 					<div class="mt-5 flex items-baseline gap-2">
-						<strong class="text-xl font-semibold text-gray-950">{{ money(plan.price_irr) }}</strong>
-						<span class="text-sm text-gray-500">ریال</span>
+						<strong class="text-xl font-semibold text-gray-950">{{ Number(plan.price_irr) === 0 ? 'رایگان' : money(plan.price_irr) }}</strong>
+						<span v-if="Number(plan.price_irr) !== 0" class="text-sm text-gray-500">ریال</span>
 					</div>
-					<Button class="mt-4 w-full" variant="solid" :disabled="!plans.data.checkout_enabled || busy" :loading="busyPlan === plan.name" label="ثبت سفارش و پرداخت" @click="purchase(plan)" />
+					<Button class="mt-4 w-full" variant="solid" :disabled="(Number(plan.price_irr) === 0 ? !plans.data.free_purchase_enabled : !plans.data.checkout_enabled) || busy" :loading="busyPlan === plan.name" :label="Number(plan.price_irr) === 0 ? 'فعال‌سازی رایگان' : 'ثبت سفارش و پرداخت'" @click="purchase(plan)" />
 				</article>
 			</div>
 			<p v-if="plans.data?.message" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">{{ plans.data.message }}</p>
@@ -364,7 +364,7 @@
 							<td class="max-w-64 truncate text-rose-700">{{ order.provisioning_error || order.payment_error || '—' }}</td>
 							<td class="flex items-center gap-2 py-2">
 								<Button v-if="order.status === 'Provisioning Failed'" label="تلاش مجدد تحویل" :loading="retrying === order.name" @click="retry(order)" />
-								<template v-if="['Paid', 'Active', 'Provisioning Failed'].includes(order.status)">
+								<template v-if="order.provider !== 'Free' && ['Paid', 'Active', 'Provisioning Failed'].includes(order.status)">
 									<input v-model="refundReferences[order.name]" class="w-36 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900" placeholder="شمارهٔ پیگیری" :aria-label="`شمارهٔ بازپرداخت ${order.name}`" />
 									<Button label="ثبت بازپرداخت" :disabled="!refundReferences[order.name]?.trim()" :loading="refunding === order.name" @click="recordRefund(order)" />
 								</template>
@@ -465,6 +465,13 @@ async function purchase(plan) {
 	busyPlan.value = plan.name;
 	try {
 		const result = await startPurchaseResource.submit({ plan: plan.name, ...commercePurchaseSiteParams(target) });
+		if (result?.free || result?.message?.free) {
+			await Promise.all([orders.fetch(), plans.fetch({ site: target.name, site_type: target.site_type })]);
+			notice.value = result?.already_active || result?.message?.already_active
+				? 'این تعرفهٔ رایگان از قبل روی سایت فعال است.'
+				: 'درخواست رایگان ثبت شد و فعال‌سازی آن در حال انجام است.';
+			return;
+		}
 		const checkout = result?.checkout_url || result?.message?.checkout_url;
 		if (!checkout || !checkout.startsWith('https://')) throw new Error('نشانی امن پرداخت از سرور دریافت نشد.');
 		window.location.assign(checkout);
