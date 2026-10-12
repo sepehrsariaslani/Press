@@ -12,9 +12,10 @@ import type { MarketplaceApp } from './product/marketplace/MarketplaceShowcase';
 type AsumiAppProps = {
 	marketplaceApps?: MarketplaceApp[];
 	canManageMarketplacePrices?: boolean;
+	isAuthenticated?: boolean;
 };
 
-export function AsumiApp({ marketplaceApps = [], canManageMarketplacePrices = false }: AsumiAppProps = {}) {
+export function AsumiApp({ marketplaceApps = [], canManageMarketplacePrices = false, isAuthenticated = false }: AsumiAppProps = {}) {
 	const { activeModuleId, openModule, openPricing, openOrderCenter, returnToModules, showPricing, showWebsiteDesign } = useModuleNavigation();
 	if (showWebsiteDesign) {
 		return <WebsiteDesignPricingPage onReturnToModules={returnToModules} onRequestQuote={context => openOrderCenter([], context, 'website_design')} />;
@@ -36,5 +37,5 @@ export function AsumiApp({ marketplaceApps = [], canManageMarketplacePrices = fa
 	if (activeModule) {
 		return <ModuleDetailPage module={activeModule} index={activeModuleIndex} onOpenModule={openModule} onReturnToModules={returnToModules} onOpenPricing={openPricing} />;
 	}
-	return <StoryLanding onOpenModule={openModule} onOpenPricing={openPricing} marketplaceApps={marketplaceApps} canManageMarketplacePrices={canManageMarketplacePrices} />;
+	return <StoryLanding onOpenModule={openModule} onOpenPricing={openPricing} marketplaceApps={marketplaceApps} canManageMarketplacePrices={canManageMarketplacePrices} isAuthenticated={isAuthenticated} />;
 }

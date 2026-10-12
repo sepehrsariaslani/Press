@@ -29,6 +29,24 @@ test('renders the evidence board, six Persian chapters, fifteen product modules 
   expect(container.querySelector('.module-card[href="#module/business"]')).toBeInTheDocument();
 });
 
+test('keeps the private ERP preview unloaded for guests and offers the login route', () => {
+  const { container } = render(<AsumiApp isAuthenticated={false} />);
+  expect(container.querySelector('.role-live-preview-iframe')).not.toBeInTheDocument();
+  expect(screen.getByText('ورود لازم است')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /ورود برای مشاهده‌ی پنل/ })).toHaveAttribute(
+    'href',
+    expect.stringMatching(/^\/hesab\/login\?next=/),
+  );
+});
+
+test('keeps the real ERP preview available for an authenticated Asumi session', () => {
+  const { container } = render(<AsumiApp isAuthenticated />);
+  expect(container.querySelector('.role-live-preview-iframe')).toHaveAttribute(
+    'src',
+    expect.stringContaining('/hesab/'),
+  );
+});
+
 test('shows published marketplace apps and their live prices inside the homepage design', () => {
   render(<AsumiApp marketplaceApps={[
     {
@@ -360,7 +378,7 @@ test('removes its pointer listeners on unmount', () => {
 });
 
 test('shows the actual Accounts workspace for the selected role and its related module routes', () => {
-  const { container } = render(<AsumiApp />);
+  const { container } = render(<AsumiApp isAuthenticated />);
   const rolePicker = screen.getByRole('group', { name: 'انتخاب نقش برای بازکردن صفحه‌ی واقعی' });
   expect(rolePicker.querySelectorAll('button')).toHaveLength(11);
   expect(screen.getByTitle('محیط واقعی آسومی برای مدیر کسب‌وکار، داشبورد مدیریتی')).toHaveAttribute('src', '/hesab/manager-dashboard');

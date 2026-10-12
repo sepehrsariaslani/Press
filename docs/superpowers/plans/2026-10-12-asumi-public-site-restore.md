@@ -50,3 +50,14 @@
 - [x] Add regression coverage for the catalog and marketplace page classes; both focused modules pass (21 tests).
 - [x] Fix Frappe's direct dark heading color override, version the stylesheet URL to bypass stale browser cache, and verify the rebuilt stylesheet returns HTTP 200.
 - [x] Verify `/`, `/saas`, `/pricing`, and `/marketplace` at 320, 768, and 1440 px after the approved Asumi migration and shared Bench reload: all return HTTP 200, have no horizontal overflow or CSS/JS failures, and the story changes as the page scrolls.
+
+### Task 4: Keep the live ERP preview quiet for public visitors
+
+**Files:**
+- Modify: `press/www/asumi.py` and `dashboard/asumi/index.html` to pass the uncached session state into the public app.
+- Modify: `dashboard/asumi/src/product/roles/RoleSystemPreview.tsx` and its parents to gate the private iframe.
+- Test: `press/www/test_asumi.py` and `dashboard/asumi/src/App.test.tsx`.
+
+- [x] For Guests, show a direct login link with the selected destination and do not mount the ERP iframe; keep the real preview for authenticated users.
+- [x] Verify the guest and authenticated rendering paths, Python controller context, TypeScript build, and Asumi application tests.
+- [x] Rebuild and publish on the shared Bench, then verify the public root has 24 app cards, no ERP iframe, no 401 or console errors, and the new HTML/JS/CSS assets return HTTP 200.

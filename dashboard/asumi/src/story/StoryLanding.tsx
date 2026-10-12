@@ -16,9 +16,10 @@ type StoryLandingProps = {
 	onOpenPricing: () => void;
 	marketplaceApps: MarketplaceApp[];
 	canManageMarketplacePrices: boolean;
+	isAuthenticated: boolean;
 };
 
-export function StoryLanding({ onOpenModule, onOpenPricing, marketplaceApps, canManageMarketplacePrices }: StoryLandingProps) {
+export function StoryLanding({ onOpenModule, onOpenPricing, marketplaceApps, canManageMarketplacePrices, isAuthenticated }: StoryLandingProps) {
   const systemReduced = useReducedMotion();
   const [motionChoice, setMotionChoice] = useState<boolean | null>(null);
   const reducedMotion = motionChoice ?? systemReduced;
@@ -56,7 +57,7 @@ export function StoryLanding({ onOpenModule, onOpenPricing, marketplaceApps, can
         })}
       </div>
     </div>
-    <RoleShowcase />
+    <RoleShowcase isAuthenticated={isAuthenticated} />
     <ProductShowcase onOpenModule={onOpenModule} onOpenPricing={onOpenPricing} />
     <IndustryShowcase onOpenModule={onOpenModule} onOpenPricing={onOpenPricing} />
     <MarketplaceShowcase apps={marketplaceApps} canManagePrices={canManageMarketplacePrices} />

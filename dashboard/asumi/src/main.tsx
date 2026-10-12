@@ -9,6 +9,7 @@ document.documentElement.lang = 'fa';
 document.documentElement.dir = 'rtl';
 
 const root = document.getElementById('root');
+const marketplaceData = document.getElementById('asumi-marketplace-data');
 
 if (!root) {
 	throw new Error('Asumi root element was not found.');
@@ -17,8 +18,9 @@ if (!root) {
 createRoot(root).render(
 	<StrictMode>
 		<AsumiApp
-			marketplaceApps={readMarketplaceApps(document.getElementById('asumi-marketplace-data'))}
-			canManageMarketplacePrices={document.getElementById('asumi-marketplace-data')?.getAttribute('data-can-manage-prices') === 'true'}
+			marketplaceApps={readMarketplaceApps(marketplaceData)}
+			canManageMarketplacePrices={marketplaceData?.getAttribute('data-can-manage-prices') === 'true'}
+			isAuthenticated={marketplaceData?.getAttribute('data-user-authenticated') === 'true'}
 		/>
 	</StrictMode>,
 );

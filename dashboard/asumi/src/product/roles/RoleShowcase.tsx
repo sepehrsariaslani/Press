@@ -6,7 +6,7 @@ import { RoleSystemPreview } from './RoleSystemPreview';
 import { roleDashboards } from './roleData';
 import './role-showcase.css';
 
-export function RoleShowcase() {
+export function RoleShowcase({ isAuthenticated }: { isAuthenticated: boolean }) {
 	const [activeRoleId, setActiveRoleId] = useState(roleDashboards[0].id);
 	const activeRole = roleDashboards.find(role => role.id === activeRoleId) || roleDashboards[0];
 	const [activeModuleId, setActiveModuleId] = useState<string | null>(activeRole.entryPath ? null : activeRole.moduleIds[0]);
@@ -42,7 +42,7 @@ export function RoleShowcase() {
 						{relatedModules.map(module => <button key={module.id} type="button" aria-pressed={activeModuleId === module.id} onClick={() => setActiveModuleId(module.id)}>{module.shortTitle}</button>)}
 					</div>
 				</div>
-				<RoleSystemPreview roleLabel={activeRole.label} sectionLabel={selectedModule?.shortTitle || 'داشبورد مدیریتی'} entryHref={entryHref} />
+				<RoleSystemPreview roleLabel={activeRole.label} sectionLabel={selectedModule?.shortTitle || 'داشبورد مدیریتی'} entryHref={entryHref} isAuthenticated={isAuthenticated} />
 			</div>
 		</div>
 	</section>;

@@ -59,10 +59,18 @@
 .role-live-preview-stage { position: relative; min-height: 620px; background: #fff; }
 .role-live-preview-iframe { display: block; width: 100%; height: min(78vh, 920px); min-height: 620px; border: 0; background: #fff; }
 .role-live-preview-loading { position: absolute; inset: 0; display: grid; place-items: center; background: #fbfaf7; color: #625a52; font-size: 12px; }
+.role-live-preview-guest { display: grid; min-height: 620px; place-items: center; padding: 28px; background: radial-gradient(circle at 50% 42%, #fff 0, #fbfaf7 55%, #f4f1eb 100%); text-align: center; }
+.role-live-preview-guest-card { width: min(100%, 430px); border: 1px solid #ded9d1; padding: clamp(24px, 4vw, 42px); background: #fffefa; box-shadow: 0 18px 46px #30271c10; }
+.role-live-preview-guest-eyebrow { margin: 0 0 10px; color: var(--product-red); font-size: 11px; font-weight: 650; }
+.role-live-preview-guest-card h4 { margin: 0; font-size: 19px; font-weight: 650; line-height: 1.7; }
+.role-live-preview-guest-card > p:not(.role-live-preview-guest-eyebrow) { margin: 8px 0 20px; color: var(--product-muted); font-size: 12px; line-height: 1.9; }
+.role-live-preview-login { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border: 1px solid var(--product-red); padding: 0 18px; background: var(--product-red); color: #fff; font-size: 12px; font-weight: 650; text-decoration: none; transition: background-color .18s ease; }
+.role-live-preview-login:hover { background: #8f1c28; }
 .role-live-preview-note { margin: 10px 2px 0; color: #625a52; font-size: 11px; line-height: 1.9; }
 .role-picker button:focus-visible,
 .role-module-links button:focus-visible,
-.role-live-preview-open:focus-visible { outline: 3px solid #a9253259; outline-offset: 2px; }
+.role-live-preview-open:focus-visible,
+.role-live-preview-login:focus-visible { outline: 3px solid #a9253259; outline-offset: 2px; }
 
 @media (max-width: 1000px) {
 	.role-showcase-inner,
