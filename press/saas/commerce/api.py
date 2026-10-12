@@ -24,6 +24,7 @@ from press.saas.commerce.hosting_readiness import (
 	resolve_ipv4,
 	wildcard_dns_guidance,
 )
+from press.saas.commerce.checkout_access import checkout_available_for_actor
 from press.saas.commerce.pricing import (
 	ZARINPAL_MINIMUM_AMOUNT_IRR,
 	marketplace_plan_supported_by_asumi_checkout,
@@ -88,6 +89,35 @@ def _checkout_enabled(settings, sale_type: str = "marketplace") -> bool:
 	)
 
 
+def _has_commerce_admin_role() -> bool:
+	return bool(has_role("System Manager") or has_role("Press Admin"))
+
+
+def _checkout_available_for_user(settings, sale_type: str = "marketplace") -> bool:
+	sandbox_mode = bool(settings and settings.sandbox_mode)
+	sale_enabled = (
+		getattr(settings, "allow_site_plan_sales", False)
+		if sale_type == "hosting"
+		else getattr(settings, "allow_marketplace_app_sales", False)
+	)
+	return checkout_available_for_actor(
+		enabled=bool(settings and settings.enabled),
+		sale_enabled=bool(sale_enabled),
+		merchant_id_configured=bool(_merchant_id(settings)),
+		sandbox_mode=sandbox_mode,
+		is_commerce_admin=not sandbox_mode or _has_commerce_admin_role(),
+	)
+
+
+def _sandbox_checkout_restricted(settings, sale_type: str = "marketplace") -> bool:
+	return bool(
+		settings
+		and settings.sandbox_mode
+		and _checkout_enabled(settings, sale_type)
+		and not _has_commerce_admin_role()
+	)
+
+
 def _free_marketplace_purchase_enabled(settings) -> bool:
 	return bool(settings and settings.enabled and settings.allow_marketplace_app_sales)
 
@@ -117,9 +147,9 @@ def checkout_status() -> dict:
 	"""Return public configuration state without exposing gateway credentials."""
 	settings = _get_settings()
 	return {
-		"enabled": _checkout_enabled(settings),
-		"marketplace_apps_enabled": _checkout_enabled(settings, "marketplace"),
-		"hosting_enabled": _checkout_enabled(settings, "hosting"),
+		"enabled": _checkout_available_for_user(settings),
+		"marketplace_apps_enabled": _checkout_available_for_user(settings, "marketplace"),
+		"hosting_enabled": _checkout_available_for_user(settings, "hosting"),
 		"sandbox_mode": bool(settings and settings.sandbox_mode),
 		"currency": "IRR",
 	}
@@ -653,7 +683,7 @@ def available_site_plan_offers() -> dict:
 			else []
 		)
 		ready = (
-			_checkout_enabled(settings, "hosting")
+			_checkout_available_for_user(settings, "hosting")
 			and price_valid
 			and valid_interval
 			and (bool(sites) if mode == "Upgrade Existing Site" else bool(config or renewable_sites))
@@ -668,13 +698,17 @@ def available_site_plan_offers() -> dict:
 				"domain": config["domain"] if config else ASUMI_ROOT_DOMAIN,
 				"new_site_available": bool(config),
 				"renewable_sites": renewable_sites,
-				"message": "" if ready else "تنظیمات پرداخت، ظرفیت یا دامنهٔ این پلن هنوز آمادهٔ خرید نیست.",
+				"message": "" if ready else (
+					"حالت آزمایشی فقط برای مدیران آسومی فعال است؛ برای خرید مشتریان، پرداخت زنده را فعال کنید."
+					if _sandbox_checkout_restricted(settings, "hosting")
+					else "تنظیمات پرداخت، ظرفیت یا دامنهٔ این پلن هنوز آمادهٔ خرید نیست."
+				),
 			}
 		)
 	return {
 		"plans": offers,
 		"sites": [{key: site.get(key) for key in ("name", "subdomain", "domain", "plan")} for site in sites],
-		"checkout_enabled": _checkout_enabled(settings, "hosting"),
+		"checkout_enabled": _checkout_available_for_user(settings, "hosting"),
 		"domain": ASUMI_ROOT_DOMAIN,
 	}
 
@@ -722,12 +756,14 @@ def available_app_plans(site: str, site_type: str = "Site") -> dict:
 		)
 		plans.append(plan)
 	free_purchase_enabled = _free_marketplace_purchase_enabled(settings)
-	checkout_enabled = _checkout_enabled(settings)
+	checkout_enabled = _checkout_available_for_user(settings)
 	message = ""
 	if any(not plan.asumi_checkout_supported for plan in plans):
 		message = "پرداخت مستقیم آسومی فقط با ریال انجام می‌شود؛ برای تعرفه‌های پولی، قیمت IRR را هم ثبت کنید."
 	elif any(not plan.price_irr for plan in plans) and not free_purchase_enabled:
 		message = "فعال‌سازی تعرفه‌های رایگان فعلاً توسط مدیر آسومی خاموش است."
+	elif any(plan.price_irr for plan in plans) and _sandbox_checkout_restricted(settings):
+		message = "درگاه روی حالت آزمایشی است؛ خرید آزمایشی فقط برای مدیران آسومی فعال است و مشتریان پس از فعال‌شدن پرداخت زنده می‌توانند خرید کنند."
 	elif any(plan.price_irr for plan in plans) and not checkout_enabled:
 		message = "پرداخت تعرفه‌های پولی هنوز توسط مدیر آسومی پیکربندی نشده است."
 	return {
@@ -765,7 +801,9 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 			frappe.throw(_("فعال‌سازی تعرفه‌های رایگان فعلاً توسط مدیر آسومی خاموش است."))
 	else:
 		merchant_id = _merchant_id(settings)
-		if not _checkout_enabled(settings) or not merchant_id:
+		if not _checkout_available_for_user(settings) or not merchant_id:
+			if _sandbox_checkout_restricted(settings):
+				frappe.throw(_("پرداخت آزمایشی فقط برای مدیران آسومی در دسترس است؛ برای خرید مشتریان، حالت آزمایشی را خاموش کنید."))
 			frappe.throw(_("پرداخت آنلاین هنوز توسط مدیر آسومی پیکربندی نشده است."))
 	lock_digest = hashlib.sha256(f"{site_type}:{site}:{plan_doc.name}".encode()).hexdigest()[:40]
 	if not _acquire_transaction_lock(f"asumi-marketplace:{lock_digest}"):
@@ -976,7 +1014,9 @@ def start_site_plan_purchase(
 	if team.user != frappe.session.user and not is_user_part_of_team(frappe.session.user, team.name):
 		frappe.throw(_("به این تیم دسترسی ندارید."), frappe.PermissionError)
 	settings = _get_settings()
-	if not _checkout_enabled(settings, "hosting"):
+	if not _checkout_available_for_user(settings, "hosting"):
+		if _sandbox_checkout_restricted(settings, "hosting"):
+			frappe.throw(_("پرداخت آزمایشی میزبانی فقط برای مدیران آسومی در دسترس است؛ برای خرید مشتریان، حالت آزمایشی را خاموش کنید."))
 		frappe.throw(_("خرید میزبانی هنوز توسط مدیر آسومی فعال نشده است."))
 	plan_doc = frappe.get_doc("Site Plan", plan)
 	if plan_doc.document_type != "Site" or not plan_doc.enabled or plan_doc.is_trial_plan or plan_doc.legacy_plan:

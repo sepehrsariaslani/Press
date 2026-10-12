@@ -140,8 +140,9 @@
 					<p class="text-sm font-medium text-rose-300">مدیریت آسومی</p>
 					<h2 class="mt-1 text-lg font-semibold">تنظیمات پرداخت و تعرفه‌ها</h2>
 					<p class="mt-1 max-w-3xl text-sm leading-6 text-gray-300">شناسهٔ پذیرنده محرمانه ذخیره می‌شود و هیچ‌وقت دوباره در صفحه نمایش داده نمی‌شود. پرداخت تا زمان ثبت شناسه و فعال‌سازی مدیر غیرفعال می‌ماند.</p>
+					<p v-if="settings.data" class="mt-2 max-w-3xl text-xs leading-5" :class="gatewayStatus.tone === 'warning' ? 'text-amber-200' : 'text-emerald-200'">{{ gatewayStatus.message }}</p>
 				</div>
-				<span class="rounded-full border border-gray-700 px-3 py-1 text-xs" :class="settings.data?.enabled && settings.data?.merchant_id_configured ? 'text-emerald-300' : 'text-amber-200'">{{ settings.data?.enabled && settings.data?.merchant_id_configured ? 'درگاه فعال' : 'درگاه غیرفعال' }}</span>
+				<span class="rounded-full border border-gray-700 px-3 py-1 text-xs" :class="gatewayStatus.tone === 'success' ? 'text-emerald-300' : 'text-amber-200'">{{ gatewayStatus.label }}</span>
 			</div>
 
 			<div v-if="settings.data" class="mt-5 grid gap-4 md:grid-cols-2">
@@ -384,6 +385,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 import { session } from '@/data/session';
 import { canManageAsumiCommerce } from '@/utils/commerceAccess';
+import { commerceGatewayState } from '@/utils/commerceGatewayState';
 import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
@@ -428,6 +430,7 @@ const settings = createResource({
 	auto: isCommerceAdmin.value,
 	onSuccess(data) { Object.assign(settingsForm, data); },
 });
+const gatewayStatus = computed(() => commerceGatewayState(settings.data));
 const hostingReadiness = createResource({ url: 'press.saas.commerce.api.admin_hosting_readiness', auto: isCommerceAdmin.value });
 const appPlans = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plans', auto: isCommerceAdmin.value });
 const marketplacePlanOptions = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plan_options', auto: isCommerceAdmin.value });
