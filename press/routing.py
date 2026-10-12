@@ -16,6 +16,10 @@ def resolve_path(path: str):
 	default resolver even when they are requested from the Asumi domain.
 	"""
 	route = (path or "").strip("/ ")
+	if get_request_host() in ASUMI_HOSTS and (
+		route.lower() == "dashboard" or route.lower().startswith("dashboard/")
+	):
+		return default_resolve_path(path)
 	if get_request_host() in ASUMI_HOSTS and not route:
 		return "asumi"
 

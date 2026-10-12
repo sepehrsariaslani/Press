@@ -15,11 +15,13 @@ class TestAsumiRouting(TestCase):
 				self.assertEqual(resolve_path("hesab"), "dashboard")
 				fallback.assert_called_once_with("hesab")
 
-	def test_dashboard_path_stays_behind_authorization_router(self):
-		with patch("press.routing.get_request_host", return_value="asumi.ir"):
-			with patch("press.routing.default_resolve_path") as fallback:
-				self.assertEqual(resolve_path("dashboard"), "asumi")
-				fallback.assert_not_called()
+	def test_dashboard_pages_use_the_press_authorization_router(self):
+		for path in ("dashboard", "dashboard/orders", "dashboard/docker-control"):
+			with self.subTest(path=path):
+				with patch("press.routing.get_request_host", return_value="asumi.ir"):
+					with patch("press.routing.default_resolve_path", return_value="dashboard") as fallback:
+						self.assertEqual(resolve_path(path), "dashboard")
+						fallback.assert_called_once_with(path)
 
 	def test_non_asumi_host_uses_frappe_resolver(self):
 		with patch("press.routing.get_request_host", return_value="dehati.ir"):
