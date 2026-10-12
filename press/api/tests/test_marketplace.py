@@ -111,6 +111,13 @@ class TestAPIMarketplace(FrappeTestCase):
 		after_count = frappe.db.count("Marketplace App Plan")
 		self.assertEqual(before_count + 1, after_count)
 
+	def test_create_marketplace_app_plan_rejects_another_team(self):
+		other_team = create_test_press_admin_team()
+		frappe.set_user(other_team.user)
+
+		with self.assertRaises(frappe.PermissionError):
+			create_app_plan(self.marketplace_app.name, self.plan_data)
+
 	def test_reset_features_for_plan(self):
 		plan_doc = create_app_plan(self.marketplace_app.name, self.plan_data)
 		new_features = ["feature 3", "feature 4"]
@@ -437,6 +444,21 @@ class TestAPIMarketplace(FrappeTestCase):
 		self.assertEqual(m_plan.title, updated_plan_data["title"])
 		self.assertEqual(m_plan.features[0].description, updated_plan_data["features"][0])
 		self.assertEqual(m_plan.features[1].description, updated_plan_data["features"][1])
+
+	def test_update_marketplace_app_plan_rejects_another_team(self):
+		m_plan = create_test_marketplace_app_plan(self.marketplace_app.name)
+		other_team = create_test_press_admin_team()
+		frappe.set_user(other_team.user)
+
+		with self.assertRaises(frappe.PermissionError):
+			update_app_plan(
+				m_plan.name,
+				{
+					"title": "Unauthorized price change",
+					"price_inr": 1,
+					"price_usd": 1,
+				},
+			)
 
 	def test_become_publisher(self):
 		frappe.set_user(self.team.user)

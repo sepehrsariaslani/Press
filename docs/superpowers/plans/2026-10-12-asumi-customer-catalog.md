@@ -17,6 +17,7 @@
 - Use Jinja auto-escaping for app titles, descriptions, identifiers, and routes; do not build HTML strings from database values.
 - Do not expose a hosting purchase button while no capacity-checked hosting offer and checkout exist.
 - Do not enable or simulate live payment as part of this catalog slice.
+- Protect Marketplace App Plan write APIs with a global write permission or the owning app team's owner/admin permission.
 - Keep `/marketplace`, `/saas`, and `/pricing` routes available and preserve the existing install flow.
 
 ---

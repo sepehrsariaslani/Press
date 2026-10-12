@@ -22,6 +22,7 @@ from press.press.doctype.marketplace_app.marketplace_app import (
 )
 from press.utils import get_app_tag, get_current_team, get_last_doc, unique
 from press.utils.billing import get_frappe_io_connection
+from press.utils.marketplace_app_plan_permissions import can_manage_marketplace_app_plans
 
 if TYPE_CHECKING:
 	from press.marketplace.doctype.marketplace_app_plan.marketplace_app_plan import MarketplaceAppPlan
@@ -1036,6 +1037,7 @@ def get_subscriptions_list(marketplace_app: str) -> list:
 
 @frappe.whitelist()
 def create_app_plan(marketplace_app: str, plan_data: dict):
+	_get_marketplace_app_for_plan_write(marketplace_app)
 	app_plan_doc = frappe.get_doc(
 		{
 			"doctype": "Marketplace App Plan",
@@ -1053,10 +1055,11 @@ def create_app_plan(marketplace_app: str, plan_data: dict):
 
 @frappe.whitelist()
 def update_app_plan(app_plan_name: str, updated_plan_data: dict):
+	app_plan_doc = frappe.get_doc("Marketplace App Plan", app_plan_name)
+	_get_marketplace_app_for_plan_write(app_plan_doc.app)
+
 	if not updated_plan_data.get("title"):
 		frappe.throw("Plan title is required")
-
-	app_plan_doc = frappe.get_doc("Marketplace App Plan", app_plan_name)
 
 	no_of_active_subscriptions = frappe.db.count(
 		"Subscription",
@@ -1090,6 +1093,18 @@ def update_app_plan(app_plan_name: str, updated_plan_data: dict):
 	reset_features_for_plan(app_plan_doc, feature_list, save=False)
 	app_plan_doc.enabled = updated_plan_data.get("enabled", True)
 	app_plan_doc.save(ignore_permissions=True)
+
+
+def _get_marketplace_app_for_plan_write(marketplace_app: str) -> MarketplaceApp:
+	app = frappe.get_doc("Marketplace App", marketplace_app)
+	team = frappe.get_doc("Team", app.team) if app.team else None
+	if not can_manage_marketplace_app_plans(
+		has_global_permission=frappe.has_permission("Marketplace App Plan", ptype="write"),
+		is_team_owner=bool(team and team.is_team_owner()),
+		is_team_admin=bool(team and team.is_admin_user()),
+	):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	return app
 
 
 def reset_features_for_plan(app_plan_doc: MarketplaceAppPlan, feature_list: list[str], save=False):
