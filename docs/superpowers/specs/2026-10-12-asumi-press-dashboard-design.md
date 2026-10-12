@@ -25,7 +25,7 @@ Apply the design across all Press frontend routes served under `/dashboard/*`, i
 - Account and team settings, permissions, developer settings, partner administration, and system utilities.
 - Login, signup, invitation, password reset, onboarding, and other dashboard entry flows.
 
-The public Asumi marketing pages and the ERP Desk under `/hesab/*` are outside this redesign. Existing routes, APIs, permission checks, data, actions, and business rules remain intact.
+The public Asumi marketing pages and the ERP Desk under `/hesab/*` are outside this redesign. Existing APIs, role checks, data, actions, and business rules remain intact. On the Asumi host, guests may reach only the dashboard's public entry flows: login, signup, site login, token-based password reset and account/invite setup, and token-based checkout. Site, server, billing, settings, and other management routes remain behind the existing system-manager check.
 
 ## Shared Dashboard Foundation
 

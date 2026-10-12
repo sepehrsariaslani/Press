@@ -4,7 +4,7 @@
 
 **Goal:** Apply Asumi's black-and-red design consistently to every Press frontend route under `/dashboard/*` while preserving its existing actions, routes, permissions, and data behavior.
 
-**Architecture:** Add a scoped dashboard token and compatibility layer after the existing Frappe UI stylesheet. Apply it at the Vue application root so all routed pages inherit the same surfaces, typography, controls, and responsive behavior. Refine the shared navigation and reusable components where CSS alone cannot provide the intended hierarchy; leave page business logic and routing unchanged.
+**Architecture:** Add a scoped dashboard token and compatibility layer after the existing Frappe UI stylesheet. Apply it at the Vue application root so all routed pages inherit the same surfaces, typography, controls, and responsive behavior. Refine the shared navigation and reusable components where CSS alone cannot provide the intended hierarchy; preserve management permissions and business logic, and route only public dashboard entry flows through the Asumi host for guests.
 
 **Tech Stack:** Vue 3, Vite, Tailwind CSS 3, Frappe UI, CSS custom properties, local Vazirmatn and Manrope variable fonts, existing Peyda fallback fonts, the published Asumi mark.
 
@@ -15,7 +15,7 @@
 - Use black and charcoal for the dashboard frame and surfaces. Reserve red for primary actions, selected navigation, links, and high-priority emphasis; do not make every panel or control red.
 - Keep the visual language operational and calm. Use clear typography, deliberate spacing, subtle borders, and restrained elevation rather than cinematic effects or decorative glow.
 - Use the existing Asumi typography where available: Vazirmatn for Persian and Manrope for Latin text and numbers. Preserve correct RTL reading order while keeping identifiers, URLs, code, and numeric values legible in their natural direction.
-- The public Asumi marketing pages and the ERP Desk under `/hesab/*` are outside this redesign. Existing routes, APIs, permission checks, data, actions, and business rules remain intact.
+- The public Asumi marketing pages and the ERP Desk under `/hesab/*` are outside this redesign. Existing APIs, management permission checks, data, actions, and business rules remain intact; guest routing is limited to public login, signup, site-login, token-based reset/setup/invite, and checkout entry flows.
 - Keep Persian labels and messages in Persian where they already exist; do not translate product terminology or user data as part of the redesign.
 - Do not communicate status through color alone. Preserve screen-reader labels for icon-only controls and meaningful accessible names for navigation.
 
@@ -180,6 +180,7 @@
 - Produces: a buildable Press dashboard with documented route coverage and responsive visual behavior.
 
 - [x] Compare every route in `dashboard/src/router.js` and generated site/server/bench routes against the scope in `docs/superpowers/specs/2026-10-12-asumi-press-dashboard-design.md`.
-- [ ] Check CSS at 320px, tablet, and desktop widths; verify RTL controls, dialogs, tables, long identifiers, and focus visibility.
+- [x] Keep public dashboard entry flows reachable on the Asumi host for guests while denying guest access to site, server, and settings management routes; test the system-manager allow path.
+- [ ] Check routed pages at 320px, tablet, and desktop widths; verify RTL controls, dialogs, tables, long identifiers, and focus visibility on authenticated operational views.
 - [x] Run dashboard lint and production build. The build succeeds; the repository lint is blocked by the existing ESLint/Prettier integration and unrelated baseline lint errors.
 - [x] Review the final diff to confirm no changes to API calls, permissions, router paths, or business logic, and commit the implementation with a Persian message describing what changed and why.

@@ -18,7 +18,9 @@ export const integrations = reactive({
 	},
 });
 
-export const addIntegrations = () => {
+export const addIntegrations = (isLoggedIn: boolean) => {
+	if (!isLoggedIn) return;
+
 	let siteList = createListResource({
 		auto: true,
 		doctype: 'Site',

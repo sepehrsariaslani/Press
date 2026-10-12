@@ -1,4 +1,5 @@
 import { searchModalOpen } from '@/data/ui';
+import { session } from '@/data/session';
 import { useMagicKeys, whenever } from '@vueuse/core';
 import { addIntegrations } from './integrations';
 
@@ -42,5 +43,5 @@ export const useSearch = async () => {
 	whenever(meta_k, (n) => { if (n) searchModalOpen.value = true; });
 	whenever(ctrl_k, (n) => { if (n) searchModalOpen.value = true; });
 
-	addIntegrations();
+	addIntegrations(session.isLoggedIn);
 };

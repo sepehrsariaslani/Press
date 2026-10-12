@@ -43,6 +43,37 @@ class TestDockerControlRouting(unittest.TestCase):
 				can_manage_docker=False,
 			)
 		)
+
+	def test_guest_can_reach_public_dashboard_entry_flows_only(self):
+		public_entry_routes = (
+			"/dashboard/signup",
+			"/dashboard/site-login",
+			"/dashboard/reset-password/secret-key",
+			"/dashboard/setup-account/secret-key",
+			"/dashboard/accept-invite/secret-key",
+			"/dashboard/checkout/secret-key",
+		)
+		for route in public_entry_routes:
+			with self.subTest(route=route):
+				self.assertTrue(
+					should_route_dashboard(
+						route,
+						host="asumi.ir",
+						is_guest=True,
+						can_manage_docker=False,
+					)
+				)
+
+		for route in ("/dashboard/sites", "/dashboard/servers", "/dashboard/settings"):
+			with self.subTest(route=route):
+				self.assertFalse(
+					should_route_dashboard(
+						route,
+						host="asumi.ir",
+						is_guest=True,
+						can_manage_docker=False,
+					)
+				)
 		self.assertFalse(
 			should_route_dashboard(
 				"/dashboard/sites",
