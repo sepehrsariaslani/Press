@@ -65,5 +65,8 @@ def _get_marketplace_permission_team():
 
 
 def get_context(_context):
-	frappe.flags.redirect_location = frappe.utils.get_url("/#apps")
+	request = getattr(frappe.local, "request", None)
+	request_path = getattr(request, "path", "")
+	section = "pricing" if request_path.rstrip("/") == "/pricing" else "apps"
+	frappe.flags.redirect_location = frappe.utils.get_url(f"/#{section}")
 	raise frappe.Redirect

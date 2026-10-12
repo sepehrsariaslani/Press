@@ -18,11 +18,25 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		redirect_exception = type("RedirectForTest", (Exception,), {})
 		with patch("press.www.saas.index.frappe") as frappe_mock:
 			frappe_mock.Redirect = redirect_exception
-			frappe_mock.utils.get_url.return_value = "https://asumi.ir/#apps"
+			frappe_mock.local.request.path = "/saas"
+			frappe_mock.utils.get_url.side_effect = lambda path: f"https://asumi.ir{path}"
 			with self.assertRaises(redirect_exception):
 				get_context({})
 
 		self.assertEqual(frappe_mock.flags.redirect_location, "https://asumi.ir/#apps")
+
+	def test_pricing_route_opens_the_homepage_pricing_experience(self):
+		from press.www.saas.index import get_context
+
+		redirect_exception = type("RedirectForTest", (Exception,), {})
+		with patch("press.www.saas.index.frappe") as frappe_mock:
+			frappe_mock.Redirect = redirect_exception
+			frappe_mock.local.request.path = "/pricing"
+			frappe_mock.utils.get_url.side_effect = lambda path: f"https://asumi.ir{path}"
+			with self.assertRaises(redirect_exception):
+				get_context({})
+
+		self.assertEqual(frappe_mock.flags.redirect_location, "https://asumi.ir/#pricing")
 
 	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
 	@patch("press.www.saas.index.skip_roles", return_value=False, create=True)
