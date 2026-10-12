@@ -16,15 +16,25 @@
 					<span class="rounded-full px-2.5 py-1 text-xs" :class="site.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'">{{ site.enabled ? 'فعال' : 'غیرفعال' }}</span>
 				</div>
 				<div v-if="canManageSiteTeams" class="mt-4">
-					<label :for="`team-${site.domain}`" class="block text-sm font-medium text-gray-700">تیم دارای دسترسی سایت</label>
+					<label :for="`team-${site.domain}`" class="block text-sm font-medium text-gray-700">تیم کسب‌وکار مرتبط</label>
 					<select :id="`team-${site.domain}`" v-model="selectedTeams[site.domain]" :disabled="locked" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-50">
 						<option value="">بدون تیم</option>
 						<option v-for="team in teams" :key="team.name" :value="team.name">{{ team.team_title || `تیم بدون عنوان · ${team.name}` }}</option>
 					</select>
-					<p class="mt-1 text-xs font-normal text-gray-500">مالک یا مدیر این تیم در آسومی می‌تواند عملیات همین سایت را اجرا کند.</p>
+					<p class="mt-1 text-xs font-normal text-gray-500">این اتصال فقط برای دسته‌بندی است؛ دسترسی مدیران از نگاشت System Manager همان سایت کنترل می‌شود.</p>
 					<Button class="mt-2" size="sm" :disabled="locked || selectedTeams[site.domain] === (site.team || '')" label="ذخیرهٔ دسترسی تیم" @click="saveTeam(site)" />
 				</div>
 				<p v-else class="mt-2 text-xs text-gray-500">تیم دسترسی: {{ site.team_title || site.team || 'تیمی به این سایت متصل نشده' }}</p>
+				<div v-if="canManageAdmins" class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<div>
+							<p class="text-sm font-medium text-gray-800">دسترسی مدیران سیستم</p>
+							<p class="mt-1 text-xs text-gray-600">{{ site.site_admin_count || 0 }} مدیر متصل · آخرین همگام‌سازی: {{ site.last_admin_sync_at || 'انجام نشده' }}</p>
+						</div>
+						<Button size="sm" :disabled="locked" label="همگام‌سازی مدیران فعال" @click="emit('sync-admins', site.domain)" />
+					</div>
+					<p class="mt-2 text-xs leading-5 text-gray-600">فقط کاربران فعال System Manager این سایت دسترسی می‌گیرند. حساب جدید بدون ارسال ایمیل ساخته می‌شود؛ کاربر برای ورود باید خودش از «فراموشی رمز عبور» در Asumi استفاده کند.</p>
+				</div>
 				<div class="mt-4 flex flex-wrap gap-2">
 					<span v-for="app in site.apps" :key="app.app" class="rounded-md bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700">
 						{{ app.app }} <span class="text-gray-400">{{ app.version }}</span>
@@ -50,8 +60,8 @@
 <script setup>
 import { reactive, watch } from 'vue';
 
-const props = defineProps({ sites: { type: Array, default: () => [] }, teams: { type: Array, default: () => [] }, canManageSiteTeams: Boolean, locked: Boolean });
-const emit = defineEmits(['action', 'restore', 'assign-team']);
+const props = defineProps({ sites: { type: Array, default: () => [] }, teams: { type: Array, default: () => [] }, canManageSiteTeams: Boolean, canManageAdmins: Boolean, locked: Boolean });
+const emit = defineEmits(['action', 'restore', 'assign-team', 'sync-admins']);
 const selectedTeams = reactive({});
 
 watch(() => props.sites, (sites) => {

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import frappe
-from press.utils import is_user_part_of_team
 
 CUSTOMER_SITES = ("boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir")
 IMPACT_SITES = ("asumi.ir", *CUSTOMER_SITES)
@@ -44,16 +43,20 @@ def assert_docker_control_admin() -> None:
 		frappe.throw("فقط مدیر مجاز به مدیریت میزبان Docker است.", frappe.PermissionError)
 
 
-def has_site_team_admin_access(
-	*, user: str, site_team: str | None, team_owner: str | None, is_team_member: bool, team_admin: bool
+def has_site_admin_mapping_access(
+	*, user: str, domain: str, mapped_domains: set[str], site_enabled: bool
 ) -> bool:
-	"""Allow a team owner/admin to manage only sites explicitly assigned to that team."""
 	return bool(
 		user
 		and user != "Guest"
-		and site_team
-		and (user == team_owner or (is_team_member and team_admin))
+		and domain in CUSTOMER_SITES
+		and site_enabled
+		and domain in mapped_domains
 	)
+
+
+def has_docker_control_route_access(*, global_admin: bool, mapped_site_access: bool) -> bool:
+	return bool(global_admin or mapped_site_access)
 
 
 def has_docker_control_action_access(
@@ -71,19 +74,38 @@ def can_manage_docker_control_site(domain: str, user: str | None = None) -> bool
 	if user == "Guest" or domain not in CUSTOMER_SITES:
 		return False
 
-	site_team = frappe.db.get_value(
-		"Docker Control Site", {"domain": domain, "enabled": 1}, "team"
+	site_enabled = bool(
+		frappe.db.exists("Docker Control Site", {"domain": domain, "enabled": 1})
 	)
-	if not site_team or not frappe.db.exists("Team", {"name": site_team, "enabled": 1}):
-		return False
-
-	team = frappe.get_cached_doc("Team", site_team)
-	return has_site_team_admin_access(
+	is_mapped = bool(
+		frappe.db.exists(
+			"Docker Control Site Admin",
+			{"parent": domain, "parenttype": "Docker Control Site", "user": user},
+		)
+	)
+	return has_site_admin_mapping_access(
 		user=user,
-		site_team=site_team,
-		team_owner=frappe.db.get_value("Team", site_team, "user"),
-		is_team_member=is_user_part_of_team(user, site_team),
-		team_admin=team.is_admin_user(),
+		domain=domain,
+		mapped_domains={domain} if is_mapped else set(),
+		site_enabled=site_enabled,
+	)
+
+
+def can_access_docker_control(user: str | None = None) -> bool:
+	user = user or frappe.session.user
+	global_admin = is_docker_control_admin(user)
+	if global_admin:
+		return has_docker_control_route_access(global_admin=True, mapped_site_access=False)
+	if not user or user == "Guest":
+		return False
+	domains = frappe.get_all(
+		"Docker Control Site Admin",
+		filters={"user": user, "parent": ("in", CUSTOMER_SITES)},
+		pluck="parent",
+	)
+	return has_docker_control_route_access(
+		global_admin=False,
+		mapped_site_access=any(can_manage_docker_control_site(domain, user) for domain in set(domains)),
 	)
 
 

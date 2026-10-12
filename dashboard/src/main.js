@@ -59,7 +59,7 @@ getInitialData().then(() => {
 	app.config.globalProperties.$socket = socket;
 	window.$socket = socket;
 	subscribeToJobUpdates(socket);
-	if (session.isLoggedIn) {
+	if (session.isLoggedIn && window.default_team) {
 		fetchPlans();
 		session.userPermissions.fetch();
 		unreadNotificationsCount.fetch();

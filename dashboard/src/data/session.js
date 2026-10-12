@@ -100,6 +100,8 @@ export let session = reactive({
 	isSystemUser: getSessionCookies().get('system_user') === 'yes',
 	isSystemManager: Boolean(window.is_system_manager),
 	isPressAdmin: Boolean(window.is_press_admin),
+	canAccessDockerControl: Boolean(window.can_access_docker_control),
+	canManageDockerControlHost: Boolean(window.can_manage_docker_control_host),
 });
 
 export default session;

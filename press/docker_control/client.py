@@ -79,6 +79,14 @@ class DockerControlClient:
 	def resources(self) -> dict:
 		return self.request("GET", "/v1/resources", timeout=(2, 5))
 
+	def site_admins(self, domain: str) -> dict:
+		if domain not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}:
+			raise DockerControlError("سایت برای همگام‌سازی مدیران مجاز نیست.")
+		result = self.request("GET", f"/v1/site-admins/{domain}", timeout=(5, 30))
+		if result.get("domain") != domain or not isinstance(result.get("admins"), list):
+			raise DockerControlError("فهرست مدیران منبع معتبر نیست.")
+		return result
+
 	def set_site_subscription(self, site: str, app: str, secret_key: str | None) -> dict:
 		"""Update one installed marketplace key without persisting the secret as an operation."""
 		if site not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}:

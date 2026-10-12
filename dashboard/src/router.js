@@ -4,6 +4,7 @@ import generateRoutes from './objects/generateRoutes';
 import session from './data/session';
 import { privateSourceOnly } from './data/security';
 import { canAccessSellerDashboard } from './data/sellerAccess';
+import { canAccessDockerControl, isDockerControlOnlyUser } from './data/dockerControlAccess';
 
 async function ensureSellerOwnerAccess(to, from, next) {
 	if (!session.isLoggedIn) {
@@ -485,7 +486,7 @@ let router = createRouter({
 			path: '/docker-control',
 			component: () => import('./pages/DockerControl.vue'),
 			beforeEnter: (to, from, next) => {
-				if (session.isSystemManager) next();
+				if (canAccessDockerControl(session)) next();
 				else next({ name: 'Welcome' });
 			},
 		},
@@ -602,6 +603,16 @@ router.beforeEach(async (to, from, next) => {
 	let isLoggedIn =
 		document.cookie.includes('user_id') &&
 		!document.cookie.includes('user_id=Guest');
+
+	if (
+		isLoggedIn &&
+		isDockerControlOnlyUser(session) &&
+		to.name !== 'Docker Control' &&
+		!to.matched.some((record) => record.meta.isLoginPage)
+	) {
+		next({ name: 'Docker Control' });
+		return;
+	}
 
 	let hasTeamPrivileges = !!window.default_team;
 	let goingToLoginPage = to.matched.some((record) => record.meta.isLoginPage);

@@ -16,6 +16,7 @@
 		</header>
 
 		<div v-if="error" class="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800" role="alert">{{ error }}</div>
+		<div v-if="notice" class="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900" role="status" aria-live="polite">{{ notice }}</div>
 		<div v-if="loading" class="rounded-xl border bg-white p-8 text-center text-sm text-gray-500">در حال دریافت وضعیت میزبان…</div>
 
 		<section v-else-if="!state.initialized" class="mx-auto w-full max-w-xl rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -45,7 +46,7 @@
 				<input v-model="revision" :disabled="busy || operationLocked" class="min-w-64 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50" dir="ltr" placeholder="SHA کامل ۴۰ نویسه‌ای" aria-label="نسخهٔ ثابت Git" />
 				<Button label="پیش‌بررسی و انتشار" :disabled="busy || operationLocked || revision.length !== 40" @click="startAction({ action: 'deploy_app_revision', target: null, arguments: { app: deployApp, revision } })" />
 			</div>
-			<ManagedSites :sites="state.sites" :teams="state.teams" :can-manage-site-teams="state.can_manage_site_teams" :locked="busy || operationLocked" @action="startAction" @restore="requestRestore" @assign-team="saveSiteTeam" />
+			<ManagedSites :sites="state.sites" :teams="state.teams" :can-manage-site-teams="state.can_manage_site_teams" :can-manage-admins="state.can_manage_host" :locked="busy || operationLocked" @action="startAction" @restore="requestRestore" @assign-team="saveSiteTeam" @sync-admins="syncSiteAdmins" />
 			<OperationDetails :operations="state.operations" :busy="busy" @resume="resumeOperation" />
 		</template>
 		<ConfirmDockerOperation :open="confirmOpen" :operation="pendingOperation" :loading="busy" @close="closeConfirmation" @confirm="confirmOperation" />
@@ -65,6 +66,7 @@ const state = reactive({ initialized: false, host: null, sites: [], operations: 
 const loading = ref(true);
 const busy = ref(false);
 const error = ref('');
+const notice = ref('');
 const bootstrapKey = ref('');
 const service = ref('backend');
 const deployApp = ref('accounts');
@@ -130,6 +132,22 @@ async function saveSiteTeam({ domain, team }) {
 		Object.assign(state, data);
 	} catch (failure) {
 		error.value = failure?.messages?.[0] || failure?.message || 'ذخیرهٔ تیم سایت ناموفق بود.';
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function syncSiteAdmins(domain) {
+	if (busy.value || !state.can_manage_host || !state.sites.some((site) => site.domain === domain)) return;
+	busy.value = true;
+	error.value = '';
+	notice.value = '';
+	try {
+		const result = await callDockerControl('sync_site_admins', { domain });
+		notice.value = `همگام‌سازی ${domain} انجام شد؛ ${result.total} مدیر فعال، ${result.added} دسترسی تازه و ${result.removed} دسترسی لغوشده.`;
+		await loadDashboard();
+	} catch (failure) {
+		error.value = failure?.messages?.[0] || failure?.message || 'همگام‌سازی مدیران سایت ناموفق بود؛ دسترسی‌های قبلی حفظ شدند.';
 	} finally {
 		busy.value = false;
 	}

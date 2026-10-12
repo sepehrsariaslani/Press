@@ -4,14 +4,18 @@
  "module": "Press",
  "autoname": "field:domain",
  "engine": "InnoDB",
- "field_order": ["domain", "host", "enabled", "team", "last_inventory_at", "apps"],
+ "field_order": ["domain", "host", "enabled", "team", "last_inventory_at", "apps", "section_break_admins", "last_admin_sync_at", "last_admin_sync_by", "site_admins"],
  "fields": [
   {"fieldname": "domain", "fieldtype": "Data", "label": "Domain", "reqd": 1, "unique": 1, "in_list_view": 1},
   {"fieldname": "host", "fieldtype": "Link", "label": "Docker Control Host", "options": "Docker Control Host", "reqd": 1},
   {"default": "1", "fieldname": "enabled", "fieldtype": "Check", "label": "Enabled"},
   {"fieldname": "team", "fieldtype": "Link", "label": "Team (Optional)", "options": "Team"},
   {"fieldname": "last_inventory_at", "fieldtype": "Datetime", "label": "Last Inventory Refresh", "read_only": 1},
-  {"fieldname": "apps", "fieldtype": "Table", "label": "Installed Apps", "options": "Docker Control Site App", "read_only": 1}
+  {"fieldname": "apps", "fieldtype": "Table", "label": "Installed Apps", "options": "Docker Control Site App", "read_only": 1},
+  {"fieldname": "section_break_admins", "fieldtype": "Section Break", "label": "Site Admin Access"},
+  {"fieldname": "last_admin_sync_at", "fieldtype": "Datetime", "label": "Last Admin Sync", "read_only": 1},
+  {"fieldname": "last_admin_sync_by", "fieldtype": "Link", "label": "Last Admin Sync By", "options": "User", "read_only": 1},
+  {"fieldname": "site_admins", "fieldtype": "Table", "label": "Site Administrators", "options": "Docker Control Site Admin", "read_only": 1}
  ],
  "permissions": [],
  "sort_field": "domain",

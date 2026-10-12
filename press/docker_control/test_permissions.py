@@ -2,61 +2,58 @@ import unittest
 
 from press.docker_control.permissions import (
 	has_docker_control_action_access,
-	has_site_team_admin_access,
+	has_docker_control_route_access,
+	has_site_admin_mapping_access,
 )
 
 
 class TestSiteTeamAdminAccess(unittest.TestCase):
-	def test_site_owner_can_manage_only_their_mapped_site(self):
+	def test_site_admin_mapping_is_limited_to_the_exact_enabled_customer_site(self):
 		self.assertTrue(
-			has_site_team_admin_access(
-				user="owner@example.com",
-				site_team="team-1",
-				team_owner="owner@example.com",
-				is_team_member=True,
-				team_admin=False,
+			has_site_admin_mapping_access(
+				user="manager@example.com",
+				domain="dehati.ir",
+				mapped_domains={"dehati.ir"},
+				site_enabled=True,
 			)
 		)
 		self.assertFalse(
-			has_site_team_admin_access(
-				user="owner@example.com",
-				site_team="team-2",
-				team_owner="another-owner@example.com",
-				is_team_member=True,
-				team_admin=False,
+			has_site_admin_mapping_access(
+				user="manager@example.com",
+				domain="denroom.ir",
+				mapped_domains={"dehati.ir"},
+				site_enabled=True,
 			)
 		)
-
-	def test_team_admin_needs_membership_and_a_site_mapping(self):
-		base = {
-			"user": "admin@example.com",
-			"site_team": "team-1",
-			"team_owner": "owner@example.com",
-			"team_admin": True,
-		}
-		self.assertTrue(has_site_team_admin_access(**base, is_team_member=True))
-		self.assertFalse(has_site_team_admin_access(**base, is_team_member=False))
-		self.assertFalse(has_site_team_admin_access(**(base | {"site_team": None}), is_team_member=True))
-
-	def test_members_without_team_admin_access_are_rejected(self):
 		self.assertFalse(
-			has_site_team_admin_access(
-				user="member@example.com",
-				site_team="team-1",
-				team_owner="owner@example.com",
-				is_team_member=True,
-				team_admin=False,
-			)
-		)
-
-	def test_guest_never_receives_team_site_access(self):
-		self.assertFalse(
-			has_site_team_admin_access(
+			has_site_admin_mapping_access(
 				user="Guest",
-				site_team="team-1",
-				team_owner="Guest",
-				is_team_member=True,
-				team_admin=True,
+				domain="dehati.ir",
+				mapped_domains={"dehati.ir"},
+				site_enabled=True,
+			)
+		)
+		self.assertFalse(
+			has_site_admin_mapping_access(
+				user="manager@example.com",
+				domain="dehati.ir",
+				mapped_domains={"dehati.ir"},
+				site_enabled=False,
+			)
+		)
+
+	def test_dashboard_route_requires_global_or_site_access(self):
+		self.assertTrue(has_docker_control_route_access(global_admin=True, mapped_site_access=False))
+		self.assertTrue(has_docker_control_route_access(global_admin=False, mapped_site_access=True))
+		self.assertFalse(has_docker_control_route_access(global_admin=False, mapped_site_access=False))
+
+	def test_team_owner_without_source_admin_mapping_does_not_get_site_access(self):
+		self.assertFalse(
+			has_site_admin_mapping_access(
+				user="team-owner@example.com",
+				domain="dehati.ir",
+				mapped_domains=set(),
+				site_enabled=True,
 			)
 		)
 

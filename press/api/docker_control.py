@@ -27,6 +27,7 @@ from press.docker_control.permissions import (
 	can_manage_docker_control_site,
 	is_docker_control_admin,
 )
+from press.docker_control.site_admin_sync import normalize_site_admins, reconcile_site_admins
 
 AGENT_ENDPOINT = "http://172.18.0.1:8769"
 CONFIRMATION_SECONDS = 600
@@ -129,6 +130,8 @@ def _dashboard_payload(
 					"apps": [
 						{"app": row.app, "version": row.version, "branch": row.branch} for row in doc.apps
 					],
+					"site_admin_count": len(doc.site_admins or []) if can_manage_host else None,
+					"last_admin_sync_at": str(doc.last_admin_sync_at or "") if can_manage_host else "",
 				}
 			)
 	operation_filters = {}
@@ -268,6 +271,113 @@ def save_site_team(domain: str, team: str | None = None) -> dict:
 	site.team = team or None
 	site.save(ignore_permissions=True)
 	return {"initialized": True, **_dashboard_payload()}
+
+
+def _get_or_create_site_admin_user(admin: dict[str, str]):
+	email = admin["email"]
+	user_name = frappe.db.get_value("User", {"email": email}, "name")
+	if not user_name and frappe.db.exists("User", email):
+		user_name = email
+	if user_name:
+		user = frappe.get_doc("User", user_name)
+		if not user.enabled:
+			return None, False
+		if "Press Member" not in {role.role for role in user.roles}:
+			user.append_roles("Press Member")
+			user.save(ignore_permissions=True)
+		return user, False
+
+	full_name = admin["full_name"].strip()[:140] or email.split("@", 1)[0]
+	user = frappe.new_doc("User")
+	user.email = email
+	user.first_name = full_name
+	user.user_type = "System User"
+	user.enabled = 1
+	user.send_welcome_email = 0
+	user.flags.no_welcome_mail = True
+	user.append_roles("Press Member")
+	user.insert(ignore_permissions=True)
+	return user, True
+
+
+def _sync_site_admins(domain: str, synced_by: str) -> dict:
+	if domain not in CUSTOMER_SITES:
+		frappe.throw("سایت برای همگام‌سازی مدیران مجاز نیست.")
+	if not frappe.db.exists("Docker Control Site", {"domain": domain, "enabled": 1}):
+		frappe.throw("سایت انتخاب‌شده فعال یا ثبت‌شده نیست.")
+	frappe.db.sql("SELECT name FROM `tabDocker Control Site` WHERE name=%s FOR UPDATE", domain)
+	site = frappe.get_doc("Docker Control Site", domain)
+
+	admins = normalize_site_admins(_client().site_admins(domain), domain)
+	current_emails = [row.source_email for row in site.site_admins or []]
+	savepoint = f"docker_control_site_admin_sync_{domain.replace('.', '_')}"
+	frappe.db.savepoint(savepoint)
+	try:
+		active_admins = []
+		created_accounts = 0
+		skipped_disabled_accounts = 0
+		for admin in admins:
+			user, created = _get_or_create_site_admin_user(admin)
+			if user is None:
+				skipped_disabled_accounts += 1
+				continue
+			if created:
+				created_accounts += 1
+			active_admins.append(
+				{"user": user.name, "source_email": admin["email"], "full_name": admin["full_name"]}
+			)
+
+		changes = reconcile_site_admins(
+			current_emails, [{"email": admin["source_email"]} for admin in active_admins]
+		)
+		site.set("site_admins", [])
+		for admin in active_admins:
+			site.append("site_admins", admin)
+		site.last_admin_sync_at = now_datetime()
+		site.last_admin_sync_by = synced_by
+		site.save(ignore_permissions=True)
+		frappe.logger("docker_control").info(
+			"Synchronized site administrator access for %s: added=%s removed=%s",
+			domain,
+			len(changes["added"]),
+			len(changes["removed"]),
+		)
+		return {
+			"domain": domain,
+			"total": len(active_admins),
+			"added": len(changes["added"]),
+			"removed": len(changes["removed"]),
+			"unchanged": len(changes["unchanged"]),
+			"created_accounts": created_accounts,
+			"skipped_disabled_accounts": skipped_disabled_accounts,
+			"last_admin_sync_at": str(site.last_admin_sync_at or ""),
+		}
+	except Exception:
+		frappe.db.rollback(save_point=savepoint)
+		raise
+
+
+@frappe.whitelist(methods=["POST"])
+def sync_site_admins(domain: str) -> dict:
+	assert_docker_control_admin()
+	return _sync_site_admins(domain, frappe.session.user)
+
+
+def sync_all_site_admins() -> None:
+	if not frappe.get_all("Docker Control Host", pluck="name"):
+		return
+	previous_user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		for domain in CUSTOMER_SITES:
+			try:
+				_sync_site_admins(domain, "Administrator")
+			except Exception:
+				frappe.logger("docker_control").error(
+					"Daily site administrator sync failed for %s; existing access was retained.", domain
+				)
+	finally:
+		frappe.set_user(previous_user)
 
 
 @frappe.whitelist(methods=["POST"])

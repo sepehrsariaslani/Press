@@ -9,6 +9,7 @@ import json
 import tempfile
 from pathlib import Path
 
+from press.docker_control_agent.auth import AuthenticationError
 from press.docker_control_agent.service import ControlHandler
 
 
@@ -77,6 +78,67 @@ class ResourcesEndpointTest(unittest.TestCase):
 				server.shutdown()
 				server.server_close()
 				thread.join(timeout=2)
+
+	def test_site_admins_endpoint_returns_only_the_requested_allowlisted_site(self):
+		server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
+		server.control_config = SimpleNamespace()
+		server.operation_manager = SimpleNamespace()
+		thread = Thread(target=server.serve_forever, daemon=True)
+		thread.start()
+		payload = {"domain": "dehati.ir", "admins": [{"email": "manager@example.com", "full_name": "Manager"}]}
+		try:
+			with (
+				patch.object(ControlHandler, "_authenticate"),
+				patch("press.docker_control_agent.service.get_site_admins", return_value=payload),
+			):
+				response = urlopen(f"http://127.0.0.1:{server.server_port}/v1/site-admins/dehati.ir", timeout=2)
+				self.assertEqual(response.status, 200)
+				self.assertEqual(json.loads(response.read()), payload)
+		finally:
+			server.shutdown()
+			server.server_close()
+			thread.join(timeout=2)
+
+	def test_site_admins_endpoint_rejects_unknown_domain_without_auth_or_query(self):
+		server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
+		server.control_config = SimpleNamespace()
+		server.operation_manager = SimpleNamespace()
+		thread = Thread(target=server.serve_forever, daemon=True)
+		thread.start()
+		try:
+			with (
+				patch.object(ControlHandler, "_authenticate") as authenticate,
+				patch("press.docker_control_agent.service.get_site_admins") as get_admins,
+			):
+				with self.assertRaises(HTTPError) as error:
+					urlopen(f"http://127.0.0.1:{server.server_port}/v1/site-admins/attacker.example", timeout=2)
+				self.assertEqual(error.exception.code, 404)
+			authenticate.assert_not_called()
+			get_admins.assert_not_called()
+		finally:
+			server.shutdown()
+			server.server_close()
+			thread.join(timeout=2)
+
+	def test_site_admins_endpoint_requires_agent_authentication(self):
+		server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
+		server.control_config = SimpleNamespace()
+		server.operation_manager = SimpleNamespace()
+		thread = Thread(target=server.serve_forever, daemon=True)
+		thread.start()
+		try:
+			with (
+				patch.object(ControlHandler, "_authenticate", side_effect=AuthenticationError),
+				patch("press.docker_control_agent.service.get_site_admins") as get_admins,
+			):
+				with self.assertRaises(HTTPError) as error:
+					urlopen(f"http://127.0.0.1:{server.server_port}/v1/site-admins/dehati.ir", timeout=2)
+				self.assertEqual(error.exception.code, 401)
+			get_admins.assert_not_called()
+		finally:
+			server.shutdown()
+			server.server_close()
+			thread.join(timeout=2)
 
 
 if __name__ == "__main__":

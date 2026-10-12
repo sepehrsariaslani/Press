@@ -112,7 +112,7 @@ const navigation = computed(() => {
 			icon: Server,
 			route: '/docker-control',
 			isActive: routeName === 'Docker Control',
-			condition: $session.isSystemManager,
+			condition: $session.isSystemManager || $session.canAccessDockerControl,
 			disabled: enforce2FA,
 		},
 		{

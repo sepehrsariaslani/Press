@@ -7,6 +7,28 @@ from press.docker_control.client import DockerControlClient, DockerControlError
 
 class DockerControlClientTest(unittest.TestCase):
 	@patch("press.docker_control.client.requests.request")
+	def test_site_admins_uses_private_read_only_endpoint_for_fixed_site(self, request):
+		response = SimpleNamespace(
+			status_code=200,
+			json=lambda: {"domain": "dehati.ir", "admins": [{"email": "manager@example.com", "full_name": "Manager"}]},
+		)
+		request.return_value = response
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+
+		result = DockerControlClient(host).site_admins("dehati.ir")
+
+		self.assertEqual(result["domain"], "dehati.ir")
+		self.assertEqual(request.call_args.args[:2], ("GET", "http://172.18.0.1:8769/v1/site-admins/dehati.ir"))
+		self.assertEqual(request.call_args.kwargs["timeout"], (5, 30))
+
+	def test_site_admins_rejects_unknown_site_before_network_access(self):
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+		with patch("press.docker_control.client.requests.request") as request:
+			with self.assertRaises(DockerControlError):
+				DockerControlClient(host).site_admins("attacker.example")
+		request.assert_not_called()
+
+	@patch("press.docker_control.client.requests.request")
 	def test_resources_uses_a_short_read_only_endpoint(self, request):
 		response = SimpleNamespace(
 			status_code=200,

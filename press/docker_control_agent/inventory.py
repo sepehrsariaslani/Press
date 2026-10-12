@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
-from .config import ALLOWED_APPS, IMPACT_SITES, AgentConfig
+from .config import ALLOWED_APPS, CUSTOMER_SITES, IMPACT_SITES, AgentConfig
 
 
 def compose_command(config: AgentConfig, *arguments: str) -> list[str]:
@@ -117,6 +118,88 @@ def get_resources(config: AgentConfig) -> dict:
 		"protocol_version": 1,
 		"resources": _resource_summary(config),
 	}
+
+
+def _execute_bench_json(config: AgentConfig, domain: str, method: str, kwargs: dict) -> object:
+	command = compose_command(
+		config,
+		"exec",
+		"-T",
+		config.backend_service,
+		"bench",
+		"--site",
+		domain,
+		"execute",
+		method,
+		"--kwargs",
+		repr(kwargs),
+	)
+	result = run_command(config, command, timeout=30)
+	if result.returncode != 0:
+		raise RuntimeError("Site administrator query failed")
+	if not result.stdout.strip():
+		# bench execute suppresses falsy return values, including an empty list.
+		return []
+	try:
+		return json.loads(result.stdout)
+	except json.JSONDecodeError as error:
+		raise RuntimeError("Site administrator query returned invalid data") from error
+
+
+def get_site_admins(config: AgentConfig, domain: str) -> dict:
+	"""Return active System Manager identities from one fixed customer site."""
+	if domain not in CUSTOMER_SITES:
+		raise ValueError("Site is not allowed")
+
+	role_users = _execute_bench_json(
+		config,
+		domain,
+		"frappe.get_all",
+		{
+			"doctype": "Has Role",
+			"filters": {"parenttype": "User", "parentfield": "roles", "role": "System Manager"},
+			"pluck": "parent",
+			"order_by": "parent asc",
+			"limit_page_length": 1000,
+		},
+	)
+	if not isinstance(role_users, list) or any(not isinstance(user, str) for user in role_users):
+		raise RuntimeError("Site administrator query returned invalid data")
+	user_names = sorted({user for user in role_users if user not in {"Administrator", "Guest"}})
+	if not user_names:
+		return {"domain": domain, "admins": []}
+
+	users = _execute_bench_json(
+		config,
+		domain,
+		"frappe.get_all",
+		{
+			"doctype": "User",
+			"filters": {"name": ["in", user_names], "enabled": 1},
+			"fields": ["name", "email", "full_name"],
+			"order_by": "name asc",
+			"limit_page_length": min(len(user_names) + 1, 1000),
+		},
+	)
+	if not isinstance(users, list):
+		raise RuntimeError("Site administrator query returned invalid data")
+
+	admins_by_email = {}
+	for user in users:
+		if not isinstance(user, dict) or user.get("name") not in user_names:
+			continue
+		email = user.get("email")
+		if not isinstance(email, str):
+			continue
+		email = email.strip().casefold()
+		if not re.fullmatch(r"[^@\s]{1,128}@[^@\s]{1,190}\.[^@\s]{2,63}", email):
+			continue
+		full_name = user.get("full_name")
+		admins_by_email.setdefault(
+			email,
+			{"email": email, "full_name": full_name.strip()[:140] if isinstance(full_name, str) else ""},
+		)
+	return {"domain": domain, "admins": list(admins_by_email.values())}
 
 
 def get_inventory(config: AgentConfig) -> dict:

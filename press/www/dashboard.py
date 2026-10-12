@@ -4,6 +4,10 @@
 
 import frappe
 
+from press.docker_control.permissions import (
+	can_access_docker_control as user_can_access_docker_control,
+	is_docker_control_admin,
+)
 from press.utils import get_default_team_for_user, get_valid_teams_for_user
 
 base_template_path = "templates/www/dashboard.html"
@@ -44,6 +48,8 @@ def get_boot():
 		is_system_user=frappe.session.data.user_type == "System User",
 		is_system_manager="System Manager" in user_roles,
 		is_press_admin="Press Admin" in user_roles,
+		can_access_docker_control=user_can_access_docker_control(frappe.session.user),
+		can_manage_docker_control_host=is_docker_control_admin(frappe.session.user),
 		verify_cards_with_micro_charge=frappe.db.get_single_value(
 			"Press Settings", "verify_cards_with_micro_charge"
 		),
