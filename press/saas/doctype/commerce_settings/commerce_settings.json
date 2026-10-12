@@ -8,6 +8,8 @@
   "allow_marketplace_app_sales",
   "allow_site_plan_sales",
   "sandbox_mode",
+  "hosting_min_free_disk_gb",
+  "hosting_min_free_memory_gb",
   "merchant_id"
  ],
  "fields": [
@@ -34,6 +36,20 @@
    "fieldname": "sandbox_mode",
    "fieldtype": "Check",
    "label": "Sandbox Mode"
+  },
+  {
+   "default": "0",
+   "description": "A hosting plan cannot be sold when the Docker host would have less than this free disk space after provisioning.",
+   "fieldname": "hosting_min_free_disk_gb",
+   "fieldtype": "Float",
+   "label": "Minimum Free Disk After Site Provisioning (GB)"
+  },
+  {
+   "default": "0",
+   "description": "A hosting plan cannot be sold when the Docker host would have less than this free memory after provisioning.",
+   "fieldname": "hosting_min_free_memory_gb",
+   "fieldtype": "Float",
+   "label": "Minimum Free Memory After Site Provisioning (GB)"
   },
   {
    "fieldname": "merchant_id",

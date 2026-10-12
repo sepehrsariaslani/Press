@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import socket
+import ssl
 from urllib.parse import quote
 
 import frappe
@@ -12,7 +14,17 @@ from press.saas.commerce.order_lifecycle import (
 )
 from press.saas.commerce.order_snapshot import hosting_order_snapshot, marketplace_app_order_snapshot
 from press.saas.commerce.periods import period_end
-from press.saas.commerce.pricing import normalize_interval, normalize_price, normalize_zarinpal_price
+from press.saas.commerce.hosting_readiness import (
+	build_hosting_readiness,
+	hosting_plan_fits_capacity,
+	normalize_capacity_reserve,
+)
+from press.saas.commerce.pricing import (
+	ZARINPAL_MINIMUM_AMOUNT_IRR,
+	normalize_interval,
+	normalize_price,
+	normalize_zarinpal_price,
+)
 from press.saas.commerce.service_delivery import (
 	has_active_wildcard_certificate,
 	is_public_shared_site_server,
@@ -83,6 +95,248 @@ def checkout_status() -> dict:
 	}
 
 
+def _resolve_ipv4(hostname: str) -> list[str]:
+	try:
+		return sorted(
+			{
+				address[4][0]
+				for address in socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)
+				if ":" not in address[4][0]
+			}
+		)
+	except OSError:
+		return []
+
+
+def _wildcard_dns_targets_apex(root_addresses: list[str] | None = None) -> bool:
+	root_addresses = root_addresses or _resolve_ipv4(ASUMI_ROOT_DOMAIN)
+	probe_addresses = _resolve_ipv4(f"hosting-check.{ASUMI_ROOT_DOMAIN}")
+	return bool(root_addresses and probe_addresses and set(probe_addresses).issubset(root_addresses))
+
+
+def _wildcard_tls_ready(host_addresses: list[str]) -> bool:
+	context = ssl.create_default_context()
+	for address in host_addresses[:5]:
+		try:
+			with socket.create_connection((address, 443), timeout=3) as connection:
+				with context.wrap_socket(connection, server_hostname=f"hosting-check.{ASUMI_ROOT_DOMAIN}"):
+					return True
+		except (OSError, ssl.SSLError):
+			continue
+	return False
+
+
+def _press_shared_bench_ready(domain_doc) -> bool:
+	if not domain_doc or not domain_doc.default_cluster:
+		return False
+	benches = frappe.get_all(
+		"Bench",
+		filters={"cluster": domain_doc.default_cluster, "status": "Active"},
+		fields=["name", "server", "group"],
+		limit_page_length=100,
+		ignore_permissions=True,
+	)
+	for bench in benches:
+		if not bench.server or not bench.group:
+			continue
+		server = frappe.db.get_value(
+			"Server", bench.server, ["status", "public", "proxy_server"], as_dict=True
+		)
+		group = frappe.db.get_value(
+			"Release Group", bench.group, ["enabled", "public", "version"], as_dict=True
+		)
+		if not (
+			server
+			and server.status == "Active"
+			and server.public
+			and server.proxy_server
+			and group
+			and group.enabled
+			and group.public
+			and group.version
+		):
+			continue
+		proxy_status = frappe.db.get_value("Proxy Server", server.proxy_server, "status")
+		if proxy_status == "Active" and frappe.db.exists(
+			"Proxy Server Domain", {"parent": server.proxy_server, "domain": ASUMI_ROOT_DOMAIN}
+		):
+			bench_apps = {row.app for row in frappe.get_doc("Bench", bench.name).apps}
+			if "frappe" in bench_apps:
+				return True
+	return False
+
+
+def _live_docker_snapshot() -> dict:
+	try:
+		from press.api.docker_control import _client, _host_doc
+
+		host = _host_doc()
+		if host.connection_status != "Connected":
+			return {"connected": False, "resources": {}}
+		client = _client(host)
+		health = client.health()
+		inventory = client.inventory()
+		resources = inventory.get("resources")
+		return {
+			"connected": health.get("protocol_version") == 1 and inventory.get("protocol_version") == 1,
+			"resources": resources if isinstance(resources, dict) else {},
+		}
+	except Exception:
+		return {"connected": False, "resources": {}}
+
+
+@frappe.whitelist()
+def admin_hosting_readiness() -> dict:
+	"""Return the current hosting prerequisites to Press system administrators."""
+	_require_commerce_admin()
+	settings = _get_settings()
+	merchant_ready = bool(
+		settings
+		and settings.enabled
+		and settings.allow_site_plan_sales
+		and not settings.sandbox_mode
+		and _merchant_id(settings)
+	)
+
+	domain_doc = None
+	if frappe.db.exists("Root Domain", ASUMI_ROOT_DOMAIN):
+		domain_doc = frappe.get_doc("Root Domain", ASUMI_ROOT_DOMAIN)
+	root_domain_ready = bool(domain_doc and domain_doc.enabled and domain_doc.default_cluster)
+
+	root_addresses = _resolve_ipv4(ASUMI_ROOT_DOMAIN)
+	wildcard_dns_ready = _wildcard_dns_targets_apex(root_addresses)
+	certificate_record_ready = frappe.db.exists(
+		"TLS Certificate",
+		{"domain": ASUMI_ROOT_DOMAIN, "wildcard": 1, "status": "Active"},
+	)
+	wildcard_tls_ready = bool(certificate_record_ready and root_addresses and _wildcard_tls_ready(root_addresses))
+
+	plans = frappe.get_all(
+		"Site Plan",
+		filters={
+			"document_type": "Site",
+			"enabled": 1,
+			"is_trial_plan": 0,
+			"legacy_plan": 0,
+			"commerce_delivery_mode": "Create New Site",
+			"private_bench_support": 0,
+		},
+		fields=["name", "plan_title", "price_irr", "interval", "max_storage_usage", "memory"],
+		limit_page_length=100,
+		ignore_permissions=True,
+	)
+	valid_plans = []
+	for plan in plans:
+		try:
+			price = normalize_zarinpal_price(plan.price_irr)
+		except ValueError:
+			continue
+		if (
+			price >= ZARINPAL_MINIMUM_AMOUNT_IRR
+			and plan.interval in {"Daily", "Monthly", "Annually"}
+			and int(plan.max_storage_usage or 0) > 0
+			and int(plan.memory or 0) > 0
+		):
+			valid_plans.append(plan)
+
+	docker_snapshot = _live_docker_snapshot()
+	resources = docker_snapshot["resources"]
+	try:
+		reserve_disk = normalize_capacity_reserve(
+			getattr(settings, "hosting_min_free_disk_gb", None), allow_zero=True
+		)
+		reserve_memory = normalize_capacity_reserve(
+			getattr(settings, "hosting_min_free_memory_gb", None), allow_zero=True
+		)
+	except ValueError:
+		reserve_disk = reserve_memory = 0
+	disk_free = resources.get("disk_free_bytes")
+	memory_available = resources.get("memory_available_bytes")
+	capacity_ready = bool(
+		reserve_disk > 0
+		and reserve_memory > 0
+		and any(
+			hosting_plan_fits_capacity(plan.as_dict(), resources, reserve_disk, reserve_memory)
+			for plan in valid_plans
+		)
+	)
+	if not valid_plans:
+		capacity_detail = "پلن ساخت سایت پولی با سقف معتبر دیسک و حافظه ثبت نشده است."
+	elif not docker_snapshot["connected"] or not isinstance(disk_free, int) or not isinstance(memory_available, int):
+		capacity_detail = "اطلاعات زندهٔ منابع Docker در دسترس نیست."
+	elif reserve_disk <= 0 or reserve_memory <= 0:
+		capacity_detail = "حداقل فضای آزاد دیسک و حافظه را در تنظیمات تعیین کنید؛ مقدار صفر یعنی ظرفیت تأیید نشده است."
+	elif capacity_ready:
+		capacity_detail = (
+			f"فضای آزاد دیسک: {disk_free / 1024**3:.1f} گیگابایت؛ "
+			f"حافظهٔ در دسترس: {memory_available / 1024**3:.1f} گیگابایت؛ ذخیرهٔ تعریف‌شده رعایت می‌شود."
+		)
+	else:
+		capacity_detail = (
+			f"فضای آزاد: دیسک {disk_free / 1024**3:.1f} و حافظه "
+			f"{memory_available / 1024**3:.1f} گیگابایت است؛ برای هیچ پلنی سقف منابع و ذخیرهٔ تعریف‌شده جا نمی‌شود."
+		)
+	docker_connected = docker_snapshot["connected"]
+	press_infrastructure_ready = _press_shared_bench_ready(domain_doc)
+
+	facts = {
+		"live_payment": {
+			"ready": merchant_ready,
+			"detail": (
+				"درگاه تولید زرین‌پال آماده است."
+				if merchant_ready
+				else "شناسهٔ پذیرنده، حالت تولید و فعال‌سازی فروش میزبانی لازم است."
+			),
+		},
+		"site_plan": {
+			"ready": bool(valid_plans),
+			"detail": (
+				f"{len(valid_plans)} پلن ساخت سایت با قیمت پولی و سقف منابع ثبت شده است."
+				if valid_plans
+				else "یک Site Plan ساخت سایت با قیمت حداقل ۱۰٬۰۰۰ ریال، دوره و سقف دیسک و حافظه بسازید."
+			),
+		},
+		"root_domain": {
+			"ready": root_domain_ready,
+			"detail": (
+				"دامنهٔ asumi.ir در Press فعال است."
+				if root_domain_ready
+				else "Root Domain با نام asumi.ir و یک Cluster پیش‌فرض در Press ثبت کنید."
+			),
+		},
+		"wildcard_dns": {
+			"ready": wildcard_dns_ready,
+			"detail": (
+				"زیردامنهٔ آزمایشی به همان سرور دامنهٔ اصلی می‌رسد."
+				if wildcard_dns_ready
+				else "رکورد DNS از نوع * برای زیردامنه‌های asumi.ir به سرور میزبان اضافه کنید."
+			),
+		},
+		"wildcard_tls": {
+			"ready": wildcard_tls_ready,
+			"detail": (
+				"گواهی معتبر HTTPS نام زیردامنه را پوشش می‌دهد."
+				if wildcard_tls_ready
+				else "گواهی TLS wildcard برای *.asumi.ir نصب و در Press ثبت کنید."
+			),
+		},
+		"press_infrastructure": {
+			"ready": press_infrastructure_ready,
+			"detail": (
+				"بنچ عمومی، Release Group و Proxy آماده‌اند."
+				if press_infrastructure_ready
+				else "سرور عمومی، بنچ فعال، Release Group و اتصال Proxy در Press لازم است."
+			),
+		},
+		"capacity": {"ready": capacity_ready, "detail": capacity_detail},
+		"docker_agent": {
+			"ready": docker_connected,
+			"detail": "عامل Docker پاسخ می‌دهد." if docker_connected else "عامل Docker متصل یا پاسخ‌گو نیست.",
+		},
+	}
+	return build_hosting_readiness(facts, resources)
+
+
 @frappe.whitelist()
 def my_purchase_sites() -> list[dict]:
 	if frappe.session.user == "Guest":
@@ -98,9 +352,26 @@ def my_purchase_sites() -> list[dict]:
 	)
 
 
-def _new_site_plan_config(plan_doc, subdomain: str | None = None) -> dict | None:
+def _new_site_plan_config(
+	plan_doc, subdomain: str | None = None, docker_snapshot: dict | None = None
+) -> dict | None:
 	"""Resolve a configured public Site Plan to one existing shared bench."""
 	if plan_doc.private_bench_support:
+		return None
+	settings = _get_settings()
+	try:
+		reserve_disk = normalize_capacity_reserve(
+			getattr(settings, "hosting_min_free_disk_gb", None)
+		)
+		reserve_memory = normalize_capacity_reserve(
+			getattr(settings, "hosting_min_free_memory_gb", None)
+		)
+	except ValueError:
+		return None
+	docker_snapshot = docker_snapshot or _live_docker_snapshot()
+	if not docker_snapshot["connected"] or not hosting_plan_fits_capacity(
+		plan_doc.as_dict(), docker_snapshot["resources"], reserve_disk, reserve_memory
+	):
 		return None
 	if not frappe.db.exists("Root Domain", ASUMI_ROOT_DOMAIN):
 		return None
@@ -114,6 +385,13 @@ def _new_site_plan_config(plan_doc, subdomain: str | None = None) -> dict | None
 		limit_page_length=5,
 	)
 	if not has_active_wildcard_certificate(ASUMI_ROOT_DOMAIN, wildcard_certificates):
+		return None
+	root_addresses = _resolve_ipv4(ASUMI_ROOT_DOMAIN)
+	if (
+		not root_addresses
+		or not _wildcard_dns_targets_apex(root_addresses)
+		or not _wildcard_tls_ready(root_addresses)
+	):
 		return None
 
 	allowed_apps = frappe.get_all(
@@ -256,6 +534,11 @@ def available_site_plan_offers() -> dict:
 		limit_page_length=100,
 		ignore_permissions=True,
 	)
+	docker_snapshot = (
+		_live_docker_snapshot()
+		if any(plan.commerce_delivery_mode == "Create New Site" for plan in plans)
+		else None
+	)
 	offers = []
 	for plan in plans:
 		roles = set(
@@ -275,7 +558,11 @@ def available_site_plan_offers() -> dict:
 			mode = plan.commerce_delivery_mode
 			valid_interval = False
 		price_valid = int(plan.price_irr or 0) >= 10_000
-		config = _new_site_plan_config(frappe.get_doc("Site Plan", plan.name)) if mode == "Create New Site" else None
+		config = (
+			_new_site_plan_config(frappe.get_doc("Site Plan", plan.name), docker_snapshot=docker_snapshot)
+			if mode == "Create New Site"
+			else None
+		)
 		renewable_sites = (
 			_new_site_plan_renewal_sites(plan.name, team.name)
 			if mode == "Create New Site"
@@ -1362,6 +1649,8 @@ def admin_settings() -> dict:
 		"allow_site_plan_sales": bool(settings and settings.allow_site_plan_sales),
 		"sandbox_mode": bool(settings is None or settings.sandbox_mode),
 		"merchant_id_configured": bool(_merchant_id(settings)),
+		"hosting_min_free_disk_gb": getattr(settings, "hosting_min_free_disk_gb", 0) if settings else 0,
+		"hosting_min_free_memory_gb": getattr(settings, "hosting_min_free_memory_gb", 0) if settings else 0,
 	}
 
 
@@ -1372,6 +1661,8 @@ def save_admin_settings(
 	sandbox_mode: bool,
 	allow_site_plan_sales: bool | None = None,
 	merchant_id: str | None = None,
+	hosting_min_free_disk_gb: float | str | None = None,
+	hosting_min_free_memory_gb: float | str | None = None,
 ) -> dict:
 	_require_commerce_admin()
 	settings = _get_settings() or frappe.get_doc({"doctype": "Commerce Settings"})
@@ -1380,6 +1671,17 @@ def save_admin_settings(
 	if allow_site_plan_sales is not None:
 		settings.allow_site_plan_sales = int(frappe.utils.cint(allow_site_plan_sales))
 	settings.sandbox_mode = int(frappe.utils.cint(sandbox_mode))
+	try:
+		if hosting_min_free_disk_gb is not None:
+			settings.hosting_min_free_disk_gb = normalize_capacity_reserve(
+				hosting_min_free_disk_gb, allow_zero=True
+			)
+		if hosting_min_free_memory_gb is not None:
+			settings.hosting_min_free_memory_gb = normalize_capacity_reserve(
+				hosting_min_free_memory_gb, allow_zero=True
+			)
+	except ValueError as error:
+		frappe.throw(str(error))
 	if merchant_id:
 		if len(merchant_id.strip()) > 100:
 			frappe.throw(_("شناسهٔ پذیرنده معتبر نیست."))

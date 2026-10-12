@@ -148,6 +148,14 @@
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_marketplace_app_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش تعرفهٔ برنامه‌ها</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_site_plan_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش پلن میزبانی</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.sandbox_mode" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> حالت آزمایشی زرین‌پال</label>
+				<label class="text-sm">حداقل فضای آزاد دیسک پس از ساخت سایت (گیگابایت)
+					<input v-model.number="settingsForm.hosting_min_free_disk_gb" type="number" min="0" max="1000000" step="0.1" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white" />
+					<span class="mt-1 block text-xs text-gray-400">صفر یعنی ظرفیت دیسک تأیید نشده و ساخت سایت غیرفعال می‌ماند.</span>
+				</label>
+				<label class="text-sm">حداقل حافظهٔ آزاد پس از ساخت سایت (گیگابایت)
+					<input v-model.number="settingsForm.hosting_min_free_memory_gb" type="number" min="0" max="1000000" step="0.1" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white" />
+					<span class="mt-1 block text-xs text-gray-400">صفر یعنی ظرفیت حافظه تأیید نشده و ساخت سایت غیرفعال می‌ماند.</span>
+				</label>
 				<label class="text-sm">شناسهٔ پذیرندهٔ زرین‌پال
 					<input v-model="merchantId" type="password" autocomplete="new-password" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white placeholder:text-gray-500" placeholder="برای حفظ مقدار فعلی خالی بگذارید" />
 					<span class="mt-1 block text-xs text-gray-400">{{ settings.data.merchant_id_configured ? 'شناسه قبلاً ثبت شده است.' : 'هنوز شناسه‌ای ثبت نشده است.' }}</span>
@@ -157,6 +165,35 @@
 				<p class="text-xs leading-5 text-gray-400">فروش میزبانی فقط پس از آماده‌شدن دامنه، بنچ و پلن فعال می‌شود. پرداخت هر بازه جداگانه است و خودکار تمدید نمی‌شود.</p>
 				<Button variant="solid" label="ذخیره تنظیمات پرداخت" :loading="savingSettings" @click="saveSettings" />
 			</div>
+		</section>
+
+		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h2 class="text-lg font-semibold text-gray-950">آمادگی فروش پلن ساخت سایت</h2>
+					<p class="mt-1 text-sm leading-6 text-gray-600">وضعیت زندهٔ پرداخت، زیردامنهٔ آسومی، بنچ و ظرفیت میزبان را بررسی می‌کند.</p>
+				</div>
+				<div class="flex items-center gap-3">
+					<span v-if="hostingReadiness.data" class="rounded-full px-3 py-1 text-xs font-medium" :class="hostingReadiness.data.ready ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">{{ hostingReadiness.data.ready ? 'آمادهٔ فروش' : 'فروش فعلاً غیرفعال' }}</span>
+					<Button label="بررسی دوباره" :loading="hostingReadiness.loading" @click="hostingReadiness.fetch()" />
+				</div>
+			</div>
+			<div v-if="hostingReadiness.data?.resources" class="mt-4 flex flex-wrap gap-x-6 gap-y-2 rounded-xl bg-gray-50 px-4 py-3 text-xs text-gray-600">
+				<span>دیسک آزاد میزبان: {{ gib(hostingReadiness.data.resources.disk_free_bytes) }} گیگابایت</span>
+				<span>حافظهٔ در دسترس: {{ gib(hostingReadiness.data.resources.memory_available_bytes) }} گیگابایت</span>
+				<span>ذخیرهٔ دیسک: {{ settingsForm.hosting_min_free_disk_gb || 0 }} گیگابایت</span>
+				<span>ذخیرهٔ حافظه: {{ settingsForm.hosting_min_free_memory_gb || 0 }} گیگابایت</span>
+			</div>
+			<div v-if="hostingReadiness.data?.checks?.length" class="mt-4 grid gap-3 md:grid-cols-2">
+				<article v-for="check in hostingReadiness.data.checks" :key="check.key" class="rounded-xl border px-4 py-3" :class="check.ready ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'">
+					<div class="flex items-center justify-between gap-3">
+						<strong class="text-sm" :class="check.ready ? 'text-emerald-900' : 'text-rose-900'">{{ check.label }}</strong>
+						<span class="text-xs font-medium" :class="check.ready ? 'text-emerald-700' : 'text-rose-700'">{{ check.ready ? 'آماده' : 'نیازمند تنظیم' }}</span>
+					</div>
+					<p class="mt-1 text-xs leading-5 text-gray-700">{{ check.detail }}</p>
+				</article>
+			</div>
+			<div v-else class="mt-4 rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">برای دیدن وضعیت، «بررسی دوباره» را بزنید.</div>
 		</section>
 
 		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -264,7 +301,7 @@ const refundReferences = reactive({});
 const savingSettings = ref(false);
 const error = ref('');
 const notice = ref('');
-const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, sandbox_mode: true });
+const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, sandbox_mode: true, hosting_min_free_disk_gb: 0, hosting_min_free_memory_gb: 0 });
 
 const sites = createResource({ url: 'press.saas.commerce.api.my_purchase_sites', auto: true });
 const orders = createResource({ url: 'press.saas.commerce.api.my_orders', auto: true });
@@ -285,6 +322,7 @@ const settings = createResource({
 	auto: isCommerceAdmin.value,
 	onSuccess(data) { Object.assign(settingsForm, data); },
 });
+const hostingReadiness = createResource({ url: 'press.saas.commerce.api.admin_hosting_readiness', auto: isCommerceAdmin.value });
 const appPlans = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plans', auto: isCommerceAdmin.value });
 const sitePlans = createResource({ url: 'press.saas.commerce.api.admin_site_plans', auto: isCommerceAdmin.value });
 const adminOrders = createResource({ url: 'press.saas.commerce.api.admin_orders', auto: isCommerceAdmin.value });
@@ -357,10 +395,10 @@ async function saveSettings() {
 	error.value = '';
 	savingSettings.value = true;
 	try {
-		const result = await saveSettingsResource.submit({ ...settingsForm, merchant_id: merchantId.value || undefined });
+		await saveSettingsResource.submit({ ...settingsForm, merchant_id: merchantId.value || undefined });
 		merchantId.value = '';
-		await settings.fetch();
-		notice.value = 'تنظیمات درگاه ذخیره شد. پرداخت فقط با شناسهٔ معتبر پذیرنده قابل استفاده است.';
+		await Promise.all([settings.fetch(), hostingReadiness.fetch()]);
+		notice.value = 'تنظیمات درگاه و ذخیرهٔ ظرفیت میزبان ذخیره شد. پرداخت فقط با شناسهٔ معتبر پذیرنده در حالت تولید قابل استفاده است.';
 	} catch (failure) { showError(failure); } finally { savingSettings.value = false; }
 }
 
@@ -410,7 +448,7 @@ async function refresh() {
 	error.value = '';
 	try {
 		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
-		if (isCommerceAdmin.value) calls.push(settings.fetch(), appPlans.fetch(), sitePlans.fetch(), adminOrders.fetch());
+		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), sitePlans.fetch(), adminOrders.fetch());
 		if (selectedSite.value) calls.push(plans.fetch({ site: selectedSite.value }));
 		await Promise.all(calls);
 	} catch (failure) { showError(failure); }
@@ -420,6 +458,7 @@ function showError(failure) {
 	error.value = failure?.messages?.[0] || failure?.message || 'عملیات ناموفق بود.';
 }
 function money(value) { return new Intl.NumberFormat('fa-IR').format(Number(value || 0)); }
+function gib(value) { return Number.isFinite(Number(value)) ? new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1 }).format(Number(value) / 1024 ** 3) : '—'; }
 function dateLabel(value) { return value ? new Date(value).toLocaleString('fa-IR') : '—'; }
 function intervalLabel(value) { return ({ Daily: 'روزانه', Monthly: 'ماهانه', Yearly: 'سالانه', Annually: 'سالانه' })[value] || '—'; }
 function statusLabel(value) { return ({ 'Pending Payment': 'در انتظار پرداخت', Paid: 'پرداخت شد', Provisioning: 'در حال تحویل', Active: 'فعال', Expired: 'پایان‌یافته', 'Provisioning Failed': 'خطای تحویل', 'Payment Failed': 'پرداخت ناموفق', Cancelled: 'لغو شد', Refunded: 'بازپرداخت شد' })[value] || value; }
