@@ -1,6 +1,7 @@
 import unittest
 
 from press.saas.commerce.pricing import (
+	marketplace_plan_supported_by_asumi_checkout,
 	normalize_interval,
 	normalize_marketplace_app_plan_prices,
 	normalize_price,
@@ -48,6 +49,28 @@ class PriceValidationTest(unittest.TestCase):
 		):
 			with self.subTest(prices=invalid_prices), self.assertRaises(ValueError):
 				normalize_marketplace_app_plan_prices(invalid_prices)
+
+	def test_asumi_checkout_never_treats_non_irr_paid_prices_as_free(self):
+		self.assertTrue(
+			marketplace_plan_supported_by_asumi_checkout(
+				{"price_inr": 0, "price_usd": 0, "price_irr": 0}
+			)
+		)
+		self.assertTrue(
+			marketplace_plan_supported_by_asumi_checkout(
+				{"price_inr": 12.5, "price_usd": 2.99, "price_irr": 10000}
+			)
+		)
+		self.assertFalse(
+			marketplace_plan_supported_by_asumi_checkout(
+				{"price_inr": 12.5, "price_usd": 0, "price_irr": 0}
+			)
+		)
+		self.assertFalse(
+			marketplace_plan_supported_by_asumi_checkout(
+				{"price_inr": 0, "price_usd": 2.99, "price_irr": 0}
+			)
+		)
 
 	def test_zarinpal_rial_amount_is_either_free_or_at_least_minimum(self):
 		self.assertEqual(normalize_zarinpal_price("0"), 0)

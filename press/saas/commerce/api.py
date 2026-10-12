@@ -25,6 +25,8 @@ from press.saas.commerce.hosting_readiness import (
 )
 from press.saas.commerce.pricing import (
 	ZARINPAL_MINIMUM_AMOUNT_IRR,
+	marketplace_plan_supported_by_asumi_checkout,
+	normalize_marketplace_app_plan_prices,
 	normalize_interval,
 	normalize_price,
 	normalize_zarinpal_price,
@@ -696,24 +698,38 @@ def available_app_plans(site: str, site_type: str = "Site") -> dict:
 	plan_rows = frappe.get_all(
 		"Marketplace App Plan",
 		filters={"app": ["in", list(app_by_name) or [""]], "enabled": 1},
-		fields=["name", "app", "title", "interval", "price_irr"],
+		fields=["name", "app", "title", "interval", "price_inr", "price_usd", "price_irr"],
 		order_by="price_irr asc",
 	)
 	plans = []
 	for plan in plan_rows:
 		try:
-			plan.price_irr = normalize_zarinpal_price(plan.price_irr)
+			prices = normalize_marketplace_app_plan_prices(plan)
+			plan.price_irr = normalize_zarinpal_price(prices["price_irr"])
 		except ValueError:
 			continue
 		app = app_by_name.get(plan.app)
 		if not app:
 			continue
-		plan.update({"app_title": app.title, "app_route": app.route})
+		plan.update(
+			{
+				"app_title": app.title,
+				"app_route": app.route,
+				"asumi_checkout_supported": marketplace_plan_supported_by_asumi_checkout(prices),
+				"asumi_checkout_message": (
+					"برای خرید مستقیم، قیمت ریالی وارد کنید؛ تعرفهٔ غیرریالی بدون قیمت ریالی رایگان نمی‌شود."
+					if not marketplace_plan_supported_by_asumi_checkout(prices)
+					else ""
+				),
+			}
+		)
 		plans.append(plan)
 	free_purchase_enabled = _free_marketplace_purchase_enabled(settings)
 	checkout_enabled = _checkout_enabled(settings)
 	message = ""
-	if any(not plan.price_irr for plan in plans) and not free_purchase_enabled:
+	if any(not plan.asumi_checkout_supported for plan in plans):
+		message = "پرداخت مستقیم آسومی فقط با ریال انجام می‌شود؛ برای تعرفه‌های پولی، قیمت IRR را هم ثبت کنید."
+	elif any(not plan.price_irr for plan in plans) and not free_purchase_enabled:
 		message = "فعال‌سازی تعرفه‌های رایگان فعلاً توسط مدیر آسومی خاموش است."
 	elif any(plan.price_irr for plan in plans) and not checkout_enabled:
 		message = "پرداخت تعرفه‌های پولی هنوز توسط مدیر آسومی پیکربندی نشده است."

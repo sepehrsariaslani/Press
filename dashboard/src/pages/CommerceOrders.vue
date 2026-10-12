@@ -40,10 +40,11 @@
 						<p class="mt-1 text-sm text-gray-600">دوره: {{ intervalLabel(plan.interval) }}</p>
 					</div>
 					<div class="mt-5 flex items-baseline gap-2">
-						<strong class="text-xl font-semibold text-gray-950">{{ Number(plan.price_irr) === 0 ? 'رایگان' : money(plan.price_irr) }}</strong>
-						<span v-if="Number(plan.price_irr) !== 0" class="text-sm text-gray-500">ریال</span>
+						<strong class="text-xl font-semibold text-gray-950">{{ !plan.asumi_checkout_supported ? 'قیمت ریالی لازم است' : Number(plan.price_irr) === 0 ? 'رایگان' : money(plan.price_irr) }}</strong>
+						<span v-if="plan.asumi_checkout_supported && Number(plan.price_irr) !== 0" class="text-sm text-gray-500">ریال</span>
 					</div>
-					<Button class="mt-4 w-full" variant="solid" :disabled="(Number(plan.price_irr) === 0 ? !plans.data.free_purchase_enabled : !plans.data.checkout_enabled) || busy" :loading="busyPlan === plan.name" :label="Number(plan.price_irr) === 0 ? 'فعال‌سازی رایگان' : 'ثبت سفارش و پرداخت'" @click="purchase(plan)" />
+					<p v-if="plan.asumi_checkout_message" class="mt-2 text-xs leading-5 text-amber-800">{{ plan.asumi_checkout_message }}</p>
+					<Button class="mt-4 w-full" variant="solid" :disabled="!plan.asumi_checkout_supported || (Number(plan.price_irr) === 0 ? !plans.data.free_purchase_enabled : !plans.data.checkout_enabled) || busy" :loading="busyPlan === plan.name" :label="!plan.asumi_checkout_supported ? 'نیازمند قیمت ریالی' : Number(plan.price_irr) === 0 ? 'فعال‌سازی رایگان' : 'ثبت سفارش و پرداخت'" @click="purchase(plan)" />
 				</article>
 			</div>
 			<p v-if="plans.data?.message" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">{{ plans.data.message }}</p>

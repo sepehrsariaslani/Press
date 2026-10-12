@@ -42,3 +42,10 @@ def normalize_marketplace_app_plan_prices(prices: dict) -> dict[str, int | float
 		"price_usd": normalize_price(prices.get("price_usd") or 0, "USD"),
 		"price_irr": normalize_price(prices.get("price_irr") or 0, "IRR"),
 	}
+
+
+def marketplace_plan_supported_by_asumi_checkout(prices: dict) -> bool:
+	"""Prevent a non-Rial plan from appearing free in Asumi's ZarinPal checkout."""
+	normalized = normalize_marketplace_app_plan_prices(prices)
+	rial_amount = normalize_zarinpal_price(normalized["price_irr"])
+	return bool(rial_amount) or not (normalized["price_inr"] or normalized["price_usd"])

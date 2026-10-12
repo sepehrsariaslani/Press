@@ -1,10 +1,13 @@
 """Pure validation for server-priced marketplace orders."""
 
-from decimal import Decimal, InvalidOperation
 import re
 
-from press.saas.commerce.pricing import normalize_zarinpal_price
-from press.saas.commerce.pricing import ZARINPAL_MINIMUM_AMOUNT_IRR
+from press.saas.commerce.pricing import (
+	ZARINPAL_MINIMUM_AMOUNT_IRR,
+	marketplace_plan_supported_by_asumi_checkout,
+	normalize_marketplace_app_plan_prices,
+	normalize_zarinpal_price,
+)
 from press.saas.commerce.service_delivery import (
 	EXISTING_SITE_UPGRADE,
 	NEW_SITE_PROVISIONING,
@@ -33,14 +36,12 @@ def marketplace_app_order_snapshot(plan, app, site, team, customer):
 		raise ValueError("ابتدا باید برنامه را روی این سایت نصب کنید")
 
 	try:
-		decimal_amount = Decimal(str(plan.get("price_irr")))
-	except (InvalidOperation, TypeError, ValueError):
-		decimal_amount = Decimal(0)
-	if isinstance(plan.get("price_irr"), bool) or decimal_amount < 0 or decimal_amount != decimal_amount.to_integral_value():
-		raise ValueError("مبلغ تعرفه معتبر نیست")
-	amount = int(decimal_amount)
-	if amount and amount < ZARINPAL_MINIMUM_AMOUNT_IRR:
-		raise ValueError("حداقل مبلغ پرداخت زرین‌پال ۱۰٬۰۰۰ ریال است")
+		prices = normalize_marketplace_app_plan_prices(plan)
+		amount = normalize_zarinpal_price(prices["price_irr"])
+	except ValueError as error:
+		raise ValueError(str(error)) from None
+	if not marketplace_plan_supported_by_asumi_checkout(prices):
+		raise ValueError("خرید مستقیم آسومی فقط ریالی است؛ برای فعال‌سازی رایگان، قیمت همهٔ ارزها باید صفر باشد")
 	if plan.get("app") != app.get("name"):
 		raise ValueError("این تعرفه به برنامهٔ انتخاب‌شده تعلق ندارد")
 	if plan.get("interval") not in {"Daily", "Monthly", "Yearly"}:

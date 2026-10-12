@@ -105,6 +105,13 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 		self.assertEqual(snapshot["amount"], 0)
 		self.assertEqual(snapshot["currency"], "IRR")
 
+	def test_non_irr_paid_plan_cannot_be_claimed_as_free_in_asumi_checkout(self):
+		self.plan.update(price_irr=0, price_usd=9.99)
+		with self.assertRaisesRegex(ValueError, "فقط ریالی"):
+			marketplace_app_order_snapshot(
+				self.plan, self.app, self.site, self.team, "buyer@example.com"
+			)
+
 	def test_free_plan_still_rejects_negative_or_fractional_prices(self):
 		for amount in (-1, 0.5):
 			with self.subTest(amount=amount):
