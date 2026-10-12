@@ -19,7 +19,7 @@
 					<label :for="`team-${site.domain}`" class="block text-sm font-medium text-gray-700">تیم دارای دسترسی سایت</label>
 					<select :id="`team-${site.domain}`" v-model="selectedTeams[site.domain]" :disabled="locked" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-50">
 						<option value="">بدون تیم</option>
-						<option v-for="team in teams" :key="team.name" :value="team.name">{{ team.name }}</option>
+						<option v-for="team in teams" :key="team.name" :value="team.name">{{ team.team_title || `تیم بدون عنوان · ${team.name}` }}</option>
 					</select>
 					<p class="mt-1 text-xs font-normal text-gray-500">مالک یا مدیر این تیم در آسومی می‌تواند عملیات همین سایت را اجرا کند.</p>
 					<Button class="mt-2" size="sm" :disabled="locked || selectedTeams[site.domain] === (site.team || '')" label="ذخیرهٔ دسترسی تیم" @click="saveTeam(site)" />

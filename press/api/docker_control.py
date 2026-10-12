@@ -165,8 +165,10 @@ def _dashboard_payload(
 	return {
 		"can_manage_host": can_manage_host,
 		"can_manage_site_teams": can_manage_host,
-		"teams": (
-			frappe.get_all("Team", filters={"enabled": 1}, fields=["name"], order_by="name asc")
+	"teams": (
+			frappe.get_all(
+				"Team", filters={"enabled": 1}, fields=["name", "team_title"], order_by="team_title asc, name asc"
+			)
 			if can_manage_host
 			else []
 		),
