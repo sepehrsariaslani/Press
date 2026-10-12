@@ -22,6 +22,7 @@ from press.saas.commerce.hosting_readiness import (
 	hosting_plan_fits_capacity,
 	normalize_capacity_reserve,
 	resolve_ipv4,
+	wildcard_dns_guidance,
 )
 from press.saas.commerce.pricing import (
 	ZARINPAL_MINIMUM_AMOUNT_IRR,
@@ -327,11 +328,7 @@ def admin_hosting_readiness() -> dict:
 		},
 		"wildcard_dns": {
 			"ready": wildcard_dns_ready,
-			"detail": (
-				"زیردامنهٔ آزمایشی به همان سرور دامنهٔ اصلی می‌رسد."
-				if wildcard_dns_ready
-				else "رکورد DNS از نوع * برای زیردامنه‌های asumi.ir به سرور میزبان اضافه کنید."
-			),
+			"detail": wildcard_dns_guidance(wildcard_dns_ready, root_addresses),
 		},
 		"wildcard_tls": {
 			"ready": wildcard_tls_ready,

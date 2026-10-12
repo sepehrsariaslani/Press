@@ -6,6 +6,7 @@ from press.saas.commerce.hosting_readiness import (
 	hosting_plan_fits_capacity,
 	normalize_capacity_reserve,
 	resolve_ipv4,
+	wildcard_dns_guidance,
 )
 
 
@@ -55,6 +56,15 @@ class HostingReadinessTest(unittest.TestCase):
 				raise OSError("DNS resolver unavailable")
 
 		self.assertEqual(resolve_ipv4("hosting-check.asumi.ir", resolver_factory=lambda **_: ResolverStub()), [])
+
+	def test_wildcard_dns_guidance_uses_the_live_apex_addresses(self):
+		self.assertIn("همان سرور", wildcard_dns_guidance(True, ["62.60.207.82"]))
+		guidance = wildcard_dns_guidance(False, ["62.60.207.82"])
+		self.assertIn("A", guidance)
+		self.assertIn("62.60.207.82", guidance)
+		self.assertIn("*", guidance)
+		self.assertIn("بررسی دوباره", guidance)
+		self.assertIn("IP دامنهٔ اصلی", wildcard_dns_guidance(False, []))
 
 	def test_capacity_reserve_must_be_positive_and_finite(self):
 		self.assertEqual(normalize_capacity_reserve("2.5"), 2.5)

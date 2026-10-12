@@ -39,6 +39,19 @@ def resolve_ipv4(hostname, resolver_factory=None):
 		return []
 
 
+def wildcard_dns_guidance(ready, root_addresses):
+	"""Tell administrators the exact wildcard A record needed by the live DNS check."""
+	if ready:
+		return "زیردامنهٔ آزمایشی به همان سرور دامنهٔ اصلی می‌رسد."
+	addresses = sorted({str(address).strip() for address in root_addresses if str(address).strip()})
+	if not addresses:
+		return "نشانی IP دامنهٔ اصلی در DNS پیدا نشد؛ ابتدا رکورد A برای asumi.ir را ثبت کنید و دوباره بررسی کنید."
+	return (
+		f"در پنل DNS، رکورد A برای نام * بسازید و مقصد را روی {'، '.join(addresses)} قرار دهید؛ "
+		"پس از انتشار، دکمهٔ «بررسی دوباره» را بزنید."
+	)
+
+
 def hosting_plan_fits_capacity(plan, resources, reserve_disk_gb, reserve_memory_gb):
 	"""Require each site's configured resource cap plus explicit host reserves."""
 	if not isinstance(plan, dict) or not isinstance(resources, dict):
