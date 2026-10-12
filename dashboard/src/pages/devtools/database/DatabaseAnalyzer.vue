@@ -81,7 +81,7 @@
 					<div
 						class="h-7"
 						:style="{
-							backgroundColor: '#FFBF00',
+							backgroundColor: '#FF6670',
 							width: `${databaseSizeBreakup.claimable_size_percentage}%`,
 						}"
 					></div>
@@ -117,7 +117,7 @@
 					>
 						<div
 							class="h-2 w-2 rounded-full"
-							style="background-color: #ffbf00"
+							style="background-color: #ff6670"
 						></div>
 						<span class="text-sm text-gray-800">Claimable Space</span
 						><span class="ml-auto text-sm text-gray-800"

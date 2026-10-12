@@ -1035,7 +1035,7 @@ export default {
 </script>
 <style scoped>
 .checkbox:deep(label) {
-	color: theme('colors.gray.700') !important;
+	color: var(--asumi-text-muted) !important;
 	line-height: 1.5;
 }
 </style>

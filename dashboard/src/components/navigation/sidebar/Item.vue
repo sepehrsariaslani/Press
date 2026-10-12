@@ -10,9 +10,9 @@ let props = defineProps({
 <template>
 	<router-link
 		:to="item.route"
-		class="flex items-center rounded px-2 py-1.5 text-ink-gray-6 transition gap-2"
+		class="asumi-nav-item flex items-center rounded px-2 py-1.5 text-ink-gray-6 transition gap-2"
 		:class="[
-			item.isActive ? 'bg-white shadow-sm' : 'hover:bg-surface-gray-2',
+			item.isActive ? 'asumi-nav-item--active bg-white shadow-sm' : 'hover:bg-surface-gray-2',
 			item.disabled ? 'pointer-events-none opacity-50' : '',
 			$attrs.class,
 		]"

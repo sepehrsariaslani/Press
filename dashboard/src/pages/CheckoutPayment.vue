@@ -86,17 +86,17 @@ export default {
 			let theme = this.$theme;
 			let style = {
 				base: {
-					color: theme.colors.black,
+					color: '#ede9e4',
 					fontFamily: theme.fontFamily.sans.join(', '),
 					fontSmoothing: 'antialiased',
 					fontSize: '13px',
 					'::placeholder': {
-						color: theme.colors.gray['400'],
+						color: '#827b77',
 					},
 				},
 				invalid: {
-					color: theme.colors.red['600'],
-					iconColor: theme.colors.red['600'],
+					color: '#ff6670',
+					iconColor: '#ff6670',
 				},
 			};
 			this.card = this.elements.create('card', {

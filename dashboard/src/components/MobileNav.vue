@@ -1,15 +1,13 @@
 <template>
 	<Disclosure as="div" v-slot="{ open }">
-		<div class="flex h-12 items-center border-b px-3">
-			<span class="font-semibold">
-				<router-link :to="{ name: 'Site List' }">
-					<img
-						:src="`/assets/press/images/frappecloud-logo.png`"
-						class="h-7 w-7 shrink-0"
-						alt="Frappe Cloud Logo"
-					/>
-				</router-link>
-			</span>
+		<div class="asumi-mobile-nav flex h-12 items-center border-b px-3">
+			<router-link
+				:to="{ name: 'Site List' }"
+				class="asumi-mobile-nav__brand"
+				aria-label="Asumi Press dashboard"
+			>
+				<AsumiBrand />
+			</router-link>
 			<Dropdown
 				class="ml-auto"
 				:options="[
@@ -31,7 +29,7 @@
 				]"
 			>
 				<template v-slot="{ open }">
-					<Button class="ml-auto">
+					<Button class="asumi-mobile-nav__toggle ml-auto">
 						<template #suffix>
 							<lucide-chevron-down class="h-3.5 w-3.5 text-gray-700" />
 						</template>
@@ -41,7 +39,7 @@
 			</Dropdown>
 
 			<DisclosureButton as="template">
-				<Button class="ml-2">
+				<Button class="asumi-mobile-nav__toggle ml-2">
 					<template #icon>
 						<lucide-x v-if="open" class="h-4 w-4 text-gray-700" />
 						<lucide-menu v-else class="h-4 w-4 text-gray-700" />
@@ -78,6 +76,7 @@ import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue';
 import NavigationItems from './navigation/sidebar/NavList.vue';
 import MobileNavItem from './MobileNavItem.vue';
 import MobileNavItemGroup from './MobileNavItemGroup.vue';
+import AsumiBrand from '@/components/AsumiBrand.vue';
 import { tr } from '@/utils/translate';
 
 const SwitchTeamDialog2 = defineAsyncComponent(

@@ -118,7 +118,7 @@ export default {
 					email: this.$team.doc.user,
 				},
 				handler: this.handlePaymentSuccess,
-				theme: { color: '#171717' },
+				theme: { color: '#c63140' },
 				...(this.paypalEnabled
 					? {
 							config: {

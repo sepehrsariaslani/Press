@@ -131,7 +131,7 @@
 					:key="requestTimeData"
 					:data="requestTimeData"
 					unit="seconds"
-					:chartTheme="[$theme.colors.yellow[500]]"
+					:chartTheme="[$theme.colors.orange[500]]"
 					:loading="$resources.analytics.loading"
 					:showCard="false"
 					class="h-[15.55rem] p-2 pb-3"
@@ -622,7 +622,7 @@ export default {
 			return [
 				this.$theme.colors.green[500],
 				this.$theme.colors.red[500],
-				this.$theme.colors.yellow[500],
+				this.$theme.colors.orange[500],
 				this.$theme.colors.pink[500],
 				this.$theme.colors.purple[500],
 				this.$theme.colors.blue[500],

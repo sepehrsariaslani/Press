@@ -219,6 +219,8 @@ export default {
 <style scoped>
 td {
 	@apply px-4 py-2 border-b text-sm text-gray-800;
+	color: var(--asumi-text) !important;
+	border-color: var(--asumi-border);
 }
 
 tbody tr:last-child td {

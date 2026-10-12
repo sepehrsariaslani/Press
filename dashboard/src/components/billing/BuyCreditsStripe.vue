@@ -96,7 +96,7 @@ const createPaymentIntent = createResource({
 		elements.value = stripe.value.elements();
 		const style = {
 			base: {
-				color: '#171717',
+				color: '#ede9e4',
 				fontFamily: [
 					'ui-sans-serif',
 					'system-ui',
@@ -116,12 +116,12 @@ const createPaymentIntent = createResource({
 				fontSmoothing: 'antialiased',
 				fontSize: '13px',
 				'::placeholder': {
-					color: '#C7C7C7',
+					color: '#827b77',
 				},
 			},
 			invalid: {
-				color: '#7C7C7C',
-				iconColor: '#7C7C7C',
+				color: '#ff6670',
+				iconColor: '#ff6670',
 			},
 		};
 		card.value = elements.value.create('card', {

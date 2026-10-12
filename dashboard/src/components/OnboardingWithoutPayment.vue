@@ -1,16 +1,16 @@
 <template>
-	<div class="relative h-full">
+	<div class="asumi-auth relative h-full">
 		<div class="relative z-10 mx-auto pt-8 sm:pt-16">
 			<!-- logo -->
 			<div
 				class="flex flex-col items-center"
 				@dblclick="redirectForFrappeioAuth"
 			>
-				<FCLogo class="inline-block h-12 w-12" />
+				<AsumiBrand class="asumi-auth-brand" />
 			</div>
 			<!-- card -->
 			<div
-				class="mx-auto w-full bg-white px-4 py-8 sm:mt-6 sm:w-3/6 sm:rounded-2xl sm:px-6 sm:py-6 sm:shadow-2xl"
+				class="asumi-auth__card mx-auto w-full bg-white px-4 py-8 sm:mt-6 sm:w-3/6 sm:rounded-2xl sm:px-6 sm:py-6 sm:shadow-2xl"
 			>
 				<!-- title -->
 				<div class="mb-7.5 text-center">
@@ -42,11 +42,13 @@
 </template>
 <script>
 import OnboardingAppSelector from './OnboardingAppSelector.vue';
+import AsumiBrand from './AsumiBrand.vue';
 
 export default {
 	name: 'Onboarding',
 	components: {
 		OnboardingAppSelector,
+		AsumiBrand,
 	},
 	resources: {
 		availableApps() {

@@ -133,7 +133,7 @@ export default {
 			chartColors: [
 				this.$theme.colors.green[500],
 				this.$theme.colors.red[500],
-				this.$theme.colors.yellow[500],
+				this.$theme.colors.orange[500],
 				this.$theme.colors.pink[500],
 				this.$theme.colors.purple[500],
 				this.$theme.colors.blue[500],

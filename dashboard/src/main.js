@@ -39,6 +39,7 @@ setConfig('defaultDocDeleteUrl', 'press.api.client.delete');
 
 document.documentElement.setAttribute('lang', 'fa');
 document.documentElement.setAttribute('dir', 'rtl');
+document.documentElement.setAttribute('data-theme', 'dark');
 document.body.setAttribute('dir', 'rtl');
 
 let app;

@@ -3,9 +3,9 @@
 		<a
 			:href="href"
 			@click="navigate"
-			class="flex items-center rounded px-2 py-1.5 text-gray-800 transition"
+			class="asumi-nav-item flex items-center rounded px-2 py-1.5 text-gray-800 transition"
 			:class="[
-				item.isActive ? 'bg-white shadow-sm' : 'hover:bg-gray-100',
+				item.isActive ? 'asumi-nav-item--active bg-white shadow-sm' : 'hover:bg-gray-100',
 				item.disabled ? 'pointer-events-none opacity-50' : '',
 				$attrs.class,
 			]"

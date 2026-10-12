@@ -320,6 +320,8 @@ command -v docker >/dev/null 2>&1 || curl -fsSL https://get.docker.com | bash
 <style scoped>
 td {
 	@apply px-4 py-2 border-b text-sm text-gray-700;
+	color: var(--asumi-text) !important;
+	border-color: var(--asumi-border);
 }
 
 tbody tr:last-child td {
@@ -328,6 +330,8 @@ tbody tr:last-child td {
 
 .output-container {
 	@apply rounded border px-2 py-2 text-base text-gray-700;
+	color: var(--asumi-text) !important;
+	border-color: var(--asumi-border-strong);
 }
 </style>
 <script>

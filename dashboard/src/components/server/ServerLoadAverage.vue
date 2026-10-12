@@ -23,7 +23,7 @@
 			:key="loadAverageData"
 			:chartTheme="[
 				$theme.colors.green[500],
-				$theme.colors.yellow[400],
+				$theme.colors.orange[400],
 				$theme.colors.red[500],
 			]"
 			:data="loadAverageData"

@@ -1,5 +1,5 @@
 <template>
-	<div class="relative flex h-full flex-col">
+	<div class="asumi-dashboard relative flex h-full flex-col" data-theme="dark">
 		<div class="h-full flex-1">
 			<div class="flex h-full">
 				<div

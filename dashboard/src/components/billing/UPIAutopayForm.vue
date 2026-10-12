@@ -147,7 +147,7 @@ export default {
 					},
 				},
 				theme: {
-					color: '#171717',
+					color: '#c63140',
 				},
 			};
 

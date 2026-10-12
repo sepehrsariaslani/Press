@@ -125,7 +125,7 @@ function processOrder(data) {
 		image: 'https://frappe.io/files/cloud.png',
 		prefill: { email: team.doc?.user },
 		handler: handlePaymentSuccess,
-		theme: { color: '#171717' },
+		theme: { color: '#c63140' },
 		...(paypalEnabled
 			? {
 					config: {

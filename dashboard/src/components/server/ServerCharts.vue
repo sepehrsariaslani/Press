@@ -61,7 +61,7 @@
 					:data="cpuData"
 					unit="%"
 					:chartTheme="[
-						$theme.colors.yellow[500], // system
+						$theme.colors.orange[500], // system
 						$theme.colors.cyan[500], // user
 						$theme.colors.red[500], // iowait
 						$theme.colors.teal[500], // irq
@@ -85,7 +85,7 @@
 					:data="loadAverageData"
 					:chartTheme="[
 						$theme.colors.green[500],
-						$theme.colors.yellow[400],
+						$theme.colors.orange[400],
 						$theme.colors.red[500],
 					]"
 					:loading="$resources.loadavg.loading"
@@ -102,7 +102,7 @@
 					:key="memoryData"
 					:data="memoryData"
 					unit="bytes"
-					:chartTheme="[$theme.colors.yellow[500]]"
+					:chartTheme="[$theme.colors.orange[500]]"
 					:loading="$resources.memory.loading"
 					:error="$resources.memory.error"
 					:showCard="false"
@@ -117,7 +117,7 @@
 					:key="spaceData"
 					:data="spaceData"
 					unit="%"
-					:chartTheme="[$theme.colors.red[500], $theme.colors.yellow[400]]"
+					:chartTheme="[$theme.colors.red[500], $theme.colors.orange[400]]"
 					:loading="$resources.space.loading"
 					:error="$resources.space.error"
 					:showCard="false"
@@ -254,7 +254,7 @@
 					:chartTheme="[
 						$theme.colors.green[500],
 						$theme.colors.red[500],
-						$theme.colors.yellow[500],
+						$theme.colors.orange[500],
 						$theme.colors.pink[500],
 						$theme.colors.purple[500],
 						$theme.colors.blue[500],
@@ -279,7 +279,7 @@
 					:data="databaseConnectionsData"
 					unit="connections"
 					:chartTheme="[
-						this.$theme.colors.yellow[500],
+						this.$theme.colors.orange[500],
 						this.$theme.colors.green[500],
 					]"
 					:loading="$resources.databaseConnections.loading"
@@ -480,7 +480,7 @@ export default {
 			chartColors: [
 				this.$theme.colors.green[500],
 				this.$theme.colors.red[500],
-				this.$theme.colors.yellow[500],
+				this.$theme.colors.orange[500],
 				this.$theme.colors.pink[500],
 				this.$theme.colors.purple[500],
 				this.$theme.colors.blue[500],

@@ -30,6 +30,8 @@
 <style scoped>
 .output-container {
 	@apply rounded border p-4 text-base text-gray-700;
+	color: var(--asumi-text) !important;
+	border-color: var(--asumi-border-strong);
 }
 </style>
 <script>

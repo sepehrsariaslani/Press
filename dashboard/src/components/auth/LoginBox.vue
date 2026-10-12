@@ -1,14 +1,12 @@
 <template>
-	<div class="relative h-full">
+	<div class="asumi-auth relative h-full">
 		<div class="relative z-10 mx-auto py-8 sm:w-max sm:py-24">
 			<div class="flex flex-col px-4" @dblclick="redirectForFrappeioAuth">
 				<slot name="logo">
-					<div class="flex items-center space-x-2">
-						<FCLogo class="inline-block h-[38px] w-[38px]" />
-					</div>
+					<AsumiBrand class="asumi-auth-brand" />
 				</slot>
 			</div>
-			<div class="mx-auto w-full bg-white px-4 py-6 sm:w-96 sm:rounded-lg">
+			<div class="asumi-auth__card mx-auto w-full bg-white px-4 py-6 sm:w-96 sm:rounded-lg">
 				<div class="mb-2" v-if="title">
 					<span
 						class="text-2xl font-bold leading-5 tracking-tight text-gray-900"
@@ -31,13 +29,13 @@
 
 <script>
 import { toast } from 'vue-sonner';
-import FCLogo from '@/components/icons/FCLogo.vue';
+import AsumiBrand from '@/components/AsumiBrand.vue';
 
 export default {
 	name: 'LoginBox',
 	props: ['title', 'logo', 'subtitle'],
 	components: {
-		FCLogo,
+		AsumiBrand,
 	},
 	mounted() {
 		const params = new URLSearchParams(window.location.search);

@@ -112,7 +112,7 @@
 								:key="dateObj.key"
 								class="flex h-8 w-8 items-center justify-center rounded cursor-pointer text-sm focus:outline-none focus:ring-2 focus:ring-outline-gray-2"
 								:class="[
-									dateObj.inMonth ? 'text-ink-gray-8' : 'text-ink-gray-3',
+									dateObj.inMonth ? 'text-ink-gray-8' : 'text-ink-gray-5',
 									dateObj.isToday ? 'font-extrabold text-ink-gray-9' : '',
 									dateObj.isSelected
 										? 'bg-surface-gray-6 text-ink-white hover:bg-surface-gray-6'

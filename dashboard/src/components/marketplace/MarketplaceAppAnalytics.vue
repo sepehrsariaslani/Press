@@ -126,7 +126,7 @@
 				)
 			"
 			unit="installs"
-			:chartTheme="[$theme.colors.yellow[500]]"
+			:chartTheme="[$theme.colors.orange[500]]"
 			:loading="$resources.plausible_analytics.loading"
 			:error="$resources.plausible_analytics.error"
 		/>
