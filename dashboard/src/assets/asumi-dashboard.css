@@ -190,13 +190,17 @@ html[data-theme='dark'] #app {
 	color: var(--asumi-text);
 }
 
-.asumi-dashboard :is([dir='ltr'], code, pre, .font-mono),
+html[data-theme='dark'] body {
+	font-family: 'Manrope Variable', 'Vazirmatn Variable', 'Peyda', Tahoma, sans-serif;
+}
+
+html[data-theme='dark'] :is([dir='ltr'], code, pre, .font-mono),
 .asumi-brand__wordmark,
 .asumi-brand__mark {
 	font-family: 'Manrope Variable', 'Vazirmatn Variable', 'Peyda', sans-serif;
 }
 
-.asumi-dashboard [class~='font-sans'] {
+html[data-theme='dark'] [class~='font-sans'] {
 	font-family: 'Manrope Variable', 'Vazirmatn Variable', 'Peyda', Tahoma, sans-serif;
 }
 
@@ -206,7 +210,7 @@ html[data-theme='dark'] #app {
 }
 
 /* Asumi's current homepage uses crisp 3px corners; keep pill controls intact. */
-.asumi-dashboard :is(
+html[data-theme='dark'] :is(
 		[class~='rounded'],
 		[class~='rounded-sm'],
 		[class~='rounded-md'],
@@ -220,7 +224,7 @@ html[data-theme='dark'] #app {
 }
 
 /* Keep directional corners crisp too, including embedded editors and cards. */
-.asumi-dashboard :is(
+html[data-theme='dark'] :is(
 		[class~='rounded-t'],
 		[class~='rounded-t-sm'],
 		[class~='rounded-t-md']
@@ -229,7 +233,7 @@ html[data-theme='dark'] #app {
 	border-top-right-radius: var(--case-radius) !important;
 }
 
-.asumi-dashboard :is(
+html[data-theme='dark'] :is(
 		[class~='rounded-b'],
 		[class~='rounded-b-sm'],
 		[class~='rounded-b-md'],
@@ -239,73 +243,73 @@ html[data-theme='dark'] #app {
 	border-bottom-right-radius: var(--case-radius) !important;
 }
 
-.asumi-dashboard :is([class~='rounded-l'], [class~='rounded-l-md']) {
+html[data-theme='dark'] :is([class~='rounded-l'], [class~='rounded-l-md']) {
 	border-top-left-radius: var(--case-radius) !important;
 	border-bottom-left-radius: var(--case-radius) !important;
 }
 
-.asumi-dashboard :is([class~='rounded-r'], [class~='rounded-r-md']) {
+html[data-theme='dark'] :is([class~='rounded-r'], [class~='rounded-r-md']) {
 	border-top-right-radius: var(--case-radius) !important;
 	border-bottom-right-radius: var(--case-radius) !important;
 }
 
-.asumi-dashboard [class~='rounded-t-none'] {
+html[data-theme='dark'] [class~='rounded-t-none'] {
 	border-top-left-radius: 0 !important;
 	border-top-right-radius: 0 !important;
 }
 
-.asumi-dashboard [class~='rounded-b-none'] {
+html[data-theme='dark'] [class~='rounded-b-none'] {
 	border-bottom-left-radius: 0 !important;
 	border-bottom-right-radius: 0 !important;
 }
 
-.asumi-dashboard [class~='rounded-l-none'] {
+html[data-theme='dark'] [class~='rounded-l-none'] {
 	border-top-left-radius: 0 !important;
 	border-bottom-left-radius: 0 !important;
 }
 
-.asumi-dashboard [class~='rounded-r-none'] {
+html[data-theme='dark'] [class~='rounded-r-none'] {
 	border-top-right-radius: 0 !important;
 	border-bottom-right-radius: 0 !important;
 }
 
-.asumi-dashboard [class~='rounded-tl-none'] {
+html[data-theme='dark'] [class~='rounded-tl-none'] {
 	border-top-left-radius: 0 !important;
 }
 
-.asumi-dashboard [class~='rounded-tr-none'] {
+html[data-theme='dark'] [class~='rounded-tr-none'] {
 	border-top-right-radius: 0 !important;
 }
 
-.asumi-dashboard [class~='rounded-bl-none'] {
+html[data-theme='dark'] [class~='rounded-bl-none'] {
 	border-bottom-left-radius: 0 !important;
 }
 
-.asumi-dashboard [class~='rounded-br-none'] {
+html[data-theme='dark'] [class~='rounded-br-none'] {
 	border-bottom-right-radius: 0 !important;
 }
 
 /* Tailwind's sm variants only affect the layout from its 640px breakpoint. */
 @media (min-width: 640px) {
-	.asumi-dashboard :is([class~='sm:rounded-lg'], [class~='sm:rounded-2xl']) {
+	html[data-theme='dark'] :is([class~='sm:rounded-lg'], [class~='sm:rounded-2xl']) {
 		border-radius: var(--case-radius) !important;
 	}
 
-	.asumi-dashboard [class~='sm:rounded-l-md'] {
+	html[data-theme='dark'] [class~='sm:rounded-l-md'] {
 		border-top-left-radius: var(--case-radius) !important;
 		border-bottom-left-radius: var(--case-radius) !important;
 	}
 
-	.asumi-dashboard [class~='sm:rounded-r-md'] {
+	html[data-theme='dark'] [class~='sm:rounded-r-md'] {
 		border-top-right-radius: var(--case-radius) !important;
 		border-bottom-right-radius: var(--case-radius) !important;
 	}
 
-	.asumi-dashboard [class~='sm:rounded-tr-none'] {
+	html[data-theme='dark'] [class~='sm:rounded-tr-none'] {
 		border-top-right-radius: 0 !important;
 	}
 
-	.asumi-dashboard [class~='sm:rounded-bl-none'] {
+	html[data-theme='dark'] [class~='sm:rounded-bl-none'] {
 		border-bottom-left-radius: 0 !important;
 	}
 }
@@ -316,37 +320,30 @@ html[data-theme='dark'] #app {
 	color: var(--asumi-text);
 }
 
-.asumi-dashboard button,
-.asumi-dashboard input,
-.asumi-dashboard select,
-.asumi-dashboard textarea {
+html[data-theme='dark'] :is(button, input, select, textarea) {
 	font-family: inherit;
 }
 
-.asumi-dashboard input,
-.asumi-dashboard select,
-.asumi-dashboard textarea {
+html[data-theme='dark'] :is(input, select, textarea) {
 	color: var(--asumi-text);
 	color-scheme: dark;
 }
 
-.asumi-dashboard input::placeholder,
-.asumi-dashboard textarea::placeholder {
+html[data-theme='dark'] :is(input, textarea)::placeholder {
 	color: var(--asumi-text-subtle);
 	opacity: 1;
 }
 
-.asumi-dashboard input[type='checkbox'],
-.asumi-dashboard input[type='radio'] {
+html[data-theme='dark'] input:is([type='checkbox'], [type='radio']) {
 	accent-color: var(--asumi-red);
 }
 
-.asumi-dashboard :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+html[data-theme='dark'] :is(button, a, input, select, textarea, [tabindex]):focus-visible {
 	outline: 2px solid var(--asumi-focus);
 	outline-offset: 3px;
 }
 
-.asumi-dashboard :is(button, a, input, select, textarea):disabled {
+html[data-theme='dark'] :is(button, a, input, select, textarea):disabled {
 	cursor: not-allowed;
 }
 
@@ -958,6 +955,11 @@ html[data-theme="dark"] .asumi-nav-item--active {
 	box-shadow: var(--asumi-shadow);
 }
 
+/* Frappe UI portals dialogs to body, outside the dashboard root. */
+html[data-theme='dark'] .dialog-content {
+	border-radius: var(--case-radius) !important;
+}
+
 .asumi-dashboard .asumi-mobile-nav__toggle {
 	min-width: 2.5rem;
 	border-color: var(--asumi-border);
@@ -1011,7 +1013,7 @@ html[data-theme="dark"] .asumi-nav-item--active {
 		flex-wrap: wrap;
 	}
 
-	.asumi-dashboard [role='dialog'] {
+	html[data-theme='dark'] [role='dialog'] {
 		max-width: calc(100vw - 1.25rem) !important;
 	}
 

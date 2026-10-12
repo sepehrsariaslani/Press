@@ -94,6 +94,7 @@
 - [x] Use the existing Frappe UI and Tailwind component class patterns to style primary actions in Asumi red; keep secondary and quiet actions charcoal or outlined, with visible hover, disabled, loading, and keyboard focus states.
 - [x] Restyle inputs, selects, date pickers, filters, tab bars, table headers, rows, empty states, and selection states while preserving current validation and row actions.
 - [x] Restyle modal overlays and dialog surfaces, retaining existing confirmation flows and button ordering.
+- [x] Apply Asumi typography, focus, and 3px geometry to body-mounted Frappe UI portals; keep dialogs within narrow viewports.
 - [x] Preserve semantic success, warning, information, and error colors with labels or icons in addition to color.
 - [x] Keep table and code-oriented content horizontally scrollable when narrow screens cannot safely collapse columns.
 
