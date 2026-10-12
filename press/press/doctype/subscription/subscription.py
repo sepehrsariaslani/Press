@@ -226,6 +226,34 @@ class Subscription(Document):
 			# A direct checkout purchases one explicit plan interval. The
 			# commerce expiry job controls access; do not also invoice usage.
 			return False
+		if (
+			self.document_type == "Site"
+			and self.plan_type == "Site Plan"
+			and self.name
+			and frappe.db.exists("DocType", "Commerce Order")
+		):
+			if frappe.db.exists(
+				"Commerce Order",
+				{
+					"site": self.document_name,
+					"plan": self.plan,
+					"order_type": "Hosting",
+					"status": ["in", ["Paid", "Provisioning", "Provisioning Failed"]],
+				},
+			):
+				# A verified hosting order already covers the Site Plan term.
+				return False
+			if frappe.db.exists(
+				"Commerce Order",
+				{
+					"site": self.document_name,
+					"plan": self.plan,
+					"order_type": "Hosting",
+					"status": "Active",
+					"service_ends_at": [">", frappe.utils.now_datetime()],
+				},
+			):
+				return False
 		doc = self.get_subscribed_document()
 		if not doc:
 			return False

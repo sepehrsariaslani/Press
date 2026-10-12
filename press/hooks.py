@@ -190,6 +190,7 @@ doc_events = {
 	"Site": {
 		"before_insert": "press.press.doctype.team.team.validate_site_creation",
 		"after_insert": "press.press.doctype.press_role.press_role.create_user_resource",
+		"on_update": "press.saas.commerce.api.activate_new_site_commerce_orders",
 	},
 	"Marketplace App Subscription": {
 		"on_update": "press.press.doctype.storage_integration_subscription.storage_integration_subscription.create_after_insert",

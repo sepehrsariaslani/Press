@@ -83,22 +83,45 @@
 - [x] Add a validated choice for upgrading an existing site or creating a new one, defaulting older plans to the existing-site option.
 - [x] Show and save the choice in the Asumi hosting-plan table.
 - [x] Test both choices, the default, and rejection of invalid values.
-- [ ] Keep hosted-site checkout unavailable until the subdomain route, capacity gate, and idempotent provisioner are verified.
+- [ ] Keep hosted-site checkout unavailable until the subdomain route, capacity gate, and idempotent provisioner are verified. The code now requires a Press-managed public server and checks the configured DNS path; runtime DNS/capacity still needs operator verification.
 
-### Task 5: Verify the delivered surfaces and preserve deployment state
+### Task 5: Add a paid Site Plan checkout and safe delivery lifecycle
+
+**Files:**
+- Modify: `press/saas/doctype/commerce_order/commerce_order.json`
+- Modify: `press/saas/doctype/commerce_settings/commerce_settings.json`
+- Modify: `press/saas/commerce/api.py`
+- Modify: `press/saas/commerce/order_snapshot.py`
+- Modify: `press/press/doctype/subscription/subscription.py`
+- Modify: `press/press/doctype/site/site.py`
+- Modify: `press/press/doctype/site_plan_change/site_plan_change.py`
+- Modify: `dashboard/src/pages/CommerceOrders.vue`
+- Test: commerce snapshot/delivery tests and related Press tests
+
+- [x] Let each enabled Site Plan choose existing-site upgrade or new-site creation under `asumi.ir`.
+- [x] Snapshot the Site Plan, term, delivery mode, prior plan, target site/subdomain, and paid amount in `Commerce Order`.
+- [x] Create new sites only through Press's normal Site creation path, and only when the Root Domain, a compatible public group, an active shared bench, and a public server are configured.
+- [x] Keep Site Plan checkout disabled unless its separate admin switch, ZarinPal settings, and required delivery configuration are ready.
+- [x] Prevent Press usage invoices from charging the same Site Plan while its verified Commerce Order term is active; on expiry restore the prior plan or suspend a new site with no prior plan.
+- [x] Show Site Plan offers and the required site/subdomain input on `/dashboard/orders`; preserve app-plan checkout.
+- [ ] Complete a Frappe integration run for delivery, renewal, invoice suppression, refund, and expiry against an isolated test database. Pure commerce and dashboard tests pass; production-site tests were not run.
+
+### Task 6: Verify the delivered surfaces and preserve deployment state
 
 **Files:**
 - No production code unless a prior task's test proves a defect.
 
 - [x] Run the focused `press.saas.commerce` pure tests. Catalog tests requiring page imports need a Frappe-initialized runner; do not enable tests on the live site to run them.
 - [x] Run `press.tests.test_asumi_routing` and `press.tests.test_docker_control_routing` with the Bench virtual environment; both suites pass without touching production data.
-- [x] Run the dashboard commerce access/pricing tests and production build.
+- [x] Run the dashboard commerce access/pricing tests (20 pass), 49 focused commerce tests, and the production build.
 - [x] Verify public `/`, `/saas`, `/pricing`, `/marketplace`, and `/dashboard/orders` return HTTP 200 page shells.
 - [x] Verify `checkout_status` reports checkout disabled without exposing any credential and all 48 catalog plans remain at zero in all currencies. Hosting checkout remains disabled because the provisioning path, capacity threshold, and wildcard DNS are not ready.
-- [x] Commit the verified code and plan with a Persian commit subject/body; leave the existing `press/routing.py` changes preserved.
+- [x] Commit the code and plan with a Persian commit subject/body; leave the existing `press/routing.py` changes preserved.
 - [ ] Before any production reload that replaces shared Bench web workers, show the affected sites and ask for the separately required confirmation.
 
 ## Known external completion conditions
 
 - Live payment cannot be enabled or fully exercised until the administrator enters the real Merchant ID through `/dashboard/orders`; this plan never invents or embeds one.
-- Hosting delivery choices are stored per Site Plan. New-site delivery is intended to use `*.asumi.ir`, but the wildcard DNS check currently fails. The Docker Agent also has no safe new-site provisioning action yet; keep hosting checkout unavailable until DNS/proxy routing, site creation, upgrade, and capacity checks all pass.
+- Hosting delivery choices are stored per Site Plan. New-site delivery is intended to use `*.asumi.ir`, but the DNS check currently fails. Provisioning uses Press's Site and Agent Job path; an isolated end-to-end run against this Docker Bench is still required. Keep hosting checkout unavailable until DNS/proxy routing, site creation, upgrade, and storage capacity are confirmed.
+- The current live Press database has no configured Root Domain or Site Plans; Site Plan sales must remain disabled until the operator configures the Asumi root domain and at least one compatible shared Site Plan/release group.
+- New-site readiness requires a compatible active public server. Numerical free disk space is not checked by this code; verify the shared server's storage headroom and scaling policy before enabling new-site sales.

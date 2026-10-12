@@ -19,6 +19,7 @@ from press.api.client import dashboard_whitelist
 from press.exceptions import FrappeioServerNotSet
 from press.press.doctype.communication_info.communication_info import get_communication_info
 from press.press.doctype.telegram_message.telegram_message import TelegramMessage
+from press.saas.commerce.service_delivery import is_verified_hosting_site_creation
 from press.utils import get_valid_teams_for_user, has_role, log_error
 from press.utils.billing import (
 	get_frappe_io_connection,
@@ -1618,6 +1619,26 @@ def has_permission(doc, ptype, user):
 
 
 def validate_site_creation(doc, method):
+	commerce_order_name = doc.flags.get("commerce_hosting_order")
+	if commerce_order_name and frappe.db.exists("DocType", "Commerce Order"):
+		order = frappe.db.get_value(
+			"Commerce Order",
+			commerce_order_name,
+			[
+				"status",
+				"order_type",
+				"service_delivery_mode",
+				"customer",
+				"team",
+				"plan",
+				"subdomain",
+			],
+			as_dict=True,
+		)
+		if is_verified_hosting_site_creation(order, doc, frappe.session.user):
+			if not frappe.db.get_value("Team", doc.team, "enabled"):
+				frappe.throw("این حساب غیرفعال است و امکان ساخت سایت ندارد.")
+			return
 	if frappe.session.user == "Administrator":
 		return
 	if not doc.team:

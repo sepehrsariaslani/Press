@@ -53,6 +53,7 @@ from press.press.doctype.communication_info.communication_info import get_commun
 from press.press.doctype.root_domain.root_domain import get_matching_domain
 from press.press.doctype.server.server import Server
 from press.saas.doctype.product_trial.product_trial import create_free_app_subscription
+from press.saas.commerce.service_delivery import is_verified_hosting_site_creation
 from press.utils.jobs import has_job_timeout_exceeded
 from press.utils.telemetry import capture
 from press.utils.webhook import create_webhook_event
@@ -699,7 +700,31 @@ class Site(Document, TagHelpers):
 			is_site_on_public_server = frappe.db.get_value("Server", self.server, "public")
 
 			# Don't allow free plan for non-system users
-			if not is_system_user():
+			commerce_order_name = self.flags.get("commerce_hosting_order")
+			commerce_order = (
+				frappe.db.get_value(
+					"Commerce Order",
+					commerce_order_name,
+					[
+						"status",
+						"order_type",
+						"service_delivery_mode",
+						"customer",
+						"team",
+						"plan",
+						"subdomain",
+					],
+					as_dict=True,
+				)
+				if commerce_order_name and frappe.db.exists("DocType", "Commerce Order")
+				else None
+			)
+			paid_hosting_order = is_verified_hosting_site_creation(
+				commerce_order,
+				self,
+				frappe.session.user,
+			)
+			if not is_system_user() and not paid_hosting_order:
 				is_plan_free = (plan.price_inr == 0 or plan.price_usd == 0) and not (
 					plan.dedicated_server_plan or plan.is_trial_plan
 				)
@@ -2747,20 +2772,23 @@ class Site(Document, TagHelpers):
 		validate_plan(self.server, plan)
 		self.change_plan(plan)
 
-	def change_plan(self, plan, ignore_card_setup=False):
+	def change_plan(self, plan, ignore_card_setup=False, commerce_expiry_revert=False):
 		self.can_change_plan(ignore_card_setup)
 		self.reset_disk_usage_exceeded_status(save=False)
 		plan_config = self.get_plan_config(plan)
 
 		self._update_configuration(plan_config)
-		ret = frappe.get_doc(
+		plan_change = frappe.get_doc(
 			{
 				"doctype": "Site Plan Change",
 				"site": self.name,
 				"from_plan": self.plan,
 				"to_plan": plan,
 			}
-		).insert()
+		)
+		if commerce_expiry_revert:
+			plan_change.flags.commerce_expiry_revert = True
+		ret = plan_change.insert()
 
 		self.reload()
 		if self.status == "Suspended":
@@ -4558,6 +4586,10 @@ def process_new_site_job_update(job):  # noqa: C901
 	if updated_status != site_status:
 		update_backup_restoration_test_status(job, updated_status)
 		frappe.db.set_value("Site", job.site, "status", updated_status)
+		if updated_status in {"Active", "Broken"}:
+			from press.saas.commerce.api import activate_new_site_commerce_orders
+
+			activate_new_site_commerce_orders(frappe.get_doc("Site", job.site))
 		create_site_status_update_webhook_event(job.site)
 
 	if job.status == "Success":

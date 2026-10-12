@@ -76,3 +76,18 @@ class TestSitePlanChange(FrappeTestCase):
 			}
 		).insert(ignore_permissions=True)
 		self.assertEqual(frappe.db.get_value("Site", self.site.name, "plan"), self.nano_plan.name)
+
+	def test_commerce_expiry_can_restore_original_plan_without_customer_downgrade_permission(self):
+		self.site._create_initial_site_plan_change(self.unlimited_plan.name)
+		self.site.reload()
+		plan_change = frappe.get_doc(
+			{
+				"doctype": "Site Plan Change",
+				"site": self.site.name,
+				"from_plan": self.unlimited_plan.name,
+				"to_plan": self.tiny_plan.name,
+			}
+		)
+		plan_change.flags.commerce_expiry_revert = True
+		plan_change.insert(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_value("Site", self.site.name, "plan"), self.tiny_plan.name)

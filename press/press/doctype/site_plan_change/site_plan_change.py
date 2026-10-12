@@ -46,6 +46,7 @@ class SitePlanChange(Document):
 			and self.to_plan
 			and self.type == "Downgrade"
 			and not frappe.db.get_value("Site Plan", self.to_plan, "allow_downgrading_from_other_plan")
+			and not getattr(self.flags, "commerce_expiry_revert", False)
 		):
 			frappe.throw(
 				f"Sorry, you cannot downgrade to {self.to_plan} from {self.from_plan}. <a href='https://docs.frappe.io/cloud/tiny-plan#why-cant-i-upgrade-to-this-plan-'><u>Why?</u></a>"

@@ -50,6 +50,65 @@
 		</section>
 
 		<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h2 class="text-lg font-semibold text-gray-950">میزبانی سایت</h2>
+					<p class="mt-1 text-sm leading-6 text-gray-600">پلن‌های آماده را بخرید. بسته به تنظیمات هر پلن، آن را روی سایت فعال شما اعمال می‌کنیم یا سایت تازه‌ای زیر دامنهٔ آسومی می‌سازیم.</p>
+				</div>
+				<Button label="دریافت پلن‌ها" :loading="hostingOffers.loading" @click="hostingOffers.fetch()" />
+			</div>
+			<div v-if="hostingOffers.loading" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">در حال بررسی پلن‌ها و ظرفیت سایت…</div>
+			<div v-else-if="!(hostingOffers.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm leading-6 text-gray-600">هنوز پلن میزبانی برای خرید آماده نشده است. مدیر آسومی باید پلن، دامنهٔ ریشه و بنچ مشترک را تنظیم کند.</div>
+			<div v-else class="mt-5 grid gap-4 lg:grid-cols-2">
+				<article v-for="plan in hostingOffers.data.plans" :key="plan.name" class="rounded-xl border border-gray-200 p-5">
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<p class="text-xs font-medium text-rose-700">{{ plan.commerce_delivery_mode === 'Create New Site' ? 'ساخت سایت جدید' : 'ارتقای سایت موجود' }}</p>
+							<h3 class="mt-1 text-lg font-semibold text-gray-950">{{ plan.plan_title || plan.name }}</h3>
+							<p class="mt-1 text-sm text-gray-600">دورهٔ خدمت: {{ intervalLabel(plan.interval) }}</p>
+						</div>
+						<div class="shrink-0 text-left"><strong class="text-lg text-gray-950">{{ money(plan.price_irr) }}</strong><span class="mr-1 text-xs text-gray-500">ریال</span></div>
+					</div>
+					<label v-if="plan.commerce_delivery_mode === 'Upgrade Existing Site'" class="mt-4 block text-sm font-medium text-gray-700">
+						سایت فعال
+						<select v-model="hostingSiteByPlan[plan.name]" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+							<option value="">انتخاب سایت</option>
+							<option v-for="site in hostingOffers.data.sites || []" :key="site.name" :value="site.name">{{ site.subdomain }}.{{ site.domain }}</option>
+						</select>
+					</label>
+					<div v-else class="mt-4">
+						<label v-if="plan.renewable_sites?.length" class="mb-3 block text-sm font-medium text-gray-700">
+							تمدید سایت ساخته‌شده با همین پلن
+							<select v-model="hostingRenewSiteByPlan[plan.name]" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+								<option value="">ساخت سایت جدید</option>
+								<option v-for="site in plan.renewable_sites" :key="site.name" :value="site.name">{{ site.subdomain }}.{{ site.domain }}{{ site.status === 'Suspended' ? ' · تعلیق‌شده' : '' }}</option>
+							</select>
+						</label>
+						<template v-if="!hostingRenewSiteByPlan[plan.name]">
+							<label class="block text-sm font-medium text-gray-700">نام سایت جدید
+								<div class="mt-1 flex items-center rounded-lg border border-gray-300 px-3 focus-within:border-rose-500">
+									<input v-model="hostingSubdomains[plan.name]" maxlength="32" autocomplete="off" class="min-w-0 flex-1 border-0 px-0 py-2 text-sm focus:ring-0" placeholder="نام انگلیسی، حداقل ۵ نویسه" :aria-label="`نام سایت جدید برای ${plan.plan_title || plan.name}`" />
+									<span class="shrink-0 text-xs text-gray-500">.{{ plan.domain || 'asumi.ir' }}</span>
+								</div>
+							</label>
+							<div v-if="plan.apps?.length" class="mt-3">
+								<p class="text-xs text-gray-600">برنامه‌های قابل نصب روی بنچ (اختیاری)</p>
+								<div class="mt-2 flex flex-wrap gap-2">
+									<label v-for="app in plan.apps" :key="app" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-700"><input type="checkbox" :checked="isHostingAppSelected(plan.name, app)" @change="toggleHostingApp(plan.name, app, $event.target.checked)" />{{ app }}</label>
+								</div>
+							</div>
+							<p v-else class="mt-2 text-xs leading-5 text-gray-500">سایت پایه ساخته می‌شود و می‌توانید بعداً برنامه‌ها را نصب کنید.</p>
+						</template>
+						<p v-else class="mt-2 text-xs leading-5 text-gray-500">پس از تأیید پرداخت، همین سایت دوباره فعال می‌شود.</p>
+					</div>
+					<p v-if="plan.message || (plan.commerce_delivery_mode === 'Create New Site' && !plan.new_site_available && !hostingRenewSiteByPlan[plan.name])" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">{{ plan.message || 'ساخت سایت جدید آماده نیست؛ می‌توانید یکی از سایت‌های قبلی همین پلن را تمدید کنید.' }}</p>
+					<p class="mt-3 text-xs leading-5 text-gray-500">پس از پایان دوره، سایت به پلن قبلی برمی‌گردد؛ سایت تازه بدون تمدید تعلیق می‌شود.</p>
+					<Button class="mt-4 w-full" variant="solid" :disabled="!plan.available || (plan.commerce_delivery_mode === 'Create New Site' && !plan.new_site_available && !hostingRenewSiteByPlan[plan.name]) || busy" :loading="busyPlan === plan.name" label="ثبت سفارش و پرداخت" @click="purchaseHosting(plan)" />
+				</article>
+			</div>
+		</section>
+
+		<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 			<div class="flex items-center justify-between gap-3">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">سفارش‌های من</h2>
@@ -61,7 +120,7 @@
 			<div v-else class="mt-4 divide-y divide-gray-100">
 				<div v-for="order in orders.data || []" :key="order.name" class="flex flex-wrap items-center justify-between gap-4 py-4">
 					<div>
-						<p class="font-medium text-gray-950">{{ order.plan }} · {{ order.site }}</p>
+						<p class="font-medium text-gray-950">{{ order.plan }}<span v-if="order.site_label"> · {{ order.site_label }}</span></p>
 						<p class="mt-1 text-xs text-gray-500">{{ order.name }} · {{ dateLabel(order.creation) }}<span v-if="order.service_ends_at"> · پایان دوره: {{ dateLabel(order.service_ends_at) }}</span></p>
 						<p v-if="order.provisioning_error || order.payment_error" class="mt-1 text-sm text-rose-700">{{ order.provisioning_error || order.payment_error }}</p>
 					</div>
@@ -87,6 +146,7 @@
 			<div v-if="settings.data" class="mt-5 grid gap-4 md:grid-cols-2">
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.enabled" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فعال‌سازی checkout آسومی</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_marketplace_app_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش تعرفهٔ برنامه‌ها</label>
+				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_site_plan_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش پلن میزبانی</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.sandbox_mode" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> حالت آزمایشی زرین‌پال</label>
 				<label class="text-sm">شناسهٔ پذیرندهٔ زرین‌پال
 					<input v-model="merchantId" type="password" autocomplete="new-password" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white placeholder:text-gray-500" placeholder="برای حفظ مقدار فعلی خالی بگذارید" />
@@ -94,7 +154,7 @@
 				</label>
 			</div>
 			<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-				<p class="text-xs leading-5 text-gray-400">فروش سرویس میزبانی تا تکمیل بررسی ظرفیت بنچ و روند تحویل، از این صفحه غیرفعال است.</p>
+				<p class="text-xs leading-5 text-gray-400">فروش میزبانی فقط پس از آماده‌شدن دامنه، بنچ و پلن فعال می‌شود. پرداخت هر بازه جداگانه است و خودکار تمدید نمی‌شود.</p>
 				<Button variant="solid" label="ذخیره تنظیمات پرداخت" :loading="savingSettings" @click="saveSettings" />
 			</div>
 		</section>
@@ -194,16 +254,31 @@ const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const selectedSite = ref('');
 const merchantId = ref('');
 const busyPlan = ref('');
+const hostingSiteByPlan = reactive({});
+const hostingRenewSiteByPlan = reactive({});
+const hostingSubdomains = reactive({});
+const hostingAppsByPlan = reactive({});
 const retrying = ref('');
 const refunding = ref('');
 const refundReferences = reactive({});
 const savingSettings = ref(false);
 const error = ref('');
 const notice = ref('');
-const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, sandbox_mode: true });
+const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, sandbox_mode: true });
 
 const sites = createResource({ url: 'press.saas.commerce.api.my_purchase_sites', auto: true });
 const orders = createResource({ url: 'press.saas.commerce.api.my_orders', auto: true });
+const hostingOffers = createResource({
+	url: 'press.saas.commerce.api.available_site_plan_offers',
+	auto: true,
+	onSuccess(data) {
+		for (const plan of data.plans || []) {
+			if (plan.commerce_delivery_mode === 'Upgrade Existing Site' && !hostingSiteByPlan[plan.name] && data.sites?.length === 1) {
+				hostingSiteByPlan[plan.name] = data.sites[0].name;
+			}
+		}
+	},
+});
 const plans = createResource({ url: 'press.saas.commerce.api.available_app_plans' });
 const settings = createResource({
 	url: 'press.saas.commerce.api.admin_settings',
@@ -219,8 +294,9 @@ const saveSitePriceResource = createResource({ url: 'press.saas.commerce.api.sav
 const retryResource = createResource({ url: 'press.saas.commerce.api.retry_provisioning' });
 const refundResource = createResource({ url: 'press.saas.commerce.api.record_refund' });
 const startPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_marketplace_app_purchase' });
+const startHostingPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_site_plan_purchase' });
 
-const loading = computed(() => sites.loading || orders.loading);
+const loading = computed(() => sites.loading || orders.loading || hostingOffers.loading);
 const busy = computed(() => Boolean(busyPlan.value));
 
 watch(selectedSite, async (site) => {
@@ -239,6 +315,42 @@ async function purchase(plan) {
 		if (!checkout || !checkout.startsWith('https://')) throw new Error('نشانی امن پرداخت از سرور دریافت نشد.');
 		window.location.assign(checkout);
 	} catch (failure) { showError(failure); } finally { busyPlan.value = ''; }
+}
+
+async function purchaseHosting(plan) {
+	if (busy.value || !plan.available) return;
+	error.value = '';
+	busyPlan.value = plan.name;
+	try {
+		const params = { plan: plan.name };
+		if (plan.commerce_delivery_mode === 'Upgrade Existing Site') {
+			params.site = hostingSiteByPlan[plan.name];
+			if (!params.site) throw new Error('ابتدا سایت فعال را انتخاب کنید.');
+		} else {
+			if (hostingRenewSiteByPlan[plan.name]) {
+				params.site = hostingRenewSiteByPlan[plan.name];
+			} else {
+				params.subdomain = (hostingSubdomains[plan.name] || '').trim();
+				params.apps = hostingAppsByPlan[plan.name] || [];
+				if (!params.subdomain) throw new Error('نام زیردامنهٔ سایت جدید را وارد کنید.');
+			}
+		}
+		const result = await startHostingPurchaseResource.submit(params);
+		const checkout = result?.checkout_url || result?.message?.checkout_url;
+		if (!checkout || !checkout.startsWith('https://')) throw new Error('نشانی امن پرداخت از سرور دریافت نشد.');
+		window.location.assign(checkout);
+	} catch (failure) { showError(failure); } finally { busyPlan.value = ''; }
+}
+
+function isHostingAppSelected(plan, app) {
+	return (hostingAppsByPlan[plan] || []).includes(app);
+}
+
+function toggleHostingApp(plan, app, checked) {
+	const selected = new Set(hostingAppsByPlan[plan] || []);
+	if (checked) selected.add(app);
+	else selected.delete(app);
+	hostingAppsByPlan[plan] = [...selected];
 }
 
 async function saveSettings() {
@@ -297,7 +409,7 @@ async function recordRefund(order) {
 async function refresh() {
 	error.value = '';
 	try {
-		const calls = [sites.fetch(), orders.fetch()];
+		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
 		if (isCommerceAdmin.value) calls.push(settings.fetch(), appPlans.fetch(), sitePlans.fetch(), adminOrders.fetch());
 		if (selectedSite.value) calls.push(plans.fetch({ site: selectedSite.value }));
 		await Promise.all(calls);

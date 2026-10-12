@@ -87,6 +87,53 @@ class TestSubscription(FrappeTestCase):
 				self.assertFalse(subscription.can_charge_for_subscription())
 			exists.assert_called_once_with("DocType", "Commerce Order")
 
+	def test_paid_hosting_order_is_not_billed_again_as_site_plan_usage(self):
+		subscription = frappe.get_doc(
+			{
+				"doctype": "Subscription",
+				"name": "commerce-hosting-test-subscription",
+				"document_type": "Site",
+				"document_name": "hosting-test.asumi.ir",
+				"team": self.team.name,
+				"plan_type": "Site Plan",
+				"plan": "hosting-test-plan",
+			}
+		)
+		with patch("frappe.db.exists", side_effect=[True, True]) as exists:
+			self.assertFalse(subscription.can_charge_for_subscription())
+			self.assertEqual(
+				exists.call_args_list[1].args,
+				(
+					"Commerce Order",
+					{
+						"site": "hosting-test.asumi.ir",
+						"plan": "hosting-test-plan",
+						"order_type": "Hosting",
+						"status": ["in", ["Paid", "Provisioning", "Provisioning Failed"]],
+					},
+				),
+			)
+
+	def test_active_hosting_order_covers_site_plan_only_until_its_term_ends(self):
+		subscription = frappe.get_doc(
+			{
+				"doctype": "Subscription",
+				"name": "commerce-hosting-active-test-subscription",
+				"document_type": "Site",
+				"document_name": "active-hosting-test.asumi.ir",
+				"team": self.team.name,
+				"plan_type": "Site Plan",
+				"plan": "hosting-test-plan",
+			}
+		)
+		with patch("frappe.db.exists", side_effect=[True, False, True]) as exists:
+			self.assertFalse(subscription.can_charge_for_subscription())
+			active_order_filter = exists.call_args_list[2].args[1]
+			self.assertEqual(active_order_filter["site"], "active-hosting-test.asumi.ir")
+			self.assertEqual(active_order_filter["plan"], "hosting-test-plan")
+			self.assertEqual(active_order_filter["status"], "Active")
+			self.assertEqual(active_order_filter["service_ends_at"][0], ">")
+
 	def test_subscription_daily(self):
 		todo = frappe.get_doc(doctype="ToDo", description="Test todo").insert()
 		plan = frappe.get_doc(

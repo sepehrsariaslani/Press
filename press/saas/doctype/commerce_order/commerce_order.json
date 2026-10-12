@@ -11,9 +11,14 @@
   "plan_type",
   "plan",
   "interval",
+  "service_delivery_mode",
   "marketplace_app",
   "app",
   "site",
+  "subdomain",
+  "original_plan",
+  "agent_job",
+  "apps",
   "team",
   "customer",
   "currency",
@@ -49,7 +54,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Product Type",
-   "options": "Marketplace App",
+   "options": "Marketplace App\nHosting",
    "read_only": 1,
    "reqd": 1
   },
@@ -57,9 +62,16 @@
    "fieldname": "plan_type",
    "fieldtype": "Select",
    "label": "Plan Type",
-   "options": "Marketplace App Plan",
+   "options": "Marketplace App Plan\nSite Plan",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "service_delivery_mode",
+   "fieldtype": "Select",
+   "label": "Service Delivery Mode Snapshot",
+   "options": "Upgrade Existing Site\nCreate New Site",
+   "read_only": 1
   },
   {
    "fieldname": "plan",
@@ -69,6 +81,34 @@
    "options": "plan_type",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "subdomain",
+   "fieldtype": "Data",
+   "label": "Requested Subdomain",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "original_plan",
+   "fieldtype": "Link",
+   "label": "Original Site Plan Snapshot",
+   "options": "Site Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "agent_job",
+   "fieldtype": "Link",
+   "label": "Site Provisioning Job",
+   "options": "Agent Job",
+   "read_only": 1
+  },
+  {
+   "fieldname": "apps",
+   "fieldtype": "Code",
+   "label": "Selected Site Apps Snapshot",
+   "options": "JSON",
+   "read_only": 1
   },
   {
    "fieldname": "interval",
@@ -97,7 +137,8 @@
    "in_list_view": 1,
    "label": "Site",
    "options": "Site",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 0
   },
   {
    "fieldname": "team",
