@@ -57,7 +57,7 @@ class BalanceTransaction(Document):
 		last_balance = frappe.db.get_all(
 			"Balance Transaction",
 			filters={"team": self.team, "docstatus": 1, "type": ("!=", "Partnership Fee")},
-			fields=["sum(amount) as ending_balance"],
+			fields=[{"SUM": "amount", "as": "ending_balance"}],
 			group_by="team",
 			pluck="ending_balance",
 		)
