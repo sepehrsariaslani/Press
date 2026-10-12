@@ -111,6 +111,30 @@ class TestAPISite(FrappeTestCase):
 		self.assertEqual(created_site.bench, bench.name)
 		self.assertEqual(created_site.status, "Pending")
 
+	def test_new_forwards_app_plan_selections_to_private_bench_deploy(self):
+		from press.api.site import new
+
+		selected_app_plans = {"paid_app": "paid-plan"}
+		request = {
+			"name": "private-test-site",
+			"plan": "private-site-plan",
+			"apps": ["frappe", "paid_app"],
+			"selected_app_plans": selected_app_plans,
+			"cluster": "test-cluster",
+			"version": "Version 15",
+			"provider": "test-provider",
+			"domain": self.domain,
+		}
+
+		with patch("press.api.site.frappe.db.get_value", return_value=1):
+			with patch(
+				"press.api.site.create_site_on_private_bench",
+				return_value={"site_group_deploy": "deploy"},
+			) as create_private:
+				new(request)
+
+		self.assertEqual(create_private.call_args.kwargs["selected_app_plans"], selected_app_plans)
+
 	@patch.object(AgentJob, "enqueue_http_request", new=Mock())
 	def test_creating_new_site_with_customized_site_plan_should_allow_only_specified_apps(
 		self,

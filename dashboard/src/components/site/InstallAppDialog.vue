@@ -20,6 +20,7 @@ import { renderDialog } from '../../utils/components';
 import router from '../../router';
 import ObjectList from '../ObjectList.vue';
 import { getToastErrorMessage } from '../../utils/toast';
+import { requiresMarketplaceAppPlanSelection } from '../../utils/marketplacePricing';
 
 export default {
 	props: {
@@ -46,9 +47,11 @@ export default {
 				if (this.$site.installApp.loading) return;
 
 				if (
-					row.plans &&
-					row.plans.some((plan) => plan.price_inr > 0) &&
-					row.team !== this.$site.doc?.team
+					requiresMarketplaceAppPlanSelection(
+						row,
+						this.$team?.doc?.currency,
+						this.$site.doc?.team,
+					)
 				) {
 					this.show = false;
 

@@ -30,7 +30,13 @@ from press.press.doctype.marketplace_app.marketplace_app import (
 )
 from press.press.doctype.remote_file.remote_file import get_remote_key
 from press.press.doctype.server.server import is_dedicated_server
-from press.press.doctype.site.site import Site, get_updates_between_current_and_next_apps
+from press.press.doctype.site.site import (
+	Site,
+	check_marketplace_app_plan_installable,
+	get_marketplace_app_plan_name,
+	get_updates_between_current_and_next_apps,
+	validate_marketplace_app_plan_selections,
+)
 from press.press.doctype.site_plan.plan import Plan
 from press.press.doctype.site_update.site_update import benches_with_available_update
 from press.utils import (
@@ -49,7 +55,6 @@ if TYPE_CHECKING:
 	from press.press.doctype.deploy_candidate.deploy_candidate import DeployCandidate
 	from press.press.doctype.release_group.release_group import ReleaseGroup
 	from press.press.doctype.server.server import Server
-	from press.press.doctype.team.team import Team
 
 
 def protected(doctypes):
@@ -329,9 +334,11 @@ def new(site):
 	plan = site.get("plan")
 	apps = site.get("apps", ["frappe"])
 	apps = [app for app in apps if app]
+	selected_app_plans = site.get("selected_app_plans") or {}
+	localisation_country = site.get("localisation_country")
 
 	if selected_dedicated_server:
-		if localisation_country := site.get("localisation_country"):
+		if localisation_country:
 			localisation_app = frappe.db.get_value(
 				"Marketplace Localisation App", {"country": localisation_country}, "marketplace_app"
 			)
@@ -346,7 +353,6 @@ def new(site):
 		)
 		if existing_release_group:
 			team = get_current_team(get_doc=True)
-			app_plans = site.get("selected_app_plans")
 			site_doc = frappe.get_doc(
 				{
 					"doctype": "Site",
@@ -356,7 +362,7 @@ def new(site):
 					"server": selected_dedicated_server,
 					"cluster": site.get("cluster"),
 					"apps": [{"app": app} for app in apps],
-					"app_plans": app_plans,
+					"app_plans": selected_app_plans,
 					"team": team.name,
 					"free": team.free_account,
 					"subscription_plan": plan,
@@ -385,6 +391,7 @@ def new(site):
 			provider=site.get("provider"),
 			localisation_country=localisation_country,
 			server=selected_dedicated_server,
+			selected_app_plans=selected_app_plans,
 		)
 
 	if frappe.db.get_value("Site Plan", plan, "private_bench_support"):
@@ -396,6 +403,7 @@ def new(site):
 			version=site.get("version"),
 			provider=site.get("provider"),
 			localisation_country=site.get("localisation_country"),
+			selected_app_plans=selected_app_plans,
 		)
 
 	return _new(site)
@@ -460,8 +468,10 @@ def create_site_on_private_bench(
 	provider: str,
 	localisation_country: str | None = None,
 	server: str = "",
+	selected_app_plans: dict | None = None,
 ) -> dict:
 	team = get_current_team()
+	selected_app_plans = selected_app_plans or {}
 
 	if localisation_country:
 		localisation_app = frappe.db.get_value(
@@ -469,6 +479,9 @@ def create_site_on_private_bench(
 		)
 		if localisation_app:
 			apps.append(localisation_app)
+	validate_marketplace_app_plan_selections(
+		[{"app": app} for app in apps], selected_app_plans, team
+	)
 
 	app_names = [app for app in apps if app != "frappe"]
 
@@ -510,7 +523,10 @@ def create_site_on_private_bench(
 		if app not in sources:
 			frappe.throw(f"Source not found for app {app}. Please verify for a valid app source.")
 
-		apps_with_sources.append({"app": app, "source": sources[app]})
+		app_data = {"app": app, "source": sources[app]}
+		if selected_plan := get_marketplace_app_plan_name(selected_app_plans.get(app)):
+			app_data["plan"] = selected_plan
+		apps_with_sources.append(app_data)
 
 	# Create Site Group Deploy with auto_provision_bench flag
 	site_group_deploy = frappe.get_doc(
@@ -535,17 +551,10 @@ def create_site_on_private_bench(
 
 def get_app_subscriptions(app_plans, team_name: str):
 	subscriptions = []
-	team: Team | None = None
 
 	for app_name, plan_name in app_plans.items():
-		is_free = frappe.db.get_value("Marketplace App Plan", plan_name, "is_free")
-		if not is_free:
-			if not team:
-				team = frappe.get_doc("Team", team_name)
-			if not team.can_install_paid_apps():
-				frappe.throw(
-					"You cannot install a Paid app on Free Credits. Please buy credits before trying to install again."
-				)
+		plan_name = get_marketplace_app_plan_name(plan_name)
+		check_marketplace_app_plan_installable(plan_name, app_name, team_name)
 
 		new_subscription = frappe.get_doc(
 			{

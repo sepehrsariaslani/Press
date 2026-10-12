@@ -60,7 +60,7 @@
 									:modelValue="selectedGroup?.value"
 									@update:modelValue="
 										selectedGroup = options.private_groups.find(
-											(option) => option.value === $event,
+							(option) => option.value === $event,
 										)
 									"
 								/>
@@ -190,7 +190,7 @@ import { Breadcrumbs, debounce } from 'frappe-ui';
 import Header from '../components/Header.vue';
 import PlansCards from '../components/PlansCards.vue';
 import { DashboardError } from '../utils/error';
-import { isPlanFreeForCurrency } from '../utils/marketplacePricing';
+import { marketplacePlanLabel } from '../utils/marketplacePricing';
 import { validateSubdomain } from '../utils/site';
 
 export default {
@@ -371,14 +371,7 @@ export default {
 			if (!this.$resources?.installAppOptions) return [];
 			return this.options.plans.map((plan) => ({
 				...plan,
-				label:
-					isPlanFreeForCurrency(plan, this.$team.doc.currency)
-						? 'رایگان'
-						: `${this.$format.userCurrency(
-								this.$team.doc.currency === 'INR'
-									? plan.price_inr
-									: plan.price_usd,
-							)}/ماه`,
+				label: marketplacePlanLabel(plan, this.$team.doc.currency, 'رایگان'),
 				sublabel: ' ',
 				features: plan.features.map((f) => ({
 					value: f,

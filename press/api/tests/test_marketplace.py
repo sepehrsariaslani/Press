@@ -18,6 +18,9 @@ from press.api.marketplace import (
 	change_branch,
 	create_app_plan,
 	create_approval_request,
+	create_site_for_app,
+	create_site_on_private_bench,
+	get_selected_marketplace_app_plan,
 	get_app,
 	get_apps,
 	get_apps_with_plans,
@@ -52,6 +55,7 @@ from press.press.doctype.release_group.test_release_group import (
 	create_test_release_group,
 )
 from press.press.doctype.site.test_site import create_test_bench, create_test_site
+from press.press.doctype.site.site import Site
 from press.press.doctype.team.test_team import create_test_press_admin_team
 
 PAYLOAD = [
@@ -213,6 +217,161 @@ class TestAPIMarketplace(FrappeTestCase):
 		with patch.object(type(self.team), "can_install_paid_apps", return_value=False):
 			with self.assertRaises(frappe.ValidationError):
 				change_app_plan(subscription.name, inr_only_plan.name)
+
+	def test_install_marketplace_app_blocks_inr_paid_plan_for_team_without_paid_app_credits(self):
+		self.team.db_set("currency", "INR")
+		plan = create_test_marketplace_app_plan(self.app.name)
+		plan.db_set({"price_inr": 1000, "price_usd": 0})
+		frappe.set_user(self.team.user)
+		site = frappe.new_doc("Site")
+
+		with patch.object(frappe.local, "team", return_value=self.team, create=True):
+			with patch.object(type(self.team), "can_install_paid_apps", return_value=False):
+				with self.assertRaises(frappe.ValidationError):
+					site.check_marketplace_app_installable(plan.name)
+
+	def test_install_marketplace_app_uses_inr_free_price_for_inr_team(self):
+		self.team.db_set("currency", "INR")
+		plan = create_test_marketplace_app_plan(self.app.name)
+		plan.db_set({"price_inr": 0, "price_usd": 12})
+		frappe.set_user(self.team.user)
+		site = frappe.new_doc("Site")
+
+		with patch.object(frappe.local, "team", return_value=self.team, create=True):
+			with patch.object(type(self.team), "can_install_paid_apps", return_value=False):
+				site.check_marketplace_app_installable(plan.name)
+
+	def test_install_marketplace_app_requires_plan_for_paid_app(self):
+		plan = create_test_marketplace_app_plan(self.app.name)
+		self.marketplace_app.db_set("team", "another-publisher-team")
+		self.team.db_set("currency", "USD")
+		site = frappe.new_doc("Site")
+		site.team = self.team.name
+
+		with self.assertRaises(frappe.ValidationError):
+			site.check_marketplace_app_installable(app=self.app.name)
+
+	def test_install_marketplace_app_does_not_require_plan_when_free_in_team_currency(self):
+		plan = create_test_marketplace_app_plan(self.app.name)
+		plan.db_set({"price_inr": 0, "price_usd": 12})
+		self.marketplace_app.db_set("team", "another-publisher-team")
+		self.team.db_set("currency", "INR")
+		site = frappe.new_doc("Site")
+		site.team = self.team.name
+
+		site.check_marketplace_app_installable(app=self.app.name)
+
+	def test_install_marketplace_app_rejects_disabled_plan(self):
+		plan = create_test_marketplace_app_plan(self.app.name)
+		plan.db_set("enabled", 0)
+		site = frappe.new_doc("Site")
+		site.team = self.team.name
+
+		with patch.object(type(self.team), "can_install_paid_apps", return_value=True):
+			with self.assertRaises(frappe.ValidationError):
+				site.check_marketplace_app_installable(plan.name, self.app.name)
+
+	def test_create_site_for_app_checks_selected_plan_before_creating_site(self):
+		plan = create_test_marketplace_app_plan(self.app.name)
+		apps = [{"app": self.app.name, "plan": plan.name}]
+
+		with patch(
+			"press.press.doctype.site.site.check_marketplace_app_plan_installable",
+			side_effect=frappe.ValidationError,
+		) as check_plan:
+			with patch("press.api.marketplace.site_should_be_created_on_public_bench", return_value=True):
+				with patch("press.api.marketplace.create_site_on_public_bench") as create_site:
+					with self.assertRaises(frappe.ValidationError):
+						create_site_for_app("new-site", apps, "cluster", "site-plan")
+
+		check_plan.assert_called_once_with(plan.name, self.app.name, None)
+		create_site.assert_not_called()
+
+	def test_create_site_for_app_requires_plan_when_app_has_paid_plans(self):
+		plan = create_test_marketplace_app_plan(self.app.name)
+		plan.db_set({"price_inr": 1000, "price_usd": 12})
+		self.marketplace_app.db_set("team", "another-publisher-team")
+		apps = [{"app": self.app.name}]
+
+		with patch.object(frappe.local, "team", return_value=self.team, create=True):
+			with patch("press.api.marketplace.site_should_be_created_on_public_bench", return_value=True):
+				with patch("press.api.marketplace.create_site_on_public_bench") as create_site:
+					with self.assertRaises(frappe.ValidationError):
+						create_site_for_app("new-site", apps, "cluster", "site-plan")
+
+		create_site.assert_not_called()
+
+	def test_private_bench_creation_preserves_plan_from_json_dict(self):
+		plan = create_test_marketplace_app_plan(self.app.name)
+
+		class QueryField:
+			def __eq__(self, other):
+				return self
+
+			def as_(self, name):
+				return self
+
+			def isin(self, values):
+				return self
+
+		class Query:
+			def __init__(self, rows):
+				self.rows = rows
+
+			def left_join(self, other):
+				return self
+
+			def on(self, condition):
+				return self
+
+			def select(self, *fields):
+				return self
+
+			def where(self, condition):
+				return self
+
+			def orderby(self, field, order=None):
+				return self
+
+			def run(self, as_dict=False):
+				return self.rows
+
+		query_rows = iter(
+			[
+				[frappe._dict(app="frappe", source="frappe-source")],
+				[frappe._dict(app=self.app.name, source=self.app_source.name)],
+			]
+		)
+		field = QueryField()
+		doctype = frappe._dict(
+			name=field, app=field, public=field, parent=field, version=field, source=field
+		)
+		deploy_doc = Mock()
+		apps = [{"app": "frappe"}, {"app": self.app.name, "plan": plan.name}]
+
+		with patch("press.api.marketplace.frappe.db.get_all", return_value=["Version 14"]):
+			with patch("press.api.marketplace.frappe.qb.DocType", return_value=doctype):
+				with patch(
+					"press.api.marketplace.frappe.qb.from_",
+					side_effect=lambda _doctype: Query(next(query_rows)),
+				):
+					with patch("press.api.marketplace.frappe.get_doc", return_value=deploy_doc) as get_doc:
+						with patch("press.api.marketplace.get_current_team", return_value=self.team.name):
+							create_site_on_private_bench("new-site", apps, "cluster")
+
+		self.assertEqual(get_doc.call_args.args[0]["apps"][1]["plan"], plan.name)
+		self.assertEqual(get_selected_marketplace_app_plan(apps[1]), plan.name)
+
+	def test_new_site_validation_requires_plan_for_paid_marketplace_app(self):
+		plan = create_test_marketplace_app_plan(self.app.name)
+		plan.db_set({"price_inr": 1000, "price_usd": 12})
+		self.marketplace_app.db_set("team", "another-publisher-team")
+		site = frappe.new_doc("Site")
+		site.apps = [{"app": self.app.name}]
+		site.team = self.team.name
+
+		with self.assertRaises(frappe.ValidationError):
+			site.validate()
 
 	def test_subscriptions_keeps_inr_paid_plan_for_inr_team(self):
 		self.team.db_set("currency", "INR")

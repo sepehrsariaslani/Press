@@ -39,13 +39,15 @@
 									<template v-if="plan.label">{{ plan.label }}</template>
 									<template v-if="hourlyPricing">
 										{{ $format.planTitleHourly(plan) }}
-										<span v-if="plan.price_inr" class="text-gray-700"
+										<span v-if="!isPlanFree(plan)" class="text-gray-700"
 											>/hour</span
 										>
 									</template>
 									<template v-else>
 										{{ $format.planTitle(plan) }}
-										<span v-if="plan.price_inr" class="text-gray-700">/mo</span>
+										<span v-if="!isPlanFree(plan)" class="text-gray-700"
+											>/mo</span
+										>
 									</template>
 								</span>
 								<Tooltip text="Product support included">
@@ -60,14 +62,14 @@
 							<template v-if="plan.sublabel">
 								{{ plan.sublabel }}
 							</template>
-							<template v-else-if="plan.price_inr || plan.price_usd">
+							<template v-else-if="!isPlanFree(plan)">
 								{{
 									$format.userCurrency(
 										$format.pricePerDay(
 											$team.doc.currency === 'INR'
 												? plan.price_inr
-												: plan.price_usd,
-										),
+												: plan.price_usd
+										)
 									)
 								}}/day
 							</template>
@@ -101,6 +103,7 @@
 <script>
 import { Tooltip } from 'frappe-ui';
 import { icon } from '../utils/components';
+import { isPlanFreeForCurrency } from '../utils/marketplacePricing';
 
 export default {
 	components: {
@@ -121,6 +124,9 @@ export default {
 		},
 	},
 	methods: {
+		isPlanFree(plan) {
+			return isPlanFreeForCurrency(plan, this.$team.doc.currency);
+		},
 		_icon(iconName, classes) {
 			return icon(iconName, classes);
 		},

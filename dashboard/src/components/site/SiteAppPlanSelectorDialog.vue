@@ -25,7 +25,7 @@
 
 <script>
 import PlansCards from '../PlansCards.vue';
-import { isPlanFreeForCurrency } from '../../utils/marketplacePricing';
+import { marketplacePlanLabel } from '../../utils/marketplacePricing';
 
 export default {
 	props: ['app', 'modelValue', 'currentPlan'],
@@ -51,16 +51,9 @@ export default {
 		plans() {
 			return this.app.plans.map((plan) => {
 				return {
-					label:
-						isPlanFreeForCurrency(plan, this.$team.doc.currency)
-							? 'Free'
-							: `${this.$format.userCurrency(
-									this.$team.doc.currency === 'INR'
-										? plan.price_inr
-										: plan.price_usd,
-								)}/mo`,
-					sublabel: ' ',
 					...plan,
+					label: marketplacePlanLabel(plan, this.$team.doc.currency, 'Free'),
+					sublabel: ' ',
 					features: plan.features.map((f) => ({
 						value: f,
 						icon: 'check-circle',

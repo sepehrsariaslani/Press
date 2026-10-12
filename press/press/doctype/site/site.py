@@ -97,6 +97,10 @@ from press.utils import (
 	unique,
 	validate_subdomain,
 )
+from press.utils.marketplace_pricing import (
+	has_paid_marketplace_app_plan,
+	is_marketplace_app_plan_free,
+)
 from press.utils.dns import _change_dns_record, check_dns_cname_a, create_dns_record
 
 if TYPE_CHECKING:
@@ -132,6 +136,76 @@ SERVER_SCRIPT_DISABLED_VERSION = (
 	15  # version from which server scripts were disabled on public benches. No longer set in site
 )
 TRANSITORY_STATES = ["Updating", "Recovering", "Pending", "Installing"]
+
+
+def get_marketplace_app_plan_name(plan: str | dict | None) -> str | None:
+	if isinstance(plan, dict):
+		return plan.get("name") or plan.get("plan")
+	return plan
+
+
+def get_marketplace_app_plan_selection(app) -> str | dict | None:
+	if isinstance(app, dict):
+		return app.get("plan")
+	return getattr(app, "plan", None)
+
+
+def get_marketplace_plan_team(team=None):
+	if isinstance(team, str):
+		return frappe.get_cached_doc("Team", team)
+	return team or frappe.local.team()
+
+
+def check_marketplace_app_plan_installable(
+	plan: str | dict | None = None, app: str | None = None, team=None
+):
+	plan = get_marketplace_app_plan_name(plan)
+	if not plan:
+		if not app:
+			return
+		team = get_marketplace_plan_team(team)
+		available_plans = frappe.get_all(
+			"Marketplace App Plan",
+			filters={"app": app, "enabled": 1},
+			fields=["price_inr", "price_usd"],
+			ignore_permissions=True,
+		)
+		app_team = frappe.db.get_value("Marketplace App", app, "team")
+		if app_team != team.name and has_paid_marketplace_app_plan(available_plans, team.currency):
+			frappe.throw(_("Please select a pricing plan for app {0}.").format(app))
+		return
+	plan_prices = frappe.db.get_value(
+		"Marketplace App Plan", plan, ["app", "price_inr", "price_usd", "enabled"], as_dict=True
+	)
+	if not plan_prices:
+		frappe.throw(_("The selected marketplace app plan is unavailable."))
+	if not plan_prices.enabled:
+		frappe.throw(_("The selected marketplace app plan is unavailable."))
+	if app and plan_prices.app != app:
+		frappe.throw(_("The selected plan does not belong to app {0}.").format(app))
+
+	team = get_marketplace_plan_team(team)
+	if not is_marketplace_app_plan_free(plan_prices, team.currency) and not team.can_install_paid_apps():
+		frappe.throw(
+			"You cannot install a Paid app on Free Credits. Please buy credits before trying to install again."
+		)
+
+
+def validate_marketplace_app_plan_selections(apps, app_plans=None, team=None):
+	"""Validate app pricing selections for every new-site entry point."""
+	app_plans = app_plans or {}
+	selected_app_names = set()
+
+	for app in apps or []:
+		app_name = app.get("app") if isinstance(app, dict) else app.app
+		selected_app_names.add(app_name)
+		plan_value = app_plans.get(app_name) or get_marketplace_app_plan_selection(app)
+		plan = get_marketplace_app_plan_name(plan_value)
+		check_marketplace_app_plan_installable(plan, app_name, team)
+
+	for app_name, plan in app_plans.items():
+		if get_marketplace_app_plan_name(plan) and app_name not in selected_app_names:
+			frappe.throw(_("A pricing plan was selected for an app that is not being installed."))
 
 
 class Site(Document, TagHelpers):
@@ -445,6 +519,10 @@ class Site(Document, TagHelpers):
 	def validate(self):
 		if self.has_value_changed("subdomain"):
 			self.validate_site_name()
+		if self.is_new():
+			validate_marketplace_app_plan_selections(
+				self.apps, getattr(self, "app_plans", None), self.team
+			)
 		self.validate_bench()
 		self.set_site_admin_password()
 		self.validate_installed_apps()
@@ -839,23 +917,16 @@ class Site(Document, TagHelpers):
 		if marketplace_app_name and app_subscription:
 			frappe.db.set_value("Subscription", app_subscription, "enabled", 0)
 
-	def check_marketplace_app_installable(self, plan: str | None = None):
-		if not plan:
-			return
-		if (
-			not frappe.db.get_value("Marketplace App Plan", plan, "price_usd") <= 0
-			and not frappe.local.team().can_install_paid_apps()
-		):
-			frappe.throw(
-				"You cannot install a Paid app on Free Credits. Please buy credits before trying to install again."
-			)
+	def check_marketplace_app_installable(self, plan: str | None = None, app: str | None = None):
+		check_marketplace_app_plan_installable(plan, app, self.team)
 
 			# TODO: check if app is available and can be installed
 
 	@dashboard_whitelist()
 	@site_action(["Active"])
 	def install_app(self, app: str, plan: str | None = None) -> str | None:
-		self.check_marketplace_app_installable(plan)
+		plan = get_marketplace_app_plan_name(plan)
+		self.check_marketplace_app_installable(plan, app)
 
 		if find(self.apps, lambda x: x.app == app):
 			return None
@@ -911,8 +982,11 @@ class Site(Document, TagHelpers):
 
 		if hasattr(self, "app_plans") and self.app_plans:
 			for app, plan in self.app_plans.items():
+				plan = get_marketplace_app_plan_name(plan)
+				if not plan:
+					continue
 				MarketplaceAppPlan.create_marketplace_app_subscription(
-					self.name, app, plan["name"], self.team, True
+					self.name, app, plan, self.team, True
 				)
 
 		# log activity

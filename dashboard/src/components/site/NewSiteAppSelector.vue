@@ -42,6 +42,7 @@ import { Badge } from 'frappe-ui';
 import { icon } from '../../utils/components';
 import ObjectList from '../ObjectList.vue';
 import { toast } from 'vue-sonner';
+import { requiresMarketplaceAppPlanSelection } from '../../utils/marketplacePricing';
 
 export default {
 	props: ['availableApps', 'siteOnPublicBench', 'modelValue'],
@@ -209,7 +210,11 @@ export default {
 			} else {
 				if (
 					app.subscription_type &&
-					app.plans.some((plan) => plan.price_inr > 0)
+					requiresMarketplaceAppPlanSelection(
+						app,
+						this.$team?.doc?.currency,
+						this.$team?.doc?.name,
+					)
 				) {
 					this.selectedApp = app;
 					this.showAppPlanSelectorDialog = true;

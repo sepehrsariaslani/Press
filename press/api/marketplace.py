@@ -142,7 +142,11 @@ def create_site_on_public_bench(
 ) -> dict:
 	"""Create site on public bench"""
 
-	app_plans = {app["app"]: app["plan"] for app in apps if hasattr(app, "plan") and app["plan"]}
+	app_plans = {
+		app["app"]: plan
+		for app in apps
+		if (plan := get_selected_marketplace_app_plan(app))
+	}
 
 	if not group:
 		restricted_release_groups = frappe.get_all(
@@ -196,6 +200,13 @@ def create_site_on_public_bench(
 def eligible_for_trial():
 	team = get_current_team()
 	return not bool(frappe.db.count("Site", {"team": team}) > 0)
+
+
+def get_selected_marketplace_app_plan(app):
+	plan = app.get("plan") if isinstance(app, dict) else getattr(app, "plan", None)
+	if isinstance(plan, dict):
+		return plan.get("name") or plan.get("plan")
+	return plan
 
 
 def create_site_on_private_bench(
@@ -259,7 +270,7 @@ def create_site_on_private_bench(
 			{
 				"app": app["app"],
 				"source": app_source.source,
-				"plan": app["plan"] if hasattr(app, "plan") and app["plan"] else None,
+				"plan": get_selected_marketplace_app_plan(app),
 			}
 		)
 
@@ -287,6 +298,9 @@ def create_site_for_app(
 	trial: bool = False,
 ):
 	"""Create a site for a marketplace app"""
+	from press.press.doctype.site.site import validate_marketplace_app_plan_selections
+
+	validate_marketplace_app_plan_selections(apps)
 
 	latest_stable_version = frappe.db.get_value(
 		"Frappe Version", {"status": "Stable"}, "name", order_by="number desc"
