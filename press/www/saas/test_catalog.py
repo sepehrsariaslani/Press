@@ -12,6 +12,18 @@ from press.www.saas.catalog import (
 
 
 class MarketplaceCatalogTest(unittest.TestCase):
+	def test_saas_catalog_redirects_to_the_homepage_app_section(self):
+		from press.www.saas.index import get_context
+
+		redirect_exception = type("RedirectForTest", (Exception,), {})
+		with patch("press.www.saas.index.frappe") as frappe_mock:
+			frappe_mock.Redirect = redirect_exception
+			frappe_mock.utils.get_url.return_value = "https://asumi.ir/#apps"
+			with self.assertRaises(redirect_exception):
+				get_context({})
+
+		self.assertEqual(frappe_mock.flags.redirect_location, "https://asumi.ir/#apps")
+
 	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
 	@patch("press.www.saas.index.skip_roles", return_value=False, create=True)
 	@patch("press.www.saas.index.roles_enabled", return_value=False, create=True)
@@ -36,12 +48,11 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		team.is_admin_user.return_value = False
 		frappe_mock.get_doc.return_value = team
 
-		from press.www.saas.index import get_context
+		from press.www.saas.index import _can_manage_marketplace_prices
 
-		context = {}
-		get_context(context)
+		can_manage_prices = _can_manage_marketplace_prices()
 
-		self.assertTrue(context["can_manage_prices"])
+		self.assertTrue(can_manage_prices)
 		roles_enabled_mock.assert_called_once_with("team-a")
 		skip_roles_mock.assert_called_once_with("team-a")
 		team_membership_mock.assert_has_calls(
@@ -67,12 +78,11 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		team.is_admin_user.return_value = True
 		frappe_mock.get_doc.return_value = team
 
-		from press.www.saas.index import get_context
+		from press.www.saas.index import _can_manage_marketplace_prices
 
-		context = {}
-		get_context(context)
+		can_manage_prices = _can_manage_marketplace_prices()
 
-		self.assertTrue(context["can_manage_prices"])
+		self.assertTrue(can_manage_prices)
 		frappe_mock.get_doc.assert_called_with("Team", "header-team")
 		team_membership_mock.assert_called_with("admin@example.com", "header-team")
 
@@ -92,12 +102,11 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		team.is_admin_user.return_value = True
 		frappe_mock.get_doc.return_value = team
 
-		from press.www.saas.index import get_context
+		from press.www.saas.index import _can_manage_marketplace_prices
 
-		context = {}
-		get_context(context)
+		can_manage_prices = _can_manage_marketplace_prices()
 
-		self.assertTrue(context["can_manage_prices"])
+		self.assertTrue(can_manage_prices)
 		frappe_mock.get_doc.assert_called_with("Team", "selected-team")
 		team_membership_mock.assert_called_with("admin@example.com", "selected-team")
 		current_team_mock.assert_not_called()
@@ -119,12 +128,11 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		team.is_admin_user.return_value = False
 		frappe_mock.get_doc.return_value = team
 
-		from press.www.saas.index import get_context
+		from press.www.saas.index import _can_manage_marketplace_prices
 
-		context = {}
-		get_context(context)
+		can_manage_prices = _can_manage_marketplace_prices()
 
-		self.assertTrue(context["can_manage_prices"])
+		self.assertTrue(can_manage_prices)
 
 	@patch("press.www.saas.index.get_current_team", return_value="app-team", create=True)
 	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
@@ -143,12 +151,11 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		team.is_admin_user.return_value = True
 		frappe_mock.get_doc.return_value = team
 
-		from press.www.saas.index import get_context
+		from press.www.saas.index import _can_manage_marketplace_prices
 
-		context = {}
-		get_context(context)
+		can_manage_prices = _can_manage_marketplace_prices()
 
-		self.assertTrue(context["can_manage_prices"])
+		self.assertTrue(can_manage_prices)
 
 	@patch("press.www.saas.index.get_current_team", create=True)
 	@patch("press.www.saas.index.user_utils.is_system_manager", return_value=False)
@@ -175,12 +182,11 @@ class MarketplaceCatalogTest(unittest.TestCase):
 			"active-team": active_team,
 		}[name]
 
-		from press.www.saas.index import get_context
+		from press.www.saas.index import _can_manage_marketplace_prices
 
-		context = {}
-		get_context(context)
+		can_manage_prices = _can_manage_marketplace_prices()
 
-		self.assertFalse(context["can_manage_prices"])
+		self.assertFalse(can_manage_prices)
 
 	def test_fractional_prices_preserve_decimal_precision(self):
 		price = Decimal("0.123456789123456789")

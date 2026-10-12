@@ -53,16 +53,17 @@ test('shows published marketplace apps and their live prices inside the homepage
   const section = screen.getByRole('region', { name: /ابزارهای بیشتر/ });
   expect(within(section).getByRole('heading', { level: 3, name: 'اپ نمونه' })).toBeInTheDocument();
   expect(within(section).getByText('۳۵٬۰۰۰ ریال')).toBeInTheDocument();
+  expect(within(section).getByText(/تمام اپلیکیشن‌های منتشرشده.*همین صفحه/)).toBeInTheDocument();
   expect(within(section).getByRole('link', { name: /جزئیات و دریافت اپ/ })).toHaveAttribute('href', '/marketplace/apps/demo-app');
   expect(within(section).getByRole('link', { name: /مدیریت اپ‌ها و قیمت‌ها/ })).toHaveAttribute('href', '/dashboard/seller/apps');
-  expect(within(section).getByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).toHaveAttribute('href', '/marketplace');
+  expect(within(section).queryByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).not.toBeInTheDocument();
 });
 
 test('keeps the homepage app section useful when no published marketplace plans are available', () => {
   render(<AsumiApp />);
   const section = screen.getByRole('region', { name: /ابزارهای بیشتر/ });
   expect(within(section).getByText(/فعلاً اپلیکیشنی با پلن فعال وجود ندارد/)).toBeInTheDocument();
-  expect(within(section).getByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).toHaveAttribute('href', '/marketplace');
+  expect(within(section).queryByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).not.toBeInTheDocument();
   expect(within(section).queryByRole('link', { name: /مدیریت اپ‌ها و قیمت‌ها/ })).not.toBeInTheDocument();
 });
 

@@ -3,30 +3,10 @@
 
 import frappe
 
-from press.www.saas.catalog import add_app_categories, get_public_marketplace_catalog
 
-
-def get_context(context):
-	context.no_cache = 1
-	context.body_class = " ".join(filter(None, (context.get("body_class", ""), "asumi-commerce-page")))
-	context.marketplace_apps = get_public_marketplace_catalog(frappe.get_all)
-	app_names = [app["id"] for app in context.marketplace_apps]
-	category_rows = (
-		frappe.get_all(
-			"Marketplace App Categories",
-			filters={"parent": ["in", app_names]},
-			fields=["parent", "category"],
-			order_by="parent asc, idx asc",
-		)
-		if app_names
-		else []
-	)
-	context.categories = add_app_categories(context.marketplace_apps, category_rows)
-	context.metatags = {
-		"title": "مارکت‌پلیس اپلیکیشن‌های آسومی",
-		"description": "اپلیکیشن‌های منتشرشده و پلن‌های ثبت‌شده در مارکت‌پلیس آسومی.",
-		"og:type": "website",
-	}
+def get_context(_context):
+	frappe.flags.redirect_location = frappe.utils.get_url("/#apps")
+	raise frappe.Redirect
 
 
 @frappe.whitelist(allow_guest=True)

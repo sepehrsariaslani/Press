@@ -36,8 +36,8 @@ export function MarketplaceShowcase({ apps, canManagePrices = false }: Marketpla
 					<h2 id="marketplace-showcase-title">ابزارهای بیشتر،<br /><span>در همان مسیر روشن.</span></h2>
 				</div>
 				<div className="marketplace-showcase-intro">
-					<p>اپلیکیشن‌های منتشرشده و پلن‌های فعال را در ادامهٔ همین صفحه ببین. مبلغ‌ها از تعرفهٔ ثبت‌شدهٔ هر اپ خوانده می‌شوند.</p>
-					<a className="marketplace-all-link" href="/marketplace">همهٔ اپلیکیشن‌ها <span aria-hidden="true">←</span></a>
+					<p>تمام اپلیکیشن‌های منتشرشده و پلن‌های فعال در همین صفحه نمایش داده می‌شوند. قیمت‌ها از تعرفهٔ ثبت‌شدهٔ هر اپ خوانده می‌شوند.</p>
+					<div className="marketplace-app-count"><strong>{formatAmount(apps.length)}</strong><span>اپلیکیشن در همین صفحه</span></div>
 				</div>
 			</header>
 

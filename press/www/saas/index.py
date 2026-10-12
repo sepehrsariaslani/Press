@@ -6,7 +6,6 @@ import frappe
 from press.guards.role_guard import roles_enabled, skip_roles
 from press.utils import get_current_team, is_user_part_of_team
 from press.utils import user as user_utils
-from press.www.saas.catalog import get_catalog_page_context
 from press.utils.marketplace_app_plan_permissions import can_manage_marketplace_app_plans
 
 
@@ -65,10 +64,6 @@ def _get_marketplace_permission_team():
 	return get_current_team()
 
 
-def get_context(context):
-	context.update(
-		get_catalog_page_context(
-			frappe.get_all,
-			can_manage_prices=_can_manage_marketplace_prices(),
-		)
-	)
+def get_context(_context):
+	frappe.flags.redirect_location = frappe.utils.get_url("/#apps")
+	raise frappe.Redirect

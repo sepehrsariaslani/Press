@@ -2,19 +2,21 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-import frappe
 from press.www.saas.catalog import add_app_categories
 
 
 class AsumiMarketplaceListingTest(unittest.TestCase):
-	def test_listing_context_applies_asumi_commerce_page_surface(self):
+	def test_marketplace_catalog_redirects_to_the_homepage_app_section(self):
 		from press.www.marketplace.index import get_context
 
-		with patch("press.www.marketplace.index.frappe.get_all", return_value=[]):
-			context = frappe._dict()
-			get_context(context)
+		redirect_exception = type("RedirectForTest", (Exception,), {})
+		with patch("press.www.marketplace.index.frappe") as frappe_mock:
+			frappe_mock.Redirect = redirect_exception
+			frappe_mock.utils.get_url.return_value = "https://asumi.ir/#apps"
+			with self.assertRaises(redirect_exception):
+				get_context({})
 
-		self.assertEqual(context["body_class"], "asumi-commerce-page")
+		self.assertEqual(frappe_mock.flags.redirect_location, "https://asumi.ir/#apps")
 
 	def test_categories_are_attached_to_the_matching_public_apps(self):
 		apps = [
