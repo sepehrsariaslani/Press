@@ -25,6 +25,7 @@
 
 <script>
 import PlansCards from '../PlansCards.vue';
+import { isPlanFreeForCurrency } from '../../utils/marketplacePricing';
 
 export default {
 	props: ['app', 'modelValue', 'currentPlan'],
@@ -51,7 +52,7 @@ export default {
 			return this.app.plans.map((plan) => {
 				return {
 					label:
-						plan.price_inr === 0 || plan.price_usd === 0
+						isPlanFreeForCurrency(plan, this.$team.doc.currency)
 							? 'Free'
 							: `${this.$format.userCurrency(
 									this.$team.doc.currency === 'INR'

@@ -203,10 +203,63 @@ class TestAPIMarketplace(FrappeTestCase):
 			frappe.db.get_value("Subscription", subscription.name, "plan"),
 		)
 
+	def test_change_app_plan_checks_inr_price_for_inr_team(self):
+		self.team.db_set("currency", "INR")
+		subscription = create_test_marketplace_app_subscription(team=self.team.name)
+		inr_only_plan = create_test_marketplace_app_plan(self.app.name)
+		inr_only_plan.db_set({"price_inr": 1000, "price_usd": 0})
+		frappe.set_user(self.team.user)
+
+		with patch.object(type(self.team), "can_install_paid_apps", return_value=False):
+			with self.assertRaises(frappe.ValidationError):
+				change_app_plan(subscription.name, inr_only_plan.name)
+
+	def test_subscriptions_keeps_inr_paid_plan_for_inr_team(self):
+		self.team.db_set("currency", "INR")
+		inr_only_plan = create_test_marketplace_app_plan(self.app.name)
+		inr_only_plan.db_set({"price_inr": 1000, "price_usd": 0})
+		subscription = create_test_marketplace_app_subscription(
+			app=self.app.name,
+			plan=inr_only_plan.name,
+			team=self.team.name,
+		)
+		frappe.set_user(self.team.user)
+
+		result = subscriptions()
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0]["name"], subscription.name)
+		self.assertEqual(result[0]["selected_plan"]["name"], inr_only_plan.name)
+
 	def test_get_subscription_list(self):
 		self.assertEqual([], get_subscriptions_list("frappe"))
 		create_test_marketplace_app_subscription(app="frappe")
 		self.assertIsNotNone(get_subscriptions_list("frappe"))
+
+	def test_get_subscription_list_includes_inr_paid_plans(self):
+		self.team.db_set("currency", "INR")
+		plan = create_test_marketplace_app_plan(self.app.name)
+		plan.db_set({"price_inr": 1000, "price_usd": 0})
+		subscription = create_test_marketplace_app_subscription(
+			app=self.app.name,
+			plan=plan.name,
+			team=self.team.name,
+		)
+		frappe.get_doc(
+			{
+				"doctype": "Usage Record",
+				"team": self.team.name,
+				"document_type": "Marketplace App",
+				"document_name": self.app.name,
+				"subscription": subscription.name,
+				"site": subscription.site,
+			}
+		).insert(ignore_permissions=True)
+
+		result = get_subscriptions_list(self.app.name)
+
+		self.assertEqual(len(result), 1)
+		self.assertEqual(result[0].app_plan, plan.name)
 
 	def test_update_app_plan(self):
 		m_plan = create_test_marketplace_app_plan()

@@ -900,9 +900,10 @@ def get_apps_with_plans(apps: list[str], release_group: str):
 
 @frappe.whitelist()
 def change_app_plan(subscription: str, new_plan: str):
-	is_free = frappe.db.get_value("Marketplace App Plan", new_plan, "price_usd") <= 0
+	team = get_current_team(get_doc=True)
+	price_field = "price_inr" if team.currency == "INR" else "price_usd"
+	is_free = (frappe.db.get_value("Marketplace App Plan", new_plan, price_field) or 0) <= 0
 	if not is_free:
-		team = get_current_team(get_doc=True)
 		if not team.can_install_paid_apps():
 			frappe.throw(
 				"You cannot upgrade to paid plan on Free Credits. Please buy credits before trying to upgrade plan."
@@ -983,7 +984,10 @@ def get_subscriptions_list(marketplace_app: str) -> list:
 	usage_record = frappe.qb.DocType("Usage Record")
 	team = frappe.qb.DocType("Team")
 
-	conditions = app_plan.price_usd > 0
+	conditions = (
+		((team.currency == "INR") & (app_plan.price_inr > 0))
+		| ((team.currency != "INR") & (app_plan.price_usd > 0))
+	)
 	conditions = conditions & (app_sub.document_name == marketplace_app)
 
 	query = (
@@ -1199,7 +1203,8 @@ def login_via_token(token: str, team: str, site: str):
 @frappe.whitelist()
 def subscriptions():
 	team = get_current_team(True)
-	free_plans = frappe.get_all("Marketplace App Plan", {"price_usd": ("<=", 0)}, pluck="name")
+	price_field = "price_inr" if team.currency == "INR" else "price_usd"
+	free_plans = frappe.get_all("Marketplace App Plan", {price_field: ("<=", 0)}, pluck="name")
 	subscriptions = frappe.get_all(
 		"Subscription",
 		{

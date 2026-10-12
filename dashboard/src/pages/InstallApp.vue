@@ -190,6 +190,7 @@ import { Breadcrumbs, debounce } from 'frappe-ui';
 import Header from '../components/Header.vue';
 import PlansCards from '../components/PlansCards.vue';
 import { DashboardError } from '../utils/error';
+import { isPlanFreeForCurrency } from '../utils/marketplacePricing';
 import { validateSubdomain } from '../utils/site';
 
 export default {
@@ -371,7 +372,7 @@ export default {
 			return this.options.plans.map((plan) => ({
 				...plan,
 				label:
-					plan.price_inr === 0 || plan.price_usd === 0
+					isPlanFreeForCurrency(plan, this.$team.doc.currency)
 						? 'رایگان'
 						: `${this.$format.userCurrency(
 								this.$team.doc.currency === 'INR'
