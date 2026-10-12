@@ -545,7 +545,7 @@ def _run_action(  # noqa: C901
 		_bench(config, target, "migrate", timeout=7200)
 		return {"site": target, "migrated": True}
 	if action == "read_site_logs":
-		log_path = f"/home/frappe/frappe-bench/sites/{target}/logs/web.log"
+		log_path = f"/home/frappe/frappe-bench/sites/{target}/logs/frappe.web.log"
 		result = _checked_command(
 			config,
 			compose_command(config, "exec", "-T", config.backend_service, "tail", "-n", "200", log_path),

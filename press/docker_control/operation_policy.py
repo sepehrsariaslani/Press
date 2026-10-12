@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+import json
+
+
+def decode_backup_sites(value: str | None) -> list[str]:
+	if not value:
+		return []
+	try:
+		sites = json.loads(value)
+	except (TypeError, json.JSONDecodeError) as error:
+		raise ValueError("Backup site list is invalid") from error
+	if not isinstance(sites, list) or not all(isinstance(site, str) for site in sites):
+		raise ValueError("Backup site list is invalid")
+	return sites
+
 
 def preparation_backup_request(
 	action: str,
