@@ -4,7 +4,7 @@
 
 **Goal:** Make paid Marketplace App subscriptions safe to sell through Asumi, keep the currently free catalog unchanged, and show clear readiness and order state to customers and Press administrators.
 
-**Architecture:** Continue using Press Marketplace App Plans and the existing `Commerce Order` lifecycle. Validate checkout amounts against ZarinPal's official minimum, snapshot all payment values server-side, verify payment using the saved order, and activate subscriptions idempotently. Keep checkout disabled until the Press administrator stores a real Merchant ID in the existing protected settings panel.
+**Architecture:** Continue using Press Marketplace App Plans and the existing `Commerce Order` lifecycle. Apply Asumi's current 10,000 Rial payment floor, snapshot all payment values server-side, verify payment using the saved order, and activate subscriptions idempotently. ZarinPal is the user-approved first provider; verify its current amount requirements with the merchant account before go-live, and keep paid checkout disabled until the Press administrator securely stores the real Merchant ID in the protected settings panel.
 
 **Tech Stack:** Frappe/Press Python APIs and DocTypes, Vue 3 Press Dashboard, Python `unittest`, dashboard Vitest, existing Docker Bench.
 
@@ -14,13 +14,13 @@
 - Never put a Merchant ID or other payment secret in source code, browser output, logs, or chat.
 - ZarinPal verification uses the saved order amount and authority; callback query values alone never activate an order.
 - Only `System Manager` and `Press Admin` can edit commerce settings, prices, refunds, or provisioning.
-- Hosting checkout remains unavailable until the provisioning path and a safe capacity check are verified. The latest Docker Agent inventory reports 18.5 GB free on the shared disk.
+- Hosting checkout remains unavailable until the provisioning path and a safe capacity check are verified. The current readiness API reports about 10.0 GiB free disk and 6.8 GiB available memory; no hosting resource limits or minimum host reserves are configured.
 - New-site delivery is confirmed to use subdomains of `asumi.ir`. A read-only DNS check found that the apex resolves to `62.60.207.82`, while `test-subdomain.asumi.ir` does not resolve; wildcard DNS and proxy routing must be verified before new-site checkout.
 - Preserve the existing uncommitted `press/routing.py` changes and existing public and Press Dashboard routes.
 
 ---
 
-### Task 1: Enforce ZarinPal's minimum amount and explicit Rial currency
+### Task 1: Enforce Asumi's payment floor and documented ZarinPal request fields
 
 **Files:**
 - Modify: `press/saas/commerce/pricing.py`
@@ -32,12 +32,12 @@
 - Test: `press/saas/commerce/test_zarinpal.py`
 
 **Interfaces:**
-- `normalize_zarinpal_price(value) -> int`: returns zero for a free plan, accepts integer Rials at or above 10,000, and raises `ValueError` for positive amounts below 10,000 or fractional/negative values.
-- `build_payment_request(...) -> dict`: includes `currency: "IRR"` and rejects any paid amount below 10,000 Rials.
+- `normalize_zarinpal_price(value) -> int`: returns zero for a free plan, accepts integer Rials at or above Asumi's current 10,000 Rial floor, and raises `ValueError` for positive amounts below that floor or fractional/negative values. Verify the provider's current minimum before enabling live payments.
+- `build_payment_request(...) -> dict`: records IRR on the Commerce Order, uses the documented V4 request fields, and rejects any paid amount below Asumi's current 10,000 Rial floor.
 
-- [x] Add failing tests for zero and 10,000 Rials being accepted, 1 and 9,999 being rejected, and payment payloads explicitly naming IRR.
+- [x] Add failing tests for zero and 10,000 Rials being accepted, 1 and 9,999 being rejected, and the payment payload matching the documented V4 fields.
 - [x] Run the targeted commerce tests; confirm the lower-bound and currency assertions fail before implementation.
-- [x] Add the validation helper, use it in paid order snapshots and both Marketplace App Plan and Site Plan price saves, and include IRR in ZarinPal requests.
+- [x] Add the validation helper, use it in paid order snapshots and both Marketplace App Plan and Site Plan price saves, and keep the order currency explicit while sending only documented ZarinPal request fields.
 - [x] Re-run the targeted tests and confirm all commerce validation assertions pass.
 
 ### Task 2: Prove payment HTTP requests and callback verification use server-owned values

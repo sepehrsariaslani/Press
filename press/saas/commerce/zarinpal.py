@@ -43,7 +43,6 @@ def build_payment_request(
 	return {
 		"merchant_id": merchant_id.strip(),
 		"amount": amount,
-		"currency": "IRR",
 		"callback_url": callback_url,
 		"description": description[:255],
 		"metadata": metadata,

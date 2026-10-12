@@ -13,7 +13,7 @@ from press.saas.commerce.zarinpal import (
 
 
 class TestZarinpalPayload(unittest.TestCase):
-	def test_request_uses_integer_rials_and_fixed_callback(self):
+	def test_request_uses_documented_v4_fields_and_fixed_callback(self):
 		payload = build_payment_request(
 			merchant_id="merchant-id",
 			amount=125000,
@@ -22,8 +22,10 @@ class TestZarinpalPayload(unittest.TestCase):
 			email="buyer@example.com",
 		)
 		self.assertEqual(payload["amount"], 125000)
-		self.assertEqual(payload["currency"], "IRR")
 		self.assertEqual(payload["merchant_id"], "merchant-id")
+		self.assertEqual(
+			set(payload), {"merchant_id", "amount", "callback_url", "description", "metadata"}
+		)
 		self.assertEqual(
 			payload["callback_url"],
 			"https://asumi.ir/api/method/press.saas.commerce.zarinpal_callback",
@@ -65,7 +67,13 @@ class TestZarinpalHttpRequests(unittest.TestCase):
 				self.subTest(sandbox=sandbox),
 				patch("press.saas.commerce.zarinpal.urlopen", return_value=self.response) as open_url,
 			):
-				payload = {"merchant_id": "merchant-id", "amount": 10000, "currency": "IRR"}
+				payload = {
+					"merchant_id": "merchant-id",
+					"amount": 10000,
+					"callback_url": "https://asumi.ir/callback",
+					"description": "خرید آزمون",
+					"metadata": {},
+				}
 				self.assertEqual(create_payment(payload, sandbox=sandbox), {"data": {"code": 100}})
 				request = open_url.call_args.args[0]
 				self.assertEqual(request.full_url, expected_url)

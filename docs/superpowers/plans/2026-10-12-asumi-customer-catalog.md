@@ -153,4 +153,4 @@ Run `git diff --check`, stage only the files listed in this plan, then commit wi
 
 ## Deferred Approved Commerce Work
 
-This slice does not complete the full approved commerce objective. Continue afterward with a Press admin interface for Site Plans, Iranian currency, provider configuration, order records, verified payment callbacks, capacity checks, provisioning retries, and customer subscription management. Live payments must remain disabled until a payment provider is selected and its credentials are configured in the secure Press settings UI.
+This slice does not complete the full approved commerce objective. Continue afterward with a Press admin interface for Site Plans, Iranian currency, provider configuration, order records, verified payment callbacks, capacity checks, provisioning retries, and customer subscription management. ZarinPal is the user's approved first provider; live payments must remain disabled until its real Merchant ID is configured in the secure Press settings UI.
