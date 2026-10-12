@@ -178,6 +178,9 @@ def _dashboard_payload(
 	return {
 		"can_manage_host": can_manage_host,
 		"can_manage_site_teams": can_manage_host,
+		"password_reset_email_ready": bool(frappe.db.count("Email Account", {"enable_outgoing": 1}))
+		if can_manage_host
+		else None,
 		"teams": teams,
 		"host": {
 			"name": host.host_name,

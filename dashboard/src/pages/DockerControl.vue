@@ -17,6 +17,7 @@
 
 		<div v-if="error" class="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800" role="alert">{{ error }}</div>
 		<div v-if="notice" class="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900" role="status" aria-live="polite">{{ notice }}</div>
+		<div v-if="state.initialized && state.can_manage_host && !state.password_reset_email_ready" class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950" role="status">ایمیل خروجی آسومی فعال نیست؛ مدیران سایت نمی‌توانند لینک بازیابی رمز دریافت کنند. برای ورود آن‌ها، ابتدا یک حساب SMTP خروجی در تنظیمات ایمیل Asumi فعال کنید.</div>
 		<div v-if="loading" class="rounded-xl border bg-white p-8 text-center text-sm text-gray-500">در حال دریافت وضعیت میزبان…</div>
 
 		<section v-else-if="!state.initialized" class="mx-auto w-full max-w-xl rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -62,7 +63,7 @@ import ConfirmDockerOperation from '@/components/docker-control/ConfirmDockerOpe
 import { callDockerControl, fetchDockerControl } from '@/data/dockerControl';
 
 const endpoint = 'http://172.18.0.1:8769';
-const state = reactive({ initialized: false, host: null, sites: [], operations: [], teams: [], can_manage_host: false, can_manage_site_teams: false });
+const state = reactive({ initialized: false, host: null, sites: [], operations: [], teams: [], can_manage_host: false, can_manage_site_teams: false, password_reset_email_ready: false });
 const loading = ref(true);
 const busy = ref(false);
 const error = ref('');
