@@ -15,6 +15,7 @@ from press.saas.commerce.order_lifecycle import (
 from press.saas.commerce.order_snapshot import hosting_order_snapshot, marketplace_app_order_snapshot
 from press.saas.commerce.marketplace_plan_admin import build_marketplace_plan_draft
 from press.saas.commerce.periods import period_end
+from press.saas.commerce.provisioning_recovery import subscription_recovery_state
 from press.saas.commerce.hosting_readiness import (
 	build_hosting_readiness,
 	hosting_plan_fits_capacity,
@@ -1213,7 +1214,14 @@ def provision_paid_order(order_name: str):
 			frappe.throw(_("مشخصات تعرفه با مبلغ ثبت‌شدهٔ سفارش تطابق ندارد."))
 
 		subscription = _get_app_subscription(order, app)
+		previous_subscription = None
 		if subscription:
+			previous_subscription = {
+				"plan": subscription.plan,
+				"enabled": subscription.enabled,
+				"team": subscription.team,
+				"secret_key": subscription.secret_key,
+			}
 			subscription.plan = plan.name
 			subscription.enabled = 1
 			subscription.team = order.team
@@ -1266,13 +1274,19 @@ def provision_paid_order(order_name: str):
 		failed_subscription = locals().get("subscription")
 		if failed_subscription:
 			try:
-				failed_subscription.enabled = 0
+				recovery = subscription_recovery_state(locals().get("previous_subscription"))
+				for field, value in recovery["fields"].items():
+					setattr(failed_subscription, field, value)
 				failed_subscription.save(ignore_permissions=True)
 				if order.docker_site:
-					_sync_docker_site_subscription(order.docker_site, order.app, None)
+					_sync_docker_site_subscription(order.docker_site, order.app, recovery["secret_key"])
+				else:
+					_set_site_marketplace_subscription_key(
+						order.site, order.app, recovery["secret_key"]
+					)
 			except Exception:
 				frappe.log_error(
-					f"Could not disable marketplace access after order {order.name} failed.",
+					f"Could not restore marketplace access after order {order.name} failed.",
 					"Asumi Commerce",
 				)
 		order.db_set(
@@ -1457,10 +1471,23 @@ def _sync_marketplace_subscription_config(order, app, secret_key: str) -> None:
 	if order.docker_site:
 		_sync_docker_site_subscription(order.docker_site, app.app, secret_key)
 		return
-	site = frappe.get_doc("Site", order.site)
-	site.update_site_config(
-		[{"key": f"sk_{app.app}", "value": secret_key, "type": "String"}]
-	)
+	_set_site_marketplace_subscription_key(order.site, app.app, secret_key)
+
+
+def _set_site_marketplace_subscription_key(
+	site_name: str, app_name: str, secret_key: str | None
+) -> None:
+	"""Set or remove only the marketplace key while preserving the site's other config."""
+	site = frappe.get_doc("Site", site_name)
+	key = f"sk_{app_name}"
+	configuration = [
+		{"key": row.key, "value": row.value, "type": row.type}
+		for row in site.configuration
+		if row.key != key
+	]
+	if secret_key:
+		configuration.append({"key": key, "value": secret_key, "type": "String"})
+	site.update_site_config(configuration)
 
 
 def _get_app_subscription(order, app):
