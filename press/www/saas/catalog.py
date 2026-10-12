@@ -145,6 +145,7 @@ def get_public_marketplace_catalog(get_all):
 def get_catalog_page_context(get_all, can_manage_prices=False):
 	return {
 		"no_cache": 1,
+		"body_class": "asumi-commerce-page",
 		"marketplace_apps": get_public_marketplace_catalog(get_all),
 		"hosting_available": False,
 		"can_manage_prices": bool(can_manage_prices),

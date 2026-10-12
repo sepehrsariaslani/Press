@@ -8,6 +8,7 @@ from press.www.saas.catalog import add_app_categories, get_public_marketplace_ca
 
 def get_context(context):
 	context.no_cache = 1
+	context.body_class = " ".join(filter(None, (context.get("body_class", ""), "asumi-commerce-page")))
 	context.marketplace_apps = get_public_marketplace_catalog(frappe.get_all)
 	app_names = [app["id"] for app in context.marketplace_apps]
 	category_rows = (

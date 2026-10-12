@@ -1,10 +1,21 @@
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
+import frappe
 from press.www.saas.catalog import add_app_categories
 
 
 class AsumiMarketplaceListingTest(unittest.TestCase):
+	def test_listing_context_applies_asumi_commerce_page_surface(self):
+		from press.www.marketplace.index import get_context
+
+		with patch("press.www.marketplace.index.frappe.get_all", return_value=[]):
+			context = frappe._dict()
+			get_context(context)
+
+		self.assertEqual(context["body_class"], "asumi-commerce-page")
+
 	def test_categories_are_attached_to_the_matching_public_apps(self):
 		apps = [
 			{"id": "app-a", "title": "A"},

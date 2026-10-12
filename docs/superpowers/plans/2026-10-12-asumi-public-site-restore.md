@@ -45,4 +45,8 @@
 - [x] Capture post-build screenshots at the same public routes and viewport as `/tmp/asumi-restore-audit/before-root.png`, `/tmp/asumi-restore-audit/before-pricing.png`, and `/tmp/asumi-restore-audit/before-marketplace.png`.
 - [x] Verify the public root, pricing catalog, and marketplace return HTTP 200 and every root asset referenced by `press/www/asumi.html` returns HTTP 200.
 - [x] Deploy the static build to the already-authorized shared Bench and verify the live public pages without running a database migration.
-- [x] Keep the final screenshots under `/tmp/asumi-restore-audit` for the handoff.
+- [x] Keep the final screenshots under `/tmp/asumi-restore-audit` for the handoff, including the restored story at several scroll positions.
+- [x] Reproduce and fix the public catalog contrast issue: Frappe pages used a white body background while Asumi's commerce text uses light colors. Apply the dark page surface to `/saas` and `/marketplace` through their page contexts.
+- [x] Add regression coverage for the catalog and marketplace page classes; both focused modules pass (21 tests).
+- [x] Fix Frappe's direct dark heading color override, version the stylesheet URL to bypass stale browser cache, and verify the rebuilt stylesheet returns HTTP 200.
+- [x] Verify `/`, `/saas`, `/pricing`, and `/marketplace` at 320, 768, and 1440 px after the approved Asumi migration and shared Bench reload: all return HTTP 200, have no horizontal overflow or CSS/JS failures, and the story changes as the page scrolls.

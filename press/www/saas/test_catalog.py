@@ -242,6 +242,7 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		self.assertEqual(len(context["marketplace_apps"]), 1)
 		self.assertFalse(context["hosting_available"])
 		self.assertTrue(context["can_manage_prices"])
+		self.assertEqual(context["body_class"], "asumi-commerce-page")
 		self.assertNotIn("resource_hint", context)
 
 	def test_catalog_loads_only_published_apps_and_their_enabled_plans(self):

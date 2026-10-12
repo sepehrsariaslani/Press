@@ -14,6 +14,21 @@
 	font-family: inherit;
 }
 
+body.asumi-commerce-page {
+	min-height: 100vh;
+	background: #090909;
+	color: #f7f3f3;
+}
+
+.asumi-commerce h1,
+.asumi-commerce h2,
+.asumi-commerce h3,
+.asumi-commerce h4,
+.asumi-commerce h5,
+.asumi-commerce h6 {
+	color: var(--asumi-text);
+}
+
 .asumi-commerce * {
 	box-sizing: border-box;
 }
