@@ -60,6 +60,7 @@ class MarketplaceProvisioningRecoveryTest(unittest.TestCase):
 			interval="Monthly",
 			site="site.example.test",
 			docker_site=None,
+			installation_required=0,
 			provisioning_attempts=0,
 		)
 		plan = FakeDoc(name="NEW-PLAN", app="APP-DOC", enabled=1, price_irr=10000, interval="Monthly")
@@ -68,6 +69,7 @@ class MarketplaceProvisioningRecoveryTest(unittest.TestCase):
 			name="site.example.test",
 			team="TEAM-1",
 			status="Active",
+			bench="BENCH-1",
 			apps=[SimpleNamespace(app="demo_app")],
 			configuration=[
 				SimpleNamespace(key="timezone", value="UTC", type="String"),
@@ -86,6 +88,7 @@ class MarketplaceProvisioningRecoveryTest(unittest.TestCase):
 			("Marketplace App Plan", "NEW-PLAN"): plan,
 			("Marketplace App", "APP-DOC"): app,
 			("Site", "site.example.test"): site,
+			("Bench", "BENCH-1"): FakeDoc(apps=[SimpleNamespace(app="demo_app")]),
 		}
 		sync_calls = []
 
@@ -101,6 +104,8 @@ class MarketplaceProvisioningRecoveryTest(unittest.TestCase):
 			),
 			patch.object(commerce_api.frappe, "log_error"),
 			patch.object(commerce_api, "_get_app_subscription", return_value=subscription),
+			patch.object(commerce_api.frappe.db, "exists", return_value=True),
+			patch.object(commerce_api.frappe, "get_all", return_value=[]),
 			patch.object(commerce_api, "_sync_marketplace_subscription_config", side_effect=fail_initial_sync),
 		):
 			commerce_api.provision_paid_order("ORDER-1")
