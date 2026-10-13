@@ -8,6 +8,10 @@ export type AsumiServiceRequest = {
 	addonIds: string[];
 };
 
+export function isAsumiServicePurchaseRequest(request: AsumiServiceRequest | null): boolean {
+	return request?.service === 'module_pricing' && request.intent === 'purchase';
+}
+
 export function parseAsumiServiceRequest(search: string): AsumiServiceRequest | null {
 	const params = new URLSearchParams(search);
 	if (params.get('asumi_service_request') !== '1') return null;

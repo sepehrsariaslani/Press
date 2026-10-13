@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAsumiServiceRequest } from './asumiServiceRequest';
+import { isAsumiServicePurchaseRequest, parseAsumiServiceRequest } from './asumiServiceRequest';
 
 describe('parseAsumiServiceRequest', () => {
 	it('reads the selected service and safe module and addon ids', () => {
@@ -24,6 +24,17 @@ describe('parseAsumiServiceRequest', () => {
 		expect(purchase?.intent).toBe('purchase');
 		const website = parseAsumiServiceRequest('?asumi_service_request=1&service=website_design&asumi_service_purchase=1');
 		expect(website?.intent).toBe('request');
+	});
+
+	it('routes only an explicit module purchase to checkout', () => {
+		const purchase = parseAsumiServiceRequest('?asumi_service_request=1&service=module_pricing&asumi_service_purchase=1&modules=finance');
+		const request = parseAsumiServiceRequest('?asumi_service_request=1&service=module_pricing&modules=finance');
+		const website = parseAsumiServiceRequest('?asumi_service_request=1&service=website_design&asumi_service_purchase=1');
+
+		expect(isAsumiServicePurchaseRequest(purchase)).toBe(true);
+		expect(isAsumiServicePurchaseRequest(request)).toBe(false);
+		expect(isAsumiServicePurchaseRequest(website)).toBe(false);
+		expect(isAsumiServicePurchaseRequest(null)).toBe(false);
 	});
 
 	it('ignores unrelated, invalid and oversized links', () => {

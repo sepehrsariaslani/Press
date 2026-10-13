@@ -504,7 +504,7 @@ import { canManageAsumiCommerce } from '@/utils/commerceAccess';
 import { commerceGatewayState } from '@/utils/commerceGatewayState';
 import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
 import { marketplacePlanActionLabel, selectMarketplacePlans } from '@/utils/marketplacePlanSelection';
-import { parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
+import { isAsumiServicePurchaseRequest, parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
 import {
 	getAsumiServiceOrderLines,
 	getAsumiServiceOrderTitle,
@@ -521,7 +521,7 @@ import {
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const serviceRequest = ref(parseAsumiServiceRequest(window.location.search));
-const servicePurchase = computed(() => serviceRequest.value?.service === 'module_pricing' && serviceRequest.value.intent === 'purchase');
+const servicePurchase = computed(() => isAsumiServicePurchaseRequest(serviceRequest.value));
 const marketplaceQuery = new URLSearchParams(window.location.search);
 const requestedMarketplaceApp = ref((marketplaceQuery.get('asumi_app') || '').trim());
 const requestedMarketplaceAppTitle = ref((marketplaceQuery.get('asumi_app_title') || '').trim());
