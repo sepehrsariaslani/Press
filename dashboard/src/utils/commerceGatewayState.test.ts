@@ -23,5 +23,6 @@ describe('Asumi commerce gateway status', () => {
 		const settings = { enabled: true, allow_marketplace_app_sales: true, allow_site_plan_sales: false, merchant_id_configured: true, sandbox_mode: false };
 		expect(commerceGatewayState(settings).label).toBe('پرداخت زنده فعال');
 		expect(commerceGatewayState({ ...settings, allow_marketplace_app_sales: false }).label).toBe('فروش غیرفعال');
+		expect(commerceGatewayState({ ...settings, allow_marketplace_app_sales: false, allow_service_sales: true }).label).toBe('پرداخت زنده فعال');
 	});
 });

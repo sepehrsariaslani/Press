@@ -23,10 +23,10 @@ export function commerceGatewayState(settings) {
 		};
 	}
 
-	if (!settings.allow_marketplace_app_sales && !settings.allow_site_plan_sales) {
+	if (!settings.allow_marketplace_app_sales && !settings.allow_site_plan_sales && !settings.allow_service_sales) {
 		return {
 			label: 'فروش غیرفعال',
-			message: 'درگاه آماده است؛ برای شروع، فروش برنامه‌ها یا پلن میزبانی را فعال کنید.',
+			message: 'درگاه آماده است؛ برای شروع، فروش برنامه‌ها، خدمات آسومی یا پلن میزبانی را فعال کنید.',
 			tone: 'warning',
 		};
 	}
