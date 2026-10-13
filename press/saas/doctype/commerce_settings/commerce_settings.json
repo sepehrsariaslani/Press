@@ -7,6 +7,7 @@
   "enabled",
   "allow_marketplace_app_sales",
   "allow_site_plan_sales",
+  "allow_service_sales",
   "sandbox_mode",
   "hosting_min_free_disk_gb",
   "hosting_min_free_memory_gb",
@@ -30,6 +31,12 @@
    "fieldname": "allow_site_plan_sales",
    "fieldtype": "Check",
    "label": "Allow Site Plan Sales"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_service_sales",
+   "fieldtype": "Check",
+   "label": "Allow Asumi Service Sales"
   },
   {
    "default": "1",

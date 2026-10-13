@@ -1,6 +1,54 @@
 import unittest
 
+from press.saas.commerce.commerce_order_validation import validate_commerce_order
 from press.saas.commerce.order_snapshot import hosting_order_snapshot, marketplace_app_order_snapshot
+
+
+class CommerceOrderValidationTest(unittest.TestCase):
+	def service_order(self, **overrides):
+		return {
+			"order_type": "Asumi Service",
+			"plan_type": None,
+			"plan": None,
+			"interval": "Monthly",
+			"currency": "IRR",
+			"amount": 55_000_000,
+			"service_amount_toman": 5_500_000,
+			"service_title": "مالی و حسابداری",
+			"service_quote_snapshot": {
+				"total": 5_500_000,
+				"quoted_at": "2026-10-13 12:00:00",
+				"lines": [{"kind": "module", "id": "finance", "title": "مالی و حسابداری", "amount": 5_500_000}],
+			},
+			"service_contact_name": "مشتری",
+			"service_contact_phone": "09123456789",
+			"service_company": "",
+			"service_fingerprint": "a" * 64,
+			**overrides,
+		}
+
+	def test_accepts_service_order_without_a_plan_and_validates_its_snapshot(self):
+		self.assertIsNone(validate_commerce_order(self.service_order()))
+
+	def test_rejects_service_order_with_an_incomplete_snapshot(self):
+		for changes in (
+			{"service_quote_snapshot": "not-json"},
+			{"service_quote_snapshot": {"total": 5_500_000, "lines": []}},
+			{"service_fingerprint": ""},
+			{"amount": 1},
+		):
+			with self.subTest(changes=changes):
+				with self.assertRaises(ValueError):
+					validate_commerce_order(self.service_order(**changes))
+
+	def test_non_service_orders_still_require_a_matching_plan_and_plan_type(self):
+		for changes in (
+			{"order_type": "Hosting", "plan_type": None, "plan": None},
+			{"order_type": "Hosting", "plan_type": "Site Plan", "plan": None},
+			{"order_type": "Marketplace App", "plan_type": "Site Plan", "plan": "PLAN-1"},
+		):
+			with self.subTest(changes=changes), self.assertRaises(ValueError):
+				validate_commerce_order({"order_type": "Hosting", **changes})
 
 
 class MarketplaceAppOrderSnapshotTest(unittest.TestCase):

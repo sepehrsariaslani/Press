@@ -32,7 +32,7 @@ from press.saas.commerce.hosting_readiness import (
 	resolve_ipv4,
 	wildcard_dns_guidance,
 )
-from press.saas.commerce.checkout_access import checkout_available_for_actor
+from press.saas.commerce.checkout_access import checkout_available_for_actor, sale_enabled_for_settings
 from press.saas.commerce.pricing import (
 	ZARINPAL_MINIMUM_AMOUNT_IRR,
 	marketplace_plan_supported_by_asumi_checkout,
@@ -105,15 +105,10 @@ def _merchant_id(settings) -> str | None:
 
 
 def _checkout_enabled(settings, sale_type: str = "marketplace") -> bool:
-	allow_sale = (
-		getattr(settings, "allow_site_plan_sales", False)
-		if sale_type == "hosting"
-		else getattr(settings, "allow_marketplace_app_sales", False)
-	)
 	return bool(
 		settings
 		and settings.enabled
-		and allow_sale
+		and sale_enabled_for_settings(settings, sale_type)
 		and _merchant_id(settings)
 	)
 
@@ -124,14 +119,9 @@ def _has_commerce_admin_role() -> bool:
 
 def _checkout_available_for_user(settings, sale_type: str = "marketplace") -> bool:
 	sandbox_mode = bool(settings and settings.sandbox_mode)
-	sale_enabled = (
-		getattr(settings, "allow_site_plan_sales", False)
-		if sale_type == "hosting"
-		else getattr(settings, "allow_marketplace_app_sales", False)
-	)
 	return checkout_available_for_actor(
 		enabled=bool(settings and settings.enabled),
-		sale_enabled=bool(sale_enabled),
+		sale_enabled=sale_enabled_for_settings(settings, sale_type),
 		merchant_id_configured=bool(_merchant_id(settings)),
 		sandbox_mode=sandbox_mode,
 		is_commerce_admin=not sandbox_mode or _has_commerce_admin_role(),

@@ -24,6 +24,13 @@
   "install_backup_id",
   "install_operation",
   "apps",
+  "service_title",
+  "service_amount_toman",
+  "service_quote_snapshot",
+  "service_contact_name",
+  "service_contact_phone",
+  "service_company",
+  "service_fingerprint",
   "team",
   "customer",
   "currency",
@@ -59,7 +66,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Product Type",
-   "options": "Marketplace App\nHosting",
+   "options": "Marketplace App\nHosting\nAsumi Service",
    "read_only": 1,
    "reqd": 1
   },
@@ -69,7 +76,7 @@
    "label": "Plan Type",
    "options": "Marketplace App Plan\nSite Plan",
    "read_only": 1,
-   "reqd": 1
+   "reqd": 0
   },
   {
    "fieldname": "service_delivery_mode",
@@ -85,7 +92,7 @@
    "label": "Plan",
    "options": "plan_type",
    "read_only": 1,
-   "reqd": 1
+   "reqd": 0
   },
   {
    "fieldname": "subdomain",
@@ -141,6 +148,50 @@
    "label": "Selected Site Apps Snapshot",
    "options": "JSON",
    "read_only": 1
+  },
+  {
+   "fieldname": "service_title",
+   "fieldtype": "Data",
+   "label": "Asumi Service Snapshot Title",
+   "read_only": 1
+  },
+  {
+   "fieldname": "service_amount_toman",
+   "fieldtype": "Int",
+   "label": "Asumi Service Amount (Toman)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "service_quote_snapshot",
+   "fieldtype": "Code",
+   "label": "Asumi Service Quote Snapshot",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "service_contact_name",
+   "fieldtype": "Data",
+   "label": "Asumi Service Contact Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "service_contact_phone",
+   "fieldtype": "Data",
+   "label": "Asumi Service Contact Phone",
+   "read_only": 1
+  },
+  {
+   "fieldname": "service_company",
+   "fieldtype": "Data",
+   "label": "Asumi Service Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "service_fingerprint",
+   "fieldtype": "Data",
+   "label": "Asumi Service Idempotency Fingerprint",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "interval",

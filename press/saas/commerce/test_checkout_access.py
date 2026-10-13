@@ -90,3 +90,16 @@ class CheckoutAccessTest(unittest.TestCase):
 			"press.saas.commerce.api.has_role", side_effect=AssertionError("roles should not be checked in production")
 		):
 			self.assertTrue(api._checkout_available_for_user(settings))
+
+	@patch("press.saas.commerce.api._merchant_id", return_value="configured-merchant")
+	@patch("press.saas.commerce.api.has_role", return_value=False)
+	def test_service_sales_has_its_own_disabled_by_default_gate(self, _role_mock, _merchant_mock):
+		settings = SimpleNamespace(
+			enabled=True,
+			allow_marketplace_app_sales=True,
+			allow_site_plan_sales=True,
+			allow_service_sales=False,
+			sandbox_mode=False,
+		)
+
+		self.assertFalse(api._checkout_available_for_user(settings, sale_type="services"))

@@ -13,3 +13,13 @@ def checkout_available_for_actor(
 		and merchant_id_configured
 		and (not sandbox_mode or is_commerce_admin)
 	)
+
+
+def sale_enabled_for_settings(settings, sale_type: str = "marketplace") -> bool:
+	"""Read the independent checkout flag for each Asumi product category."""
+	fieldname = {
+		"marketplace": "allow_marketplace_app_sales",
+		"hosting": "allow_site_plan_sales",
+		"services": "allow_service_sales",
+	}.get(sale_type)
+	return bool(fieldname and settings and getattr(settings, fieldname, False))
