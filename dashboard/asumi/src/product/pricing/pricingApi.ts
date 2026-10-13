@@ -3,6 +3,7 @@ import { pricingAddons, pricingPresets, type ModuleId, type PricingAddonId } fro
 
 const MAX_SERVICE_PRICE_TOMAN = 1_000_000_000_000;
 const endpoint = '/api/method/press.saas.commerce.api.service_pricing';
+const checkoutStatusEndpoint = '/api/method/press.saas.commerce.api.checkout_status';
 
 export type ServicePriceMap = {
 	modules: Record<ModuleId, number>;
@@ -33,6 +34,27 @@ export async function loadServicePrices(fetcher: typeof fetch = fetch): Promise<
 		addons: validatePriceMap<PricingAddonId>(message.addons, pricingAddons.map(addon => addon.id)),
 		packages: validatePriceMap<(typeof pricingPresets)[number]['id']>(message.packages, pricingPresets.map(preset => preset.id)),
 	};
+}
+
+export async function loadServiceCheckoutStatus(fetcher: typeof fetch = fetch): Promise<boolean> {
+	let response: Response;
+	try {
+		response = await fetcher(checkoutStatusEndpoint, { credentials: 'same-origin' });
+	} catch {
+		throw new Error('وضعیت ثبت سفارش آنلاین آسومی دریافت نشد.');
+	}
+	if (!response.ok) throw new Error('وضعیت ثبت سفارش آنلاین آسومی دریافت نشد.');
+	let payload: unknown;
+	try {
+		payload = await response.json();
+	} catch {
+		throw new Error('وضعیت فروش آسومی قابل خواندن نیست.');
+	}
+	const message = isRecord(payload) && 'message' in payload ? payload.message : payload;
+	if (!isRecord(message) || typeof message.services_enabled !== 'boolean') {
+		throw new Error('وضعیت فروش خدمات آسومی معتبر نیست.');
+	}
+	return message.services_enabled;
 }
 
 function validatePriceMap<Id extends string>(value: unknown, expectedIds: readonly Id[]): Record<Id, number> {

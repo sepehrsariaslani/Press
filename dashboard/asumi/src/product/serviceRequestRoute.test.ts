@@ -25,4 +25,13 @@ test('keeps the website-design context on its existing inquiry route', () => {
 	expect(url.searchParams.get('context')).toBe('ساخت وب‌سایت فروشگاهی');
 	expect(url.searchParams.has('modules')).toBe(false);
 	expect(url.searchParams.has('addons')).toBe(false);
+	expect(url.searchParams.has('asumi_service_purchase')).toBe(false);
+});
+
+test('marks a module pricing route for checkout without changing its selected IDs', () => {
+	const href = buildServiceRequestHref('module_pricing', '', ['finance'], ['restaurantMenu'], 'purchase');
+	const url = new URL(href, 'https://asumi.ir');
+	expect(url.searchParams.get('asumi_service_purchase')).toBe('1');
+	expect(url.searchParams.get('modules')).toBe('finance');
+	expect(url.searchParams.get('addons')).toBe('restaurantMenu');
 });

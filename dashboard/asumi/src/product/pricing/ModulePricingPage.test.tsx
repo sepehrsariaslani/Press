@@ -44,13 +44,50 @@ test('submits selected IDs only after loading prices and includes the menu addon
 	fireEvent.click(screen.getByRole('button', { name: 'افزودن افزونه' }));
 	fireEvent.click(screen.getByRole('button', { name: 'ادامه برای درخواست این ترکیب' }));
 
-	expect(onRequestPurchase).toHaveBeenCalledWith(['restaurant'], '', ['restaurantMenu']);
+	expect(onRequestPurchase).toHaveBeenCalledWith(['restaurant'], '', ['restaurantMenu'], 'request');
+});
+
+test('offers a paid one-month order only when the server enables service checkout', async () => {
+	vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+		if (String(input).includes('checkout_status')) {
+			return { ok: true, json: async () => ({ message: { services_enabled: true } }) } as Response;
+		}
+		return { ok: true, json: async () => ({ message: servicePrices }) } as Response;
+	}));
+	const onRequestPurchase = vi.fn();
+	render(<ModulePricingPage onOpenModule={vi.fn()} onReturnToModules={vi.fn()} onRequestPurchase={onRequestPurchase} />);
+
+	const purchaseButton = await screen.findByRole('button', { name: 'ثبت سفارش و پرداخت' });
+	expect(screen.getByText(/یک ماه اعتبار دارد و تمدید آن دستی است/)).toBeInTheDocument();
+	fireEvent.click(purchaseButton);
+	expect(onRequestPurchase).toHaveBeenCalledWith(['finance'], '', [], 'purchase');
+});
+
+test('keeps the estimate request when the server has not enabled checkout', async () => {
+	vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+		if (String(input).includes('checkout_status')) {
+			return { ok: true, json: async () => ({ message: { services_enabled: false } }) } as Response;
+		}
+		return { ok: true, json: async () => ({ message: servicePrices }) } as Response;
+	}));
+	const onRequestPurchase = vi.fn();
+	render(<ModulePricingPage onOpenModule={vi.fn()} onReturnToModules={vi.fn()} onRequestPurchase={onRequestPurchase} />);
+
+	fireEvent.click(await screen.findByRole('button', { name: 'ادامه برای درخواست این ترکیب' }));
+	expect(onRequestPurchase).toHaveBeenCalledWith(['finance'], '', [], 'request');
 });
 
 test('shows an API error without a price fallback and allows retry', async () => {
-	const fetcher = vi.fn()
-		.mockResolvedValueOnce({ ok: false, json: async () => ({}) } as Response)
-		.mockResolvedValueOnce({ ok: true, json: async () => ({ message: servicePrices }) } as Response);
+	let priceAttempts = 0;
+	const fetcher = vi.fn((input: RequestInfo | URL) => {
+		if (String(input).includes('checkout_status')) {
+			return Promise.resolve({ ok: true, json: async () => ({ message: { services_enabled: false } }) } as Response);
+		}
+		priceAttempts += 1;
+		return Promise.resolve(priceAttempts === 1
+			? { ok: false, json: async () => ({}) } as Response
+			: { ok: true, json: async () => ({ message: servicePrices }) } as Response);
+	});
 	vi.stubGlobal('fetch', fetcher);
 	render(<ModulePricingPage onOpenModule={vi.fn()} onReturnToModules={vi.fn()} onRequestPurchase={vi.fn()} />);
 

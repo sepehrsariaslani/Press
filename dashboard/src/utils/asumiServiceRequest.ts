@@ -2,6 +2,7 @@ export type AsumiServiceKind = 'module_pricing' | 'website_design';
 
 export type AsumiServiceRequest = {
 	service: AsumiServiceKind;
+	intent: 'request' | 'purchase';
 	context: string;
 	moduleIds: string[];
 	addonIds: string[];
@@ -16,5 +17,6 @@ export function parseAsumiServiceRequest(search: string): AsumiServiceRequest | 
 	if (context.length > 5000) return null;
 	const moduleIds = [...new Set((params.get('modules') || '').split(',').filter(id => /^[a-z0-9-]{1,50}$/i.test(id)))].slice(0, 15);
 	const addonIds = [...new Set((params.get('addons') || '').split(',').filter(id => /^[a-z0-9-]{1,50}$/i.test(id)))].slice(0, 10);
-	return { service, context, moduleIds, addonIds };
+	const intent = service === 'module_pricing' && params.get('asumi_service_purchase') === '1' ? 'purchase' : 'request';
+	return { service, intent, context, moduleIds, addonIds };
 }

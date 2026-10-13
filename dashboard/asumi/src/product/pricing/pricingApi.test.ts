@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { loadServicePrices } from './pricingApi';
+import { loadServiceCheckoutStatus, loadServicePrices } from './pricingApi';
 
 const prices = {
 	modules: {
@@ -48,4 +48,18 @@ test('rejects negative, fractional, non-number, and over-limit prices', async ()
 		const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ message: invalidMap }) } as Response));
 		await expect(loadServicePrices(fetcher)).rejects.toThrow(/تعرفه/);
 	}
+});
+
+test('reads the public service checkout status without exposing payment credentials', async () => {
+	const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ message: { services_enabled: true } }) } as Response));
+
+	await expect(loadServiceCheckoutStatus(fetcher)).resolves.toBe(true);
+	expect(fetcher).toHaveBeenCalledWith('/api/method/press.saas.commerce.api.checkout_status', { credentials: 'same-origin' });
+});
+
+test('treats disabled and malformed checkout status safely', async () => {
+	const disabled = vi.fn(async () => ({ ok: true, json: async () => ({ message: { services_enabled: false } }) } as Response));
+	await expect(loadServiceCheckoutStatus(disabled)).resolves.toBe(false);
+	const malformed = vi.fn(async () => ({ ok: true, json: async () => ({ message: { enabled: true } }) } as Response));
+	await expect(loadServiceCheckoutStatus(malformed)).rejects.toThrow(/وضعیت فروش/);
 });

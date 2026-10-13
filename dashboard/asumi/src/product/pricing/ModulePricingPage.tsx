@@ -14,7 +14,7 @@ import {
 } from './catalog';
 import { addModule, removeModule, validSavedModules, type ModuleId } from './selection';
 import { estimateSelection } from './estimate';
-import { loadServicePrices, type ServicePriceMap } from './pricingApi';
+import { loadServiceCheckoutStatus, loadServicePrices, type ServicePriceMap } from './pricingApi';
 import './module-pricing.css';
 
 const storageKey = 'asumi-pricing-selection-v2';
@@ -48,7 +48,7 @@ function persianNumber(value: number) {
 type ModulePricingPageProps = {
 	onOpenModule: (moduleId: string) => void;
 	onReturnToModules: () => void;
-	onRequestPurchase: (moduleIds: string[], context: string, addonIds: string[]) => void;
+	onRequestPurchase: (moduleIds: string[], context: string, addonIds: string[], intent: 'request' | 'purchase') => void;
 };
 
 export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPurchase }: ModulePricingPageProps) {
@@ -61,6 +61,8 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	const [saved, setSaved] = useState(false);
 	const [prices, setPrices] = useState<ServicePriceMap | null>(null);
 	const [pricesLoading, setPricesLoading] = useState(true);
+	const [checkoutEnabled, setCheckoutEnabled] = useState(false);
+	const [checkoutStatusLoaded, setCheckoutStatusLoaded] = useState(false);
 	const [pricesError, setPricesError] = useState('');
 	const [pricingAttempt, setPricingAttempt] = useState(0);
 	const activeModule = productModules.find(module => module.id === activeId) || productModules[0];
@@ -71,15 +73,25 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 		let active = true;
 		setPricesLoading(true);
 		setPricesError('');
-		loadServicePrices().then(result => {
-			if (active) setPrices(result);
+		setCheckoutStatusLoaded(false);
+		Promise.all([
+			loadServicePrices(),
+			loadServiceCheckoutStatus().catch(() => false),
+		]).then(([result, canCheckout]) => {
+			if (active) {
+				setPrices(result);
+				setCheckoutEnabled(canCheckout);
+			}
 		}).catch(() => {
 			if (active) {
 				setPrices(null);
 				setPricesError('تعرفهٔ زندهٔ آسومی در دسترس نیست. تا زمان دریافت قیمت معتبر، درخواست ثبت نمی‌شود.');
 			}
 		}).finally(() => {
-			if (active) setPricesLoading(false);
+			if (active) {
+				setPricesLoading(false);
+				setCheckoutStatusLoaded(true);
+			}
 		});
 		return () => { active = false; };
 	}, [pricingAttempt]);
@@ -161,7 +173,7 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 		try {
 			window.localStorage.setItem(storageKey, JSON.stringify({ moduleIds: selectedIds, addonIds: selectedAddonIds } satisfies SavedSelection));
 		} catch { /* The request can continue with the current selection. */ }
-		onRequestPurchase(selectedIds, '', selectedAddonIds);
+		onRequestPurchase(selectedIds, '', selectedAddonIds, checkoutEnabled ? 'purchase' : 'request');
 	}
 
 	return <main className="module-pricing-page" dir="rtl" aria-labelledby="module-pricing-title">
@@ -188,13 +200,14 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 				<section className="pricing-workspace" aria-label="انتخاب ماژول‌ها و افزونه‌ها">
 					<ModuleChooser
 						selectedIds={selectedIds} selectedAddonIds={selectedAddonIds} prices={prices} status={status} activeId={activeId}
+						checkoutEnabled={checkoutEnabled} checkoutStatusLoaded={checkoutStatusLoaded}
 						onActivate={setActiveId} onToggle={toggleModule} onClearAddons={clearSelection} onSave={saveSelection} onRequestPurchase={requestPurchase} saved={saved}
 					/>
 					<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} prices={prices} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
 				</section>
 			</>}
 
-			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice}{prices && <> بستهٔ حرفه‌ای ماهانه {formatToman(prices.packages.professional)}، همهٔ ماژول‌ها بدون افزونهٔ منو {formatToman(prices.packages.completeWithoutMenu)} و با مدیریت منو {formatToman(prices.packages.complete)} است.</>} در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
+			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice}{prices && <> بستهٔ حرفه‌ای ماهانه {formatToman(prices.packages.professional)}، همهٔ ماژول‌ها بدون افزونهٔ منو {formatToman(prices.packages.completeWithoutMenu)} و با مدیریت منو {formatToman(prices.packages.complete)} است.</>}{checkoutEnabled ? ' سفارش یک ماه اعتبار دارد و تمدید آن دستی است؛ پس از ثبت، مدیر آسومی فعال‌سازی را انجام می‌دهد.' : ' تا زمان فعال‌سازی فروش آنلاین، این صفحه فقط درخواست بررسی ثبت می‌کند.'}</p></aside>
 		</div>
 		<SiteFooter />
 	</main>;

@@ -21,7 +21,7 @@ export function AsumiApp({ marketplaceApps = [], canManageMarketplacePrices = fa
 		return <WebsiteDesignPricingPage onReturnToModules={returnToModules} onRequestQuote={context => openOrderCenter([], context, 'website_design')} />;
 	}
 	if (showPricing) {
-		return <ModulePricingPage onOpenModule={openModule} onReturnToModules={returnToModules} onRequestPurchase={(moduleIds, context, addonIds) => openOrderCenter(moduleIds, context, 'module_pricing', addonIds)} />;
+		return <ModulePricingPage onOpenModule={openModule} onReturnToModules={returnToModules} onRequestPurchase={(moduleIds, context, addonIds, intent) => openOrderCenter(moduleIds, context, 'module_pricing', addonIds, intent)} />;
 	}
 	const activeModuleIndex = productModules.findIndex(module => module.id === activeModuleId);
 	const activeModule = productModules[activeModuleIndex];

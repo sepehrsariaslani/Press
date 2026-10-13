@@ -16,18 +16,18 @@
 
 		<section v-if="serviceRequest" class="rounded-2xl border border-rose-200 bg-rose-50/60 p-5 shadow-sm" aria-labelledby="asumi-service-request-title">
 			<div>
-				<p class="text-sm font-medium text-rose-700">درخواست خدمات آسومی</p>
-				<h2 id="asumi-service-request-title" class="mt-1 text-lg font-semibold text-gray-950">بررسی {{ serviceRequest.service === 'website_design' ? 'برآورد طراحی سایت' : 'ترکیب ماژول‌های انتخابی' }}</h2>
-				<p class="mt-2 text-sm leading-6 text-gray-700">این فرم فقط درخواست تماس و بررسی است؛ فاکتور، سفارش مالی یا پرداختی ایجاد نمی‌کند.</p>
+				<p class="text-sm font-medium text-rose-700">{{ servicePurchase ? 'خرید خدمات آسومی' : 'درخواست خدمات آسومی' }}</p>
+				<h2 id="asumi-service-request-title" class="mt-1 text-lg font-semibold text-gray-950">{{ servicePurchase ? 'ثبت سفارش ' : 'بررسی ' }}{{ serviceRequest.service === 'website_design' ? 'برآورد طراحی سایت' : 'ترکیب ماژول‌های انتخابی' }}</h2>
+				<p class="mt-2 text-sm leading-6 text-gray-700">{{ servicePurchase ? 'قیمت نهایی را سرور از تعرفهٔ جاری محاسبه می‌کند. دورهٔ خدمت یک ماه است و تمدید به‌صورت دستی انجام می‌شود.' : 'این فرم فقط درخواست تماس و بررسی است؛ فاکتور، سفارش مالی یا پرداختی ایجاد نمی‌کند.' }}</p>
 			</div>
 			<div v-if="serviceRequest.context" class="mt-4 whitespace-pre-line rounded-xl border border-rose-100 bg-white px-4 py-3 text-sm leading-6 text-gray-700">{{ serviceRequest.context }}</div>
 			<div v-if="serviceRequest.service === 'module_pricing' && serviceRequest.moduleIds.length" class="mt-4 rounded-xl border border-rose-100 bg-white px-4 py-3 text-sm leading-6 text-gray-700">
 				<p><strong>ماژول‌ها:</strong> {{ serviceRequest.moduleIds.map(serviceModuleTitle).join('، ') }}</p>
 				<p v-if="serviceRequest.addonIds.length"><strong>افزونه‌ها:</strong> {{ serviceRequest.addonIds.map(serviceAddonTitle).join('، ') }}</p>
-				<p class="mt-1 text-xs text-gray-500">مبلغ نهایی هنگام ثبت درخواست از تعرفهٔ جاری سرور محاسبه می‌شود.</p>
+				<p class="mt-1 text-xs text-gray-500">{{ servicePurchase ? 'قیمت نهایی سفارش از تعرفهٔ جاری سرور محاسبه می‌شود.' : 'مبلغ برآورد از تعرفهٔ جاری سرور محاسبه می‌شود.' }}</p>
 			</div>
-			<div v-if="serviceRequestResult" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900" role="status">درخواستت ثبت شد. شمارهٔ پیگیری: <strong>{{ serviceRequestResult.name }}</strong><span v-if="serviceRequestResult.quote"> · برآورد ماهانهٔ سرور: <strong>{{ money(serviceRequestResult.quote.total) }} تومان</strong></span> · پس از بررسی با شما تماس می‌گیریم.</div>
-			<form v-else class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="submitServiceRequest">
+			<div v-if="serviceRequestResult" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900" role="status">{{ serviceRequestResult.purchase ? 'سفارش خدمات ثبت شد.' : 'درخواستت ثبت شد.' }} شمارهٔ پیگیری: <strong>{{ serviceRequestResult.order || serviceRequestResult.name }}</strong><span v-if="serviceRequestResult.quote"> · برآورد ماهانهٔ سرور: <strong>{{ money(serviceRequestResult.quote.total) }} تومان</strong></span><span v-if="serviceRequestResult.purchase && serviceRequestResult.already_requested"> · وضعیت: {{ statusLabel(serviceRequestResult.status) }}</span><span v-if="!serviceRequestResult.purchase"> · پس از بررسی با شما تماس می‌گیریم.</span></div>
+			<form v-else class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="submitServiceRequest()">
 				<label class="text-sm font-medium text-gray-700">نام و نام خانوادگی
 					<input v-model="serviceRequestForm.full_name" required maxlength="140" autocomplete="name" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
 				</label>
@@ -38,8 +38,9 @@
 					<input v-model="serviceRequestForm.company" maxlength="140" autocomplete="organization" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
 				</label>
 				<div class="flex flex-wrap items-center gap-3 sm:col-span-2">
-					<button type="submit" :disabled="submittingServiceRequest" class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:cursor-wait disabled:opacity-60">{{ submittingServiceRequest ? 'در حال ثبت…' : 'ثبت درخواست بررسی' }}</button>
-					<span class="text-xs leading-5 text-gray-600">هیچ مبلغی دریافت نمی‌شود؛ نتیجه پس از بررسی برای شما اعلام خواهد شد.</span>
+					<button type="submit" :disabled="submittingServiceRequest" class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:cursor-wait disabled:opacity-60">{{ submittingServiceRequest ? 'در حال ثبت…' : servicePurchase ? 'ثبت سفارش و پرداخت' : 'ثبت درخواست بررسی' }}</button>
+					<button v-if="servicePurchase" type="button" :disabled="submittingServiceRequest" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60" @click="submitServiceRequest(true)">ثبت درخواست بدون پرداخت</button>
+					<span class="text-xs leading-5 text-gray-600">{{ servicePurchase ? 'فعال‌سازی خدمت پس از بررسی و تأیید مدیر انجام می‌شود.' : 'هیچ مبلغی دریافت نمی‌شود؛ نتیجه پس از بررسی برای شما اعلام خواهد شد.' }}</span>
 				</div>
 			</form>
 		</section>
@@ -155,12 +156,13 @@
 			<div v-else class="mt-4 divide-y divide-gray-100">
 				<div v-for="order in orders.data || []" :key="order.name" class="flex flex-wrap items-center justify-between gap-4 py-4">
 					<div>
-						<p class="font-medium text-gray-950">{{ order.plan }}<span v-if="order.site_label"> · {{ order.site_label }}</span></p>
+						<p class="font-medium text-gray-950">{{ getAsumiServiceOrderTitle(order) }}<span v-if="order.site_label"> · {{ order.site_label }}</span></p>
+						<p v-if="order.order_type === 'Asumi Service' && getAsumiServiceOrderLines(order).length" class="mt-1 text-xs text-gray-600">{{ getAsumiServiceOrderLines(order).join(' · ') }}</p>
 						<p class="mt-1 text-xs text-gray-500">{{ order.name }} · {{ dateLabel(order.creation) }}<span v-if="order.service_ends_at"> · پایان دوره: {{ dateLabel(order.service_ends_at) }}</span></p>
 						<p v-if="order.provisioning_error || order.payment_error" class="mt-1 text-sm text-rose-700">{{ order.provisioning_error || order.payment_error }}</p>
 					</div>
 					<div class="flex items-center gap-3">
-						<strong class="text-sm text-gray-900">{{ money(order.amount) }} {{ order.currency }}</strong>
+						<strong class="text-sm text-gray-900">{{ order.order_type === 'Asumi Service' ? `${money(getAsumiServiceOrderTomanAmount(order) ?? 0)} تومان / ماه` : `${money(order.amount)} ${order.currency}` }}</strong>
 						<span class="rounded-full px-3 py-1 text-xs font-medium" :class="statusClass(order.status)">{{ statusLabel(order.status) }}</span>
 						<a v-if="order.status === 'Pending Payment' && order.checkout_url" :href="order.checkout_url" rel="noopener noreferrer" class="text-sm font-medium text-rose-700 hover:text-rose-900">ادامه پرداخت</a>
 					</div>
@@ -183,6 +185,7 @@
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.enabled" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فعال‌سازی checkout آسومی</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_marketplace_app_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش تعرفهٔ برنامه‌ها</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_site_plan_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش پلن میزبانی</label>
+				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_service_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش خدمات ماژولی آسومی</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.sandbox_mode" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> حالت آزمایشی زرین‌پال</label>
 				<label class="text-sm">حداقل فضای آزاد دیسک پس از ساخت سایت (گیگابایت)
 					<input v-model.number="settingsForm.hosting_min_free_disk_gb" type="number" min="0" max="1000000" step="0.1" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white" />
@@ -461,7 +464,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">مدیریت سفارش‌ها</h2>
-					<p class="mt-1 text-sm text-gray-600">ابتدا بازپرداخت را در پنل زرین‌پال انجام دهید و سپس شمارهٔ پیگیری را اینجا ثبت کنید. تحویل ناموفق را هم می‌توانید دوباره به صف بفرستید.</p>
+					<p class="mt-1 text-sm text-gray-600">برای خدمات آسومی، مرحلهٔ تحویل را پس از بررسی دستی ثبت کنید. بازپرداخت باید ابتدا در درگاه انجام شود؛ سفارش نصب برنامه نیز از همین‌جا قابل پیگیری است.</p>
 				</div>
 				<Button label="دریافت سفارش‌ها" :loading="adminOrders.loading" @click="adminOrders.fetch()" />
 			</div>
@@ -470,14 +473,15 @@
 					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">سفارش</th><th>مشتری / تیم</th><th>مبلغ</th><th>وضعیت</th><th>پشتیبان / عملیات نصب</th><th>خطای تحویل</th><th></th></tr></thead>
 					<tbody class="divide-y divide-gray-100">
 						<tr v-for="order in adminOrders.data" :key="order.name">
-							<td class="py-3 pr-2"><strong>{{ order.name }}</strong><span class="block text-xs text-gray-500">{{ order.plan }} · {{ order.docker_site || order.site || order.subdomain }}</span></td>
-							<td>{{ order.customer }}<span class="block text-xs text-gray-500">{{ order.team }}</span></td>
-							<td>{{ money(order.amount) }} {{ order.currency }}</td>
+							<td class="py-3 pr-2"><strong>{{ order.name }}</strong><span class="block text-xs text-gray-500">{{ getAsumiServiceOrderTitle(order) }}<span v-if="order.order_type !== 'Asumi Service'"> · {{ order.docker_site || order.site || order.subdomain }}</span></span><span v-if="order.order_type === 'Asumi Service'" class="mt-1 block max-w-72 text-xs text-gray-600">{{ getAsumiServiceOrderLines(order).join(' · ') || 'جزئیات ترکیب ثبت نشده' }}</span></td>
+							<td>{{ order.customer }}<span class="block text-xs text-gray-500">{{ order.team }}</span><span v-if="order.service_contact_name" class="mt-1 block text-xs">{{ order.service_contact_name }} · {{ order.service_contact_phone }}</span><span v-if="order.service_company" class="block text-xs text-gray-500">{{ order.service_company }}</span></td>
+							<td>{{ order.order_type === 'Asumi Service' ? `${money(getAsumiServiceOrderTomanAmount(order) ?? 0)} تومان / ماه` : `${money(order.amount)} ${order.currency}` }}</td>
 							<td>{{ statusLabel(order.status) }}<span v-if="order.refund_reference" class="block text-xs text-gray-500">مرجع بازپرداخت: {{ order.refund_reference }}</span></td>
 							<td class="text-xs text-gray-600"><span v-if="order.install_backup" class="block">پشتیبان: {{ order.install_backup }}</span><span v-if="order.install_backup_id" class="block">پشتیبان Docker: {{ order.install_backup_id }}</span><span v-if="order.agent_job" class="block">کار نصب: {{ order.agent_job }}</span><span v-if="order.install_operation" class="block">عملیات: {{ order.install_operation }}</span></td>
 							<td class="max-w-64 truncate text-rose-700">{{ order.provisioning_error || order.payment_error || '—' }}</td>
 							<td class="flex items-center gap-2 py-2">
-								<Button v-if="order.status === 'Provisioning Failed'" label="تلاش مجدد تحویل" :loading="retrying === order.name" @click="retry(order)" />
+								<Button v-if="order.order_type === 'Asumi Service' && nextAsumiServiceDeliveryStatus(order)" :label="nextAsumiServiceDeliveryStatus(order) === 'Provisioning' ? 'شروع تحویل' : 'ثبت فعال‌سازی'" :loading="updatingServiceOrder === order.name" @click="updateServiceOrderStatus(order, nextAsumiServiceDeliveryStatus(order))" />
+								<Button v-else-if="order.order_type !== 'Asumi Service' && order.status === 'Provisioning Failed'" label="تلاش مجدد تحویل" :loading="retrying === order.name" @click="retry(order)" />
 								<template v-if="order.provider !== 'Free' && ['Paid', 'Active', 'Provisioning Failed'].includes(order.status)">
 									<input v-model="refundReferences[order.name]" class="w-36 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900" placeholder="شمارهٔ پیگیری" :aria-label="`شمارهٔ بازپرداخت ${order.name}`" />
 									<Button label="ثبت بازپرداخت" :disabled="!refundReferences[order.name]?.trim()" :loading="refunding === order.name" @click="recordRefund(order)" />
@@ -502,6 +506,12 @@ import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils
 import { marketplacePlanActionLabel, selectMarketplacePlans } from '@/utils/marketplacePlanSelection';
 import { parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
 import {
+	getAsumiServiceOrderLines,
+	getAsumiServiceOrderTitle,
+	getAsumiServiceOrderTomanAmount,
+	nextAsumiServiceDeliveryStatus,
+} from '@/utils/asumiServiceOrder';
+import {
 	ASUMI_SERVICE_PRICE_CATALOG,
 	MAX_ASUMI_SERVICE_PRICE_TOMAN,
 	buildAsumiServicePricingPayload,
@@ -511,6 +521,7 @@ import {
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const serviceRequest = ref(parseAsumiServiceRequest(window.location.search));
+const servicePurchase = computed(() => serviceRequest.value?.service === 'module_pricing' && serviceRequest.value.intent === 'purchase');
 const marketplaceQuery = new URLSearchParams(window.location.search);
 const requestedMarketplaceApp = ref((marketplaceQuery.get('asumi_app') || '').trim());
 const requestedMarketplaceAppTitle = ref((marketplaceQuery.get('asumi_app_title') || '').trim());
@@ -538,7 +549,7 @@ const error = ref('');
 const notice = ref('');
 const newSitePlan = reactive({ name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', release_groups: [], allowed_apps: [] });
 const newMarketplacePlan = reactive({ app: '', title: '', interval: 'Monthly' });
-const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, sandbox_mode: true, hosting_min_free_disk_gb: 0, hosting_min_free_memory_gb: 0 });
+const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, allow_service_sales: false, sandbox_mode: true, hosting_min_free_disk_gb: 0, hosting_min_free_memory_gb: 0 });
 const servicePricingForm = reactive(emptyAsumiServicePricing());
 const servicePricingLoaded = ref(false);
 const savingServicePricing = ref(false);
@@ -590,6 +601,9 @@ const startHostingPurchaseResource = createResource({ url: 'press.saas.commerce.
 const submitServiceRequestResource = createResource({ url: 'press.saas.commerce.api.submit_service_request' });
 const saveServicePricingResource = createResource({ url: 'press.saas.commerce.api.save_admin_service_pricing' });
 const updateServiceRequestStatusResource = createResource({ url: 'press.saas.commerce.api.update_service_request_status' });
+const startServicePurchaseResource = createResource({ url: 'press.saas.commerce.api.start_service_purchase' });
+const updateServiceOrderStatusResource = createResource({ url: 'press.saas.commerce.api.update_service_order_status' });
+const updatingServiceOrder = ref('');
 
 const loading = computed(() => sites.loading || orders.loading || hostingOffers.loading);
 const busy = computed(() => Boolean(busyPlan.value));
@@ -606,7 +620,7 @@ watch(selectedSite, async (site) => {
 	try { await plans.fetch({ site: target.name, site_type: target.site_type }); } catch (failure) { showError(failure); }
 });
 
-async function submitServiceRequest() {
+async function submitServiceRequest(forceRequest = false) {
 	if (!serviceRequest.value || submittingServiceRequest.value) return;
 	error.value = '';
 	submittingServiceRequest.value = true;
@@ -623,10 +637,29 @@ async function submitServiceRequest() {
 		} else {
 			payload.context = serviceRequest.value.context;
 		}
-		const result = await submitServiceRequestResource.submit(payload);
-		serviceRequestResult.value = result?.message || result;
+		if (servicePurchase.value && !forceRequest) {
+			const result = await startServicePurchaseResource.submit({
+				module_ids: payload.module_ids,
+				addon_ids: payload.addon_ids,
+				full_name: payload.full_name,
+				phone: payload.phone,
+				company: payload.company,
+			});
+			const purchaseResult = result?.message || result;
+			if (purchaseResult?.checkout_url) {
+				if (!purchaseResult.checkout_url.startsWith('https://')) throw new Error('نشانی امن پرداخت از سرور دریافت نشد.');
+				window.location.assign(purchaseResult.checkout_url);
+				return;
+			}
+			if (!purchaseResult?.free && !purchaseResult?.already_requested) throw new Error('پاسخ ثبت سفارش از سرور کامل نیست.');
+			serviceRequestResult.value = { ...purchaseResult, purchase: true };
+			await orders.fetch();
+		} else {
+			const result = await submitServiceRequestResource.submit(payload);
+			serviceRequestResult.value = { ...(result?.message || result), purchase: false };
+		}
 		const nextUrl = new URL(window.location.href);
-		for (const key of ['asumi_service_request', 'service', 'context', 'modules', 'addons']) nextUrl.searchParams.delete(key);
+		for (const key of ['asumi_service_request', 'asumi_service_purchase', 'service', 'context', 'modules', 'addons']) nextUrl.searchParams.delete(key);
 		window.history.replaceState(null, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
 	} catch (failure) { showError(failure); } finally { submittingServiceRequest.value = false; }
 }
@@ -858,6 +891,17 @@ async function retry(order) {
 		await Promise.all([adminOrders.fetch(), orders.fetch()]);
 		notice.value = 'تلاش مجدد تحویل به صف پردازش فرستاده شد.';
 	} catch (failure) { showError(failure); } finally { retrying.value = ''; }
+}
+
+async function updateServiceOrderStatus(order, status) {
+	if (!status || updatingServiceOrder.value) return;
+	updatingServiceOrder.value = order.name;
+	error.value = '';
+	try {
+		await updateServiceOrderStatusResource.submit({ order: order.name, status });
+		await Promise.all([adminOrders.fetch(), orders.fetch()]);
+		notice.value = status === 'Active' ? 'فعال‌سازی و شروع دورهٔ یک‌ماههٔ خدمات ثبت شد.' : 'شروع تحویل سفارش خدمات ثبت شد.';
+	} catch (failure) { showError(failure); } finally { updatingServiceOrder.value = ''; }
 }
 
 async function recordRefund(order) {

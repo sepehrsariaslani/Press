@@ -59,8 +59,8 @@ export function useModuleNavigation() {
     document.body.scrollTop = 0;
   }
 
-  function openOrderCenter(moduleIds: string[], context: string, service: ServiceRequestKind = 'module_pricing', addonIds: string[] = []) {
-    window.location.assign(buildServiceRequestHref(service, context, moduleIds, addonIds));
+  function openOrderCenter(moduleIds: string[], context: string, service: ServiceRequestKind = 'module_pricing', addonIds: string[] = [], intent: 'request' | 'purchase' = 'request') {
+    window.location.assign(buildServiceRequestHref(service, context, moduleIds, addonIds, intent));
   }
 
   function returnToModules() {

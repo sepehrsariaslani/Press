@@ -17,10 +17,12 @@ type ModuleChooserProps = {
 	onClearAddons: () => void;
 	onSave: () => void;
 	onRequestPurchase: () => void;
+	checkoutEnabled: boolean;
+	checkoutStatusLoaded: boolean;
 	saved: boolean;
 };
 
-export function ModuleChooser({ selectedIds, selectedAddonIds, prices, status, activeId, onActivate, onToggle, onClearAddons, onSave, onRequestPurchase, saved }: ModuleChooserProps) {
+export function ModuleChooser({ selectedIds, selectedAddonIds, prices, status, activeId, onActivate, onToggle, onClearAddons, onSave, onRequestPurchase, checkoutEnabled, checkoutStatusLoaded, saved }: ModuleChooserProps) {
 	const estimate = estimateSelection(selectedIds, selectedAddonIds, prices);
 	return <aside className="pricing-module-selector" aria-labelledby="pricing-module-list-title">
 		<div className="pricing-selector-heading">
@@ -61,7 +63,7 @@ export function ModuleChooser({ selectedIds, selectedAddonIds, prices, status, a
 			<div className="pricing-estimate-total"><span>جمع تعرفهٔ ماهانه</span><strong>{formatToman(estimate.total)}</strong></div>
 			<p>{selectedIds.length} ماژول · بدون محدودیت تعداد کاربر و شرکت</p>
 			<button className="pricing-save-button" type="button" onClick={onSave}>{saved ? 'ترکیب ذخیره شد ✓' : 'ذخیره‌ی ترکیب انتخابی'}</button>
-			<button className="pricing-request-button" type="button" onClick={onRequestPurchase} disabled={!selectedIds.length}>ادامه برای درخواست این ترکیب</button>
+			<button className="pricing-request-button" type="button" onClick={onRequestPurchase} disabled={!selectedIds.length || !checkoutStatusLoaded}>{checkoutEnabled ? 'ثبت سفارش و پرداخت' : 'ادامه برای درخواست این ترکیب'}</button>
 		</div>
 	</aside>;
 }

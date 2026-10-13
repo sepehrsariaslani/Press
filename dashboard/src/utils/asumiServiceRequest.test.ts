@@ -12,10 +12,18 @@ describe('parseAsumiServiceRequest', () => {
 
 		expect(parseAsumiServiceRequest(`?${params}`)).toEqual({
 			service: 'module_pricing',
+			intent: 'request',
 			context: '',
 			moduleIds: ['finance', 'sales'],
 			addonIds: ['restaurantMenu'],
 		});
+	});
+
+	it('only marks module pricing requests as purchases', () => {
+		const purchase = parseAsumiServiceRequest('?asumi_service_request=1&service=module_pricing&asumi_service_purchase=1&modules=finance');
+		expect(purchase?.intent).toBe('purchase');
+		const website = parseAsumiServiceRequest('?asumi_service_request=1&service=website_design&asumi_service_purchase=1');
+		expect(website?.intent).toBe('request');
 	});
 
 	it('ignores unrelated, invalid and oversized links', () => {
