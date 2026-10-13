@@ -28,6 +28,52 @@ class FakeDocument(SimpleNamespace):
 
 
 class MarketplaceProvisioningTest(unittest.TestCase):
+	def test_site_backup_polling_commits_between_status_reads(self):
+		events = []
+		backup_states = iter(
+			[
+				SimpleNamespace(status="Queued"),
+				SimpleNamespace(
+					status="Success",
+					with_files=1,
+					database_file="database.sql.gz",
+					public_file="files.tgz",
+					private_file="private-files.tgz",
+				),
+			]
+		)
+
+		def read_backup(*_args, **_kwargs):
+			events.append("read")
+			return next(backup_states)
+
+		with (
+			patch.object(api.frappe.db, "get_value", side_effect=read_backup),
+			patch.object(api.frappe.db, "commit", side_effect=lambda: events.append("commit")),
+			patch.object(api.time, "sleep", side_effect=lambda *_args: events.append("sleep")),
+		):
+			result = api._wait_for_site_backup("BACKUP-1")
+
+		self.assertEqual(result.status, "Success")
+		self.assertEqual(events, ["read", "commit", "sleep", "read"])
+
+	def test_site_agent_job_polling_commits_between_status_reads(self):
+		events = []
+		statuses = iter(["Running", "Success"])
+
+		def read_status(*_args, **_kwargs):
+			events.append("read")
+			return next(statuses)
+
+		with (
+			patch.object(api.frappe.db, "get_value", side_effect=read_status),
+			patch.object(api.frappe.db, "commit", side_effect=lambda: events.append("commit")),
+			patch.object(api.time, "sleep", side_effect=lambda *_args: events.append("sleep")),
+		):
+			api._wait_for_site_agent_job("JOB-1")
+
+		self.assertEqual(events, ["read", "commit", "sleep", "read"])
+
 	def make_context(self):
 		events = []
 		order = FakeDocument(

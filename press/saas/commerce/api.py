@@ -509,6 +509,7 @@ def _wait_for_site_backup(backup_name: str) -> dict:
 			):
 				frappe.throw(_("پشتیبان کامل پایگاه داده و فایل‌های سایت تأیید نشد."))
 			return backup
+		frappe.db.commit()
 		time.sleep(MARKETPLACE_INSTALL_POLL_SECONDS)
 	frappe.throw(_("زمان پشتیبان‌گیری به پایان رسید؛ نصب برنامه آغاز نشد."))
 
@@ -523,6 +524,7 @@ def _wait_for_site_agent_job(job_name: str) -> None:
 			frappe.throw(_("نصب برنامه روی سایت ناموفق شد؛ پشتیبان برای رسیدگی حفظ شده است."))
 		if not status:
 			frappe.throw(_("کار نصب برنامه پیدا نشد."))
+		frappe.db.commit()
 		time.sleep(MARKETPLACE_INSTALL_POLL_SECONDS)
 	frappe.throw(_("زمان نصب برنامه به پایان رسید؛ وضعیت عملیات در پنل مدیر ثبت شده است."))
 
