@@ -353,6 +353,26 @@ class MarketplaceCatalogTest(unittest.TestCase):
 		self.assertEqual([app["id"] for app in catalog], ["app-ready"])
 		self.assertEqual([plan["id"] for plan in catalog[0]["plans"]], ["enabled-free"])
 
+	def test_frappe_framework_is_not_shown_as_a_purchasable_marketplace_app(self):
+		app = {
+			"name": "frappe",
+			"status": "Published",
+			"title": "Frappe Framework",
+			"route": "marketplace/apps/frappe",
+		}
+		plan = {
+			"name": "frappe-monthly",
+			"app": "frappe",
+			"title": "Monthly",
+			"interval": "Monthly",
+			"enabled": 1,
+			"price_inr": 0,
+			"price_usd": 0,
+			"price_irr": 0,
+		}
+
+		self.assertEqual(build_marketplace_catalog([app], [plan]), [])
+
 	def test_zero_prices_are_free_without_replacing_the_stored_amounts(self):
 		catalog = build_marketplace_catalog(
 			[

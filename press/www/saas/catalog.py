@@ -9,6 +9,9 @@ INTERVAL_LABELS = {
 	"Yearly": "سالانه",
 }
 
+# Frappe is the base framework installed on every site, not a customer-installable product.
+NON_SELLABLE_MARKETPLACE_APPS = {"frappe"}
+
 
 def _normalize_price(value):
 	if value is None or isinstance(value, bool):
@@ -78,6 +81,7 @@ def build_marketplace_catalog(app_rows, plan_rows):
 		if (
 			app.get("status") != "Published"
 			or not name
+			or name in NON_SELLABLE_MARKETPLACE_APPS
 			or not _is_safe_marketplace_route(route)
 		):
 			continue
