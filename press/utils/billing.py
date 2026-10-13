@@ -98,7 +98,14 @@ def get_frappe_io_connection():
 
 
 def is_frappe_auth_disabled():
-	return frappe.db.get_single_value("Press Settings", "disable_frappe_auth", cache=True)
+	if frappe.db.get_single_value("Press Settings", "disable_frappe_auth", cache=True):
+		return True
+
+	settings = frappe.get_single("Press Settings")
+	if not (settings.frappe_url and settings.frappeio_api_key):
+		return True
+
+	return not settings.get_password("frappeio_api_secret", raise_exception=False)
 
 
 def make_formatted_doc(doc, fieldtypes=None):
