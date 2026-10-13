@@ -173,3 +173,11 @@
 - Re-ran all 19 `press.saas.commerce` test modules on a disposable Press site using Frappe light mode: 131 tests passed. The focused Docker agent operation tests passed (9 tests), and the Marketplace purchase UI tests passed (6 tests). The disposable site, temporary test-only dependencies, and test logs were removed; the five production sites remain the only registered sites.
 - The backend container and workspace both run commit `169fe048735c2a049d1cb3fb7b19304467f2d18f`. Public `/`, `/saas`, `/pricing`, `/marketplace`, and `/dashboard/orders` page shells returned HTTP 200.
 - Remaining launch inputs are the real ZarinPal Merchant ID entered through `/dashboard/orders` and the production-mode switch; wildcard DNS and TLS; and Press public Server/Bench/Release Group/Proxy plus validated site capacity limits. Do not enable paid or hosting checkout until those prerequisites pass the live checklist.
+
+## به‌روزرسانی زنده — ۱۳ اکتبر ۲۰۲۶
+
+- در تنظیمات واقعی `Commerce Settings` حداقل ذخیرهٔ میزبان روی ۲ گیگابایت دیسک و ۲ گیگابایت حافظه ثبت شد. کلیدهای checkout، فروش پلن میزبانی و حالت آزمایشی تغییر نکردند؛ شناسهٔ پذیرنده همچنان ثبت نشده است.
+- بررسی زنده هنوز فقط دامنهٔ ریشه و Docker Agent را آماده می‌داند. میزبانی همچنان غیرفعال است: دو پیش‌نویس Site Plan غیرفعال و بدون قیمت، سقف منابع یا Release Group هستند؛ wildcard DNS/TLS و زیرساخت عمومی Press هم آماده نیستند.
+- `asumi.ir` resolves to `62.60.207.82`; رکورد wildcard A وجود ندارد. پاسخ جست‌وجوی مستندات رسمی HostIran مسیر API برای مدیریت DNS ارائه نکرد، بنابراین رکورد باید در پنل DNS ثبت شود.
+- پس از تغییر تنظیمات، صفحه‌های عمومی `/`, `/saas`, `/pricing`, `/marketplace` و `/dashboard/orders` با دنبال‌کردن تغییرمسیرها همگی HTTP 200 دادند.
+- منابع هنگام بررسی: حدود ۹٫۸ گیگابایت دیسک و ۷٫۳ گیگابایت حافظهٔ در دسترس. ذخیرهٔ ۲/۲ ثبت است، اما ظرفیت قابل‌فروش تا تعیین سقف منابع یک پلن واقعی همچنان تأیید نمی‌شود.
