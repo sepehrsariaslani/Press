@@ -216,7 +216,7 @@ def normalize_site_plan_admin_update(
 	product_code = _text(value("hostiran_product_code", ""), "شناسهٔ محصول هاست‌ایران", 40)
 	if product_code and not HOSTIRAN_PRODUCT_CODE_RE.fullmatch(product_code):
 		raise ValueError("شناسهٔ محصول هاست‌ایران معتبر نیست.")
-	provider_cost = _nonnegative_int(value("hostiran_monthly_cost_irr", 0), "هزینهٔ ماهانهٔ VPS")
+	provider_cost = _nonnegative_int(value("hostiran_monthly_cost_irr", 0), "برآورد هزینهٔ ماهانهٔ VPS")
 	values = {
 		"price_inr": normalize_price(value("price_inr", 0), "INR"),
 		"price_usd": normalize_price(value("price_usd", 0), "USD"),
@@ -278,7 +278,7 @@ def normalize_site_plan_admin_update(
 			or values["disk"] <= 0
 			or values["vcpu"] <= 0
 		):
-			raise ValueError("برای فعال‌کردن پلن ساخت سایت، SKU، هزینهٔ واقعی ماهانه و منابع VPS را ثبت کنید.")
+			raise ValueError("برای فعال‌کردن پلن ساخت سایت، SKU، برآورد هزینهٔ ماهانه و منابع VPS را ثبت کنید.")
 
 	def normalized_current(field):
 		fallback = "Upgrade Existing Site" if field == "commerce_delivery_mode" else ("" if field == "hostiran_product_code" else 0)

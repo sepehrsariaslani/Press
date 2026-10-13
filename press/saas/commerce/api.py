@@ -451,7 +451,7 @@ def admin_hosting_readiness() -> dict:
 	capacity_detail = (
 		"پلن‌های VPS دارای SKU و منابع ثبت شده‌اند؛ ظرفیت هر مشتری جداگانه پس از خرید VPS بررسی می‌شود."
 		if capacity_ready
-		else "برای هر پلن ساخت سایت، SKU و هزینهٔ واقعی ماهانهٔ VPS هاست‌ایران را ثبت کنید."
+		else "برای هر پلن ساخت سایت، SKU و برآورد هزینهٔ ماهانهٔ VPS هاست‌ایران را ثبت کنید."
 	)
 	dedicated_provisioning_ready = bool(frappe.db.exists("DocType", "Site Group Deploy"))
 
