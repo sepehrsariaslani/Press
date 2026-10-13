@@ -570,6 +570,39 @@ def _marketplace_install_failure_metadata(error, agent_result) -> tuple[dict | N
 	return failure_result, backup_id[:140] if isinstance(backup_id, str) and backup_id else None
 
 
+def _resumable_marketplace_install_operation(order, target: str, app: str, client):
+	operation_name = getattr(order, "install_operation", None)
+	if not operation_name or not frappe.db.exists("Docker Control Operation", operation_name):
+		return None
+
+	operation = frappe.get_doc("Docker Control Operation", operation_name)
+	try:
+		arguments = json.loads(operation.arguments or "{}")
+	except (TypeError, ValueError):
+		arguments = None
+	if (
+		operation.action != "install_marketplace_app"
+		or operation.target != target
+		or operation.commerce_order != order.name
+		or arguments != {"app": app}
+	):
+		raise DockerControlError("عملیات قبلی به سفارش، سایت یا برنامهٔ دیگری متصل است.")
+
+	if operation.agent_operation_id:
+		try:
+			remote_operation = client.get_operation(operation.agent_operation_id)
+		except DockerControlError:
+			# Re-submit the same stable ID below. The agent either resumes its
+			# existing task or accepts it once if the original request never arrived.
+			return operation
+		status = remote_operation.get("status")
+		if status == "Failure":
+			return None
+		if status not in {"Accepted", "Running", "Success"}:
+			raise DockerControlError("وضعیت عملیات قبلی عامل قابل تأیید نیست؛ نصب دوباره آغاز نشد.")
+	return operation
+
+
 def _run_agent(
 	operation,
 	action: str,
@@ -621,23 +654,25 @@ def execute_marketplace_app_install(order, app: str) -> dict:
 		client = _client(host)
 		if app not in client.available_apps():
 			frappe.throw("برنامهٔ سفارش دیگر روی بنچ Docker موجود نیست.")
-		operation = frappe.get_doc(
-			{
-				"doctype": "Docker Control Operation",
-				"action": "install_marketplace_app",
-				"target": target,
-				"actor": order.customer,
-				"commerce_order": order.name,
-				"impact_sites": json.dumps([target]),
-				"backup_sites": json.dumps([target]),
-				"migration_sites": "[]",
-				"arguments": json.dumps({"app": app}, sort_keys=True),
-				"status": "Queued",
-				"progress": "در صف پشتیبان‌گیری و نصب برنامه",
-			}
-		).insert(ignore_permissions=True)
-		order.db_set("install_operation", operation.name)
-		frappe.db.commit()
+		operation = _resumable_marketplace_install_operation(order, target, app, client)
+		if not operation:
+			operation = frappe.get_doc(
+				{
+					"doctype": "Docker Control Operation",
+					"action": "install_marketplace_app",
+					"target": target,
+					"actor": order.customer,
+					"commerce_order": order.name,
+					"impact_sites": json.dumps([target]),
+					"backup_sites": json.dumps([target]),
+					"migration_sites": "[]",
+					"arguments": json.dumps({"app": app}, sort_keys=True),
+					"status": "Queued",
+					"progress": "در صف پشتیبان‌گیری و نصب برنامه",
+				}
+			).insert(ignore_permissions=True)
+			order.db_set("install_operation", operation.name)
+			frappe.db.commit()
 		agent_result = None
 		try:
 			result = _run_agent(
