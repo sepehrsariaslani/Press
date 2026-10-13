@@ -1,8 +1,11 @@
 """Validation for the customer-service delivery choice on a Site Plan."""
 
+import re
+
 EXISTING_SITE_UPGRADE = "Upgrade Existing Site"
 NEW_SITE_PROVISIONING = "Create New Site"
 SITE_PLAN_DELIVERY_MODES = {EXISTING_SITE_UPGRADE, NEW_SITE_PROVISIONING}
+ASUMI_SUBDOMAIN_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{3,30}[a-z0-9])$")
 
 
 def has_active_wildcard_certificate(root_domain, certificates) -> bool:
@@ -81,3 +84,44 @@ def is_verified_hosting_site_creation(order, site, current_user) -> bool:
 		and order.get("subdomain") == site.get("subdomain")
 		and site.get("domain") == "asumi.ir"
 	)
+
+
+def new_hosted_site_renewal_action(order, site, original_order) -> str:
+	"""Validate a paid renewal for an existing Docker-hosted Asumi site."""
+	if not order or not site or not original_order:
+		raise ValueError("سفارش تمدید یا سایت میزبانی ثبت نشده است.")
+	subdomain = (site.get("domain") or "").removesuffix(".asumi.ir")
+	try:
+		amount = int(order.get("amount") or 0)
+	except (TypeError, ValueError):
+		amount = 0
+	if not (
+		ASUMI_SUBDOMAIN_PATTERN.fullmatch(subdomain)
+		and order.get("status") == "Provisioning"
+		and order.get("order_type") == "Hosting"
+		and order.get("service_delivery_mode") == NEW_SITE_PROVISIONING
+		and order.get("provider") == "ZarinPal"
+		and not order.get("sandbox_mode")
+		and order.get("currency") == "IRR"
+		and amount >= 10_000
+		and order.get("paid_at")
+		and order.get("payment_reference")
+		and order.get("docker_site") == site.get("domain")
+		and order.get("team") == site.get("team")
+		and order.get("plan") == site.get("hosting_plan")
+		and order.get("subdomain") == subdomain
+		and original_order.get("name") == site.get("hosting_order")
+		and original_order.get("order_type") == "Hosting"
+		and original_order.get("service_delivery_mode") == NEW_SITE_PROVISIONING
+		and original_order.get("status") in {"Active", "Expired"}
+		and original_order.get("team") == site.get("team")
+		and original_order.get("plan") == site.get("hosting_plan")
+		and original_order.get("subdomain") == subdomain
+		and original_order.get("docker_site") == site.get("domain")
+	):
+		raise ValueError("سفارش تمدید با سایت میزبانی‌شدهٔ آسومی تطابق ندارد.")
+	if site.get("hosted_status") == "Suspended":
+		return "resume"
+	if site.get("hosted_status") == "Active":
+		return "activate"
+	raise ValueError("وضعیت سایت برای تمدید قابل استفاده نیست.")

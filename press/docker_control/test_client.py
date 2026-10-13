@@ -80,12 +80,59 @@ class DockerControlClientTest(unittest.TestCase):
 		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
 		client = DockerControlClient(host)
 		for site, app, secret in (
-			("other.asumi.ir", "accounts", "a" * 40),
+			("attacker.example", "accounts", "a" * 40),
 			("veederakht.ir", "unknown", "a" * 40),
 			("veederakht.ir", "accounts", "invalid"),
 		):
 			with self.subTest(site=site, app=app), self.assertRaises(DockerControlError):
 				client.set_site_subscription(site, app, secret)
+
+	@patch("press.docker_control.client.requests.request")
+	def test_site_subscription_accepts_a_valid_asumi_tenant(self, request):
+		response = SimpleNamespace(
+			status_code=200,
+			json=lambda: {"site": "cafe.asumi.ir", "app": "restaurant", "enabled": True},
+		)
+		request.return_value = response
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+
+		result = DockerControlClient(host).set_site_subscription("cafe.asumi.ir", "restaurant", "a" * 40)
+
+		self.assertEqual(result["site"], "cafe.asumi.ir")
+		self.assertEqual(request.call_count, 1)
+
+	@patch("press.docker_control.client.requests.request")
+	def test_hosted_site_creation_uses_only_the_fixed_asumi_domain_and_safe_apps(self, request):
+		response = SimpleNamespace(
+			status_code=202,
+			json=lambda: {"operation_id": "12345678-1234-4abc-8def-1234567890ab", "status": "Accepted"},
+		)
+		request.return_value = response
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+
+		result = DockerControlClient(host).create_hosted_site(
+			"12345678-1234-4abc-8def-1234567890ab",
+			"shop.asumi.ir",
+			["accounts"],
+			"a-long-generated-one-time-password",
+		)
+
+		self.assertEqual(result["status"], "Accepted")
+		self.assertEqual(request.call_args.args[:2], ("POST", "http://172.18.0.1:8769/v1/operations"))
+		self.assertIn(b'"action":"create_hosted_site"', request.call_args.kwargs["data"])
+		self.assertIn(b'"target":"shop.asumi.ir"', request.call_args.kwargs["data"])
+
+	def test_hosted_site_creation_rejects_untrusted_domains_and_apps_before_network_access(self):
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+		client = DockerControlClient(host)
+		for site, apps in (("shop.example.com", ["accounts"]), ("asumi.ir", []), ("shop.asumi.ir", ["unknown"])):
+			with self.subTest(site=site, apps=apps), self.assertRaises(DockerControlError):
+				client.create_hosted_site(
+					"12345678-1234-4abc-8def-1234567890ab",
+					site,
+					apps,
+					"a-long-generated-one-time-password",
+				)
 
 
 if __name__ == "__main__":

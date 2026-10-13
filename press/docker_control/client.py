@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 import requests
 
 AGENT_HOST = "172.18.0.1"
+HOSTED_SITE_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.asumi\.ir$")
 
 
 class DockerControlError(Exception):
@@ -101,7 +102,10 @@ class DockerControlClient:
 
 	def set_site_subscription(self, site: str, app: str, secret_key: str | None) -> dict:
 		"""Update one installed marketplace key without persisting the secret as an operation."""
-		if site not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}:
+		if not isinstance(site, str) or (
+			site not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}
+			and not HOSTED_SITE_RE.fullmatch(site)
+		):
 			raise DockerControlError("سایت برای به‌روزرسانی اشتراک مجاز نیست.")
 		if not isinstance(app, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", app):
 			raise DockerControlError("برنامه برای به‌روزرسانی اشتراک مجاز نیست.")
@@ -129,6 +133,38 @@ class DockerControlClient:
 			"/v1/operations",
 			{"operation_id": operation_id, "action": action, "target": target, "arguments": arguments},
 			timeout=(5, 30),
+		)
+
+	def create_hosted_site(
+		self,
+		operation_id: str,
+		site: str,
+		apps: list[str],
+		admin_password: str,
+		*,
+		resume_existing: bool = False,
+	) -> dict:
+		"""Submit one Asumi tenant creation to the fixed shared Docker Bench."""
+		if (
+			not isinstance(site, str)
+			or not HOSTED_SITE_RE.fullmatch(site)
+			or not isinstance(apps, list)
+			or any(not isinstance(app, str) or app not in {"accounts", "restaurant"} for app in apps)
+			or len(apps) != len(set(apps))
+			or not isinstance(admin_password, str)
+			or len(admin_password) < 24
+			or not isinstance(resume_existing, bool)
+		):
+			raise DockerControlError("درخواست ساخت سایت آسومی معتبر نیست.")
+		return self.submit(
+			operation_id,
+			"create_hosted_site",
+			site,
+			{
+				"apps": apps,
+				"admin_password": admin_password,
+				"resume_existing": resume_existing,
+			},
 		)
 
 	def get_operation(self, operation_id: str) -> dict:

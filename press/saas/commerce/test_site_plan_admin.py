@@ -7,6 +7,34 @@ from press.saas.commerce.site_plan_admin import (
 
 
 class SitePlanAdminTest(unittest.TestCase):
+	def test_new_site_plan_can_select_the_fixed_docker_shared_bench(self):
+		plan = build_site_plan_draft(
+			name="asumi_docker_basic",
+			title="پایه Docker",
+			description="",
+			interval="Monthly",
+			delivery_mode="Create New Site",
+			release_groups=["__asumi_docker_shared_bench__"],
+			allowed_apps=["accounts"],
+			available_apps_by_group={"__asumi_docker_shared_bench__": ["frappe", "accounts"]},
+		)
+
+		self.assertEqual(plan["release_groups"], [])
+		self.assertEqual(plan["allowed_apps"], [{"app": "frappe"}, {"app": "accounts"}])
+
+	def test_docker_shared_bench_cannot_be_used_for_existing_site_upgrade_plans(self):
+		with self.assertRaisesRegex(ValueError, "فقط برای پلن ساخت سایت جدید"):
+			build_site_plan_draft(
+				name="asumi_upgrade",
+				title="ارتقا",
+				description="",
+				interval="Monthly",
+				delivery_mode="Upgrade Existing Site",
+				release_groups=["__asumi_docker_shared_bench__"],
+				allowed_apps=[],
+				available_apps_by_group={"__asumi_docker_shared_bench__": ["frappe", "accounts"]},
+			)
+
 	def test_new_site_plan_is_a_disabled_zero_price_draft(self):
 		plan = build_site_plan_draft(
 			name="asumi_basic",

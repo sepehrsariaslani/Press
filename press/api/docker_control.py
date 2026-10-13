@@ -35,6 +35,22 @@ POLL_INTERVAL_SECONDS = 2
 OPERATION_TIMEOUT_SECONDS = 10800
 MARKETPLACE_INSTALL_TIMEOUT_SECONDS = 12600
 SHA_RE = re.compile(r"^[a-f0-9]{40}$")
+HOSTED_SITE_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.asumi\.ir$")
+
+
+def _is_registered_hosted_site(target: str | None) -> bool:
+	return bool(
+		target
+		and HOSTED_SITE_RE.fullmatch(target)
+		and frappe.db.exists(
+			"Docker Control Site",
+			{
+				"domain": target,
+				"enabled": 1,
+				"hosted_status": ["in", ["Provisioning", "Active", "Suspended", "Provisioning Failed", "Access Delivery Failed"]],
+			},
+		)
+	)
 
 
 class DockerAgentOperationFailure(DockerControlError):
@@ -130,6 +146,15 @@ def _dashboard_payload(
 	parsed_inventory = json.loads(host.inventory) if host.inventory else {}
 	sites = []
 	allowed_domains = visible_domains if visible_domains is not None else CUSTOMER_SITES
+	if can_manage_host:
+		hosted_domains = frappe.get_all(
+			"Docker Control Site",
+			filters={"hosted_status": ["in", ["Provisioning", "Active", "Suspended", "Provisioning Failed", "Access Delivery Failed"]]},
+			pluck="domain",
+			limit_page_length=500,
+			ignore_permissions=True,
+		)
+		allowed_domains = list(dict.fromkeys([*allowed_domains, *hosted_domains]))
 	for domain in allowed_domains:
 		if frappe.db.exists("Docker Control Site", domain):
 			doc = frappe.get_doc("Docker Control Site", domain)
@@ -140,6 +165,9 @@ def _dashboard_payload(
 					"enabled": bool(doc.enabled),
 					"team": doc.team or None,
 					"team_title": team_title or (domain.split(".", 1)[0].capitalize() if doc.team else None),
+					"hosted_status": doc.hosted_status or None,
+					"hosting_plan": doc.hosting_plan or None,
+					"hosting_order": doc.hosting_order or None,
 					"last_inventory_at": str(doc.last_inventory_at or ""),
 					"apps": [
 						{"app": row.app, "version": row.version, "branch": row.branch} for row in doc.apps
@@ -386,6 +414,7 @@ def sync_all_site_admins() -> None:
 		return
 	previous_user = frappe.session.user
 	frappe.set_user("Administrator")
+	operation = None
 	try:
 		for domain in CUSTOMER_SITES:
 			try:
@@ -455,12 +484,13 @@ def _action_data(  # noqa: C901
 	}
 	if set(arguments) - allowed_argument_keys.get(action, set()):
 		frappe.throw("پارامتر اضافه برای این عملیات مجاز نیست.")
-	if action in SITE_SCOPED_ACTIONS and target not in CUSTOMER_SITES:
-		frappe.throw("سایت انتخاب‌شده در فهرست مدیریت‌شده نیست.")
-	if action in SITE_SCOPED_ACTIONS and not frappe.db.exists(
-		"Docker Control Site", {"domain": target, "enabled": 1}
-	):
-		frappe.throw("سایت انتخاب‌شده فعال یا ثبت‌شده نیست.")
+	if action in SITE_SCOPED_ACTIONS:
+		if target in CUSTOMER_SITES and not frappe.db.exists(
+			"Docker Control Site", {"domain": target, "enabled": 1}
+		):
+			frappe.throw("سایت انتخاب‌شده فعال یا ثبت‌شده نیست.")
+		if target not in CUSTOMER_SITES and not _is_registered_hosted_site(target):
+			frappe.throw("سایت انتخاب‌شده در فهرست مدیریت‌شده نیست.")
 	if action == "restart_service" and target not in ALLOWED_SERVICES:
 		frappe.throw("سرویس انتخاب‌شده مجاز نیست.")
 	if action == "restart_stack" and target:
@@ -640,16 +670,307 @@ def _run_agent(
 	raise DockerControlError("زمان عملیات به پایان رسید؛ وضعیت را در تاریخچه بررسی کنید.")
 
 
+def execute_asumi_hosted_site(order, site_doc, apps: list[str]) -> dict:
+	"""Create one paid Asumi tenant with private credentials and a full-impact backup."""
+	target = site_doc.domain
+	if (
+		order.status != "Provisioning"
+		or order.order_type != "Hosting"
+		or order.service_delivery_mode != "Create New Site"
+		or not order.paid_at
+		or not order.payment_reference
+		or order.provider != "ZarinPal"
+		or order.sandbox_mode
+		or order.currency != "IRR"
+		or int(order.amount or 0) < 10_000
+		or order.team != site_doc.team
+		or order.plan != site_doc.hosting_plan
+		or order.name != site_doc.hosting_order
+		or target != f"{order.subdomain}.asumi.ir"
+		or not HOSTED_SITE_RE.fullmatch(target)
+		or not isinstance(apps, list)
+		or any(app not in ALLOWED_APPS for app in apps)
+		or len(apps) != len(set(apps))
+	):
+		frappe.throw("سفارش پرداخت‌شده با سایت درخواستی تطابق ندارد.")
+	if not order.customer or not frappe.db.exists("User", {"name": order.customer, "enabled": 1}):
+		frappe.throw("حساب دریافت‌کنندهٔ دسترسی معتبر نیست.")
+	customer_email = frappe.db.get_value("User", order.customer, "email")
+	if not isinstance(customer_email, str) or "@" not in customer_email:
+		frappe.throw("برای تحویل دسترسی، ایمیل معتبر مشتری ثبت نشده است.")
+	if not frappe.db.exists("Email Account", {"enable_outgoing": 1}):
+		frappe.throw("ارسال ایمیل خروجی آسومی آماده نیست؛ سایت ساخته نمی‌شود تا دسترسی مشتری امن تحویل شود.")
+
+	previous_user = frappe.session.user
+	frappe.set_user("Administrator")
+	operation = None
+	try:
+		host = _host_doc()
+		client = _client(host)
+		if any(app not in client.available_apps() for app in apps):
+			frappe.throw("یکی از برنامه‌های سفارش دیگر روی بنچ Docker موجود نیست.")
+		secret = site_doc.get_password("pending_admin_password", raise_exception=False)
+		if not secret:
+			secret = secrets.token_urlsafe(32)
+			site_doc.set_password("pending_admin_password", secret)
+			site_doc.save(ignore_permissions=True)
+
+		resume_existing = False
+		if order.hosting_operation and frappe.db.exists("Docker Control Operation", order.hosting_operation):
+			operation = frappe.get_doc("Docker Control Operation", order.hosting_operation)
+			try:
+				operation_arguments = json.loads(operation.arguments or "{}")
+			except (TypeError, ValueError):
+				operation_arguments = None
+			if (
+				operation.action != "create_hosted_site"
+				or operation.target != target
+				or operation.commerce_order != order.name
+				or operation_arguments not in (
+					{"apps": apps, "resume_existing": False},
+					{"apps": apps, "resume_existing": True},
+				)
+			):
+				frappe.throw("عملیات قبلی به این سفارش یا سایت متصل نیست.")
+			resume_existing = bool(operation_arguments.get("resume_existing"))
+			if operation.agent_operation_id:
+				try:
+					remote = client.get_operation(operation.agent_operation_id)
+					if remote.get("status") == "Failure":
+						_set_failure(operation, "عامل Docker عملیات ساخت سایت را ناموفق گزارش کرد.")
+						operation = None
+						resume_existing = True
+					elif remote.get("status") not in {"Accepted", "Running", "Success"}:
+						frappe.throw("وضعیت عملیات قبلی عامل قابل تأیید نیست.")
+				except DockerControlError:
+					pass
+
+		if not operation:
+			arguments = {"apps": apps, "resume_existing": resume_existing}
+			operation = frappe.get_doc(
+				{
+					"doctype": "Docker Control Operation",
+					"action": "create_hosted_site",
+					"target": target,
+					"actor": order.customer,
+					"commerce_order": order.name,
+					"impact_sites": json.dumps(list(IMPACT_SITES)),
+					"backup_sites": json.dumps(list(IMPACT_SITES)),
+					"migration_sites": "[]",
+					"arguments": json.dumps(arguments, sort_keys=True),
+					"status": "Queued",
+					"progress": "در صف پشتیبان‌گیری کامل و ساخت سایت آسومی",
+				}
+			).insert(ignore_permissions=True)
+			order.db_set("hosting_operation", operation.name)
+			site_doc.db_set("hosting_operation", operation.name)
+			frappe.db.commit()
+
+		agent_id = operation.agent_operation_id or str(uuid.uuid4())
+		_set_operation(
+			operation,
+			agent_operation_id=agent_id,
+			status="Running",
+			started_at=now_datetime(),
+			progress="در حال پشتیبان‌گیری و ساخت سایت",
+		)
+		client.create_hosted_site(
+			agent_id,
+			target,
+			apps,
+			secret,
+			resume_existing=resume_existing,
+		)
+		started = time.monotonic()
+		result = None
+		while time.monotonic() - started < OPERATION_TIMEOUT_SECONDS:
+			remote = client.get_operation(agent_id)
+			_set_operation(operation, progress=str(remote.get("progress") or "در حال اجرا")[:500])
+			if remote.get("status") == "Success":
+				result = remote.get("result") or {}
+				break
+			if remote.get("status") == "Failure":
+				failure = remote.get("result") or {}
+				raise DockerAgentOperationFailure(
+					str(failure.get("error") or "ساخت سایت روی بنچ Docker ناموفق شد."), failure
+				)
+			time.sleep(POLL_INTERVAL_SECONDS)
+		if result is None:
+			raise DockerControlError("زمان ساخت سایت به پایان رسید؛ وضعیت عملیات ثبت شده است.")
+		backup_rows = result.get("backups")
+		if result.get("site") != target or not isinstance(backup_rows, list):
+			frappe.throw("عامل ساخت سایت یا پشتیبان‌ها را تأیید نکرد.")
+		backups = {row.get("site"): row for row in backup_rows if isinstance(row, dict)}
+		if set(backups) != set(IMPACT_SITES) or any(
+			not backups[domain].get("backup_id")
+			or any(
+				not isinstance(backups[domain].get(kind), dict)
+				or not backups[domain][kind].get("file")
+				for kind in ("database", "public", "private")
+			)
+			for domain in IMPACT_SITES
+		):
+			frappe.throw("پنج پشتیبان کامل سایت‌های موجود تأیید نشدند؛ سایت تحویل داده نشد.")
+		backup_summary = [
+			{
+				"site": domain,
+				"backup_id": backups[domain]["backup_id"],
+				"database_file": backups[domain]["database"]["file"],
+				"public_file": backups[domain]["public"]["file"],
+				"private_file": backups[domain]["private"]["file"],
+			}
+			for domain in IMPACT_SITES
+		]
+		safe_result = {"site": target, "apps": sorted(set(["frappe", *apps])), "backups": backup_summary}
+		_set_operation(
+			operation,
+			status="Success",
+			progress="سایت ساخته شد و پنج پشتیبان کامل تأیید شدند.",
+			result=json.dumps(safe_result, ensure_ascii=False),
+			ended_at=now_datetime(),
+		)
+		site_doc.set("apps", [])
+		for app in safe_result["apps"]:
+			site_doc.append("apps", {"app": app, "version": "unknown", "branch": "unknown"})
+		site_doc.hosting_backup_summary = json.dumps(backup_summary, ensure_ascii=False)
+		site_doc.hosted_status = "Provisioning"
+		site_doc.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		from html import escape
+
+		try:
+			frappe.sendmail(
+				recipients=[customer_email],
+				subject=f"اطلاعات ورود سایت {target}",
+				message=(
+					f"<p>سایت شما آمادهٔ ورود است: <a href=\"https://{escape(target)}\">{escape(target)}</a></p>"
+					f"<p>نام کاربری: Administrator</p><p>رمز اولیه: <code>{escape(secret)}</code></p>"
+					"<p>پس از ورود، رمز را از تنظیمات حساب تغییر دهید.</p>"
+				),
+				now=True,
+			)
+		except Exception:
+			site_doc.hosted_status = "Access Delivery Failed"
+			site_doc.save(ignore_permissions=True)
+			frappe.db.commit()
+			raise
+		site_doc.set_password("pending_admin_password", "")
+		site_doc.hosted_status = "Active"
+		site_doc.save(ignore_permissions=True)
+		frappe.db.commit()
+		return safe_result
+	except Exception:
+		if operation and operation.status == "Running":
+			_set_failure(operation, "ساخت سایت آسومی روی بنچ ناموفق شد.")
+		if site_doc.hosted_status not in {"Access Delivery Failed", "Active"}:
+			site_doc.hosted_status = "Provisioning Failed"
+			site_doc.save(ignore_permissions=True)
+			frappe.db.commit()
+		raise
+	finally:
+		frappe.set_user(previous_user)
+
+
+def set_asumi_hosted_site_maintenance(order, site_doc, *, enabled: bool) -> dict:
+	"""Suspend or restore one paid Asumi tenant without deleting its data."""
+	original_order = frappe.db.get_value(
+		"Commerce Order",
+		site_doc.hosting_order,
+		["name", "status", "order_type", "service_delivery_mode", "team", "plan", "subdomain", "docker_site"],
+		as_dict=True,
+	)
+	is_original_term = bool(
+		order.name == site_doc.hosting_order
+		and order.status in {"Active", "Expired"}
+		and order.docker_site == site_doc.domain
+	)
+	is_paid_renewal = bool(
+		order.name != site_doc.hosting_order
+		and order.status == "Provisioning"
+		and order.provider == "ZarinPal"
+		and not order.sandbox_mode
+		and order.currency == "IRR"
+		and int(order.amount or 0) >= 10_000
+		and order.paid_at
+		and order.payment_reference
+		and order.subdomain == site_doc.domain.removesuffix(".asumi.ir")
+		and original_order
+		and original_order.name == site_doc.hosting_order
+		and original_order.status in {"Active", "Expired"}
+		and original_order.order_type == "Hosting"
+		and original_order.service_delivery_mode == "Create New Site"
+		and original_order.team == site_doc.team
+		and original_order.plan == site_doc.hosting_plan
+		and original_order.subdomain == order.subdomain
+		and original_order.docker_site == site_doc.domain
+	)
+	if (
+		not isinstance(enabled, bool)
+		or not HOSTED_SITE_RE.fullmatch(site_doc.domain or "")
+		or site_doc.hosted_status not in {"Active", "Suspended"}
+		or order.order_type != "Hosting"
+		or order.service_delivery_mode != "Create New Site"
+		or order.team != site_doc.team
+		or order.plan != site_doc.hosting_plan
+		or order.docker_site != site_doc.domain
+		or not (is_original_term or is_paid_renewal)
+	):
+		frappe.throw("سایت یا سفارش میزبانی برای این تغییر معتبر نیست.")
+	previous_user = frappe.session.user
+	frappe.set_user("Administrator")
+	operation = None
+	try:
+		operation = frappe.get_doc(
+			{
+				"doctype": "Docker Control Operation",
+				"action": "set_maintenance",
+				"target": site_doc.domain,
+				"actor": "Administrator",
+				"commerce_order": order.name,
+				"impact_sites": json.dumps([site_doc.domain]),
+				"backup_sites": "[]",
+				"migration_sites": "[]",
+				"arguments": json.dumps({"enabled": enabled}, sort_keys=True),
+				"status": "Queued",
+				"progress": "در صف تغییر وضعیت نگهداری سایت",
+			}
+		).insert(ignore_permissions=True)
+		result = _run_agent(operation, "set_maintenance", site_doc.domain, {"enabled": enabled})
+		if result != {"site": site_doc.domain, "maintenance": enabled}:
+			frappe.throw("عامل Docker وضعیت سایت را تأیید نکرد.")
+		_set_operation(
+			operation,
+			status="Success",
+			progress="وضعیت نگهداری سایت تأیید شد.",
+			result=json.dumps(result, ensure_ascii=False),
+			ended_at=now_datetime(),
+		)
+		site_doc.hosted_status = "Suspended" if enabled else "Active"
+		site_doc.save(ignore_permissions=True)
+		return result
+	except Exception as error:
+		if operation:
+			_set_failure(operation, str(error))
+		raise
+	finally:
+		frappe.set_user(previous_user)
+
+
 def execute_marketplace_app_install(order, app: str) -> dict:
 	"""Install one Bench-resident Marketplace app for a Commerce Order, with a verified full backup."""
 	target = order.docker_site
 	previous_user = frappe.session.user
 	frappe.set_user("Administrator")
 	try:
-		if target not in CUSTOMER_SITES or not frappe.db.exists(
+		if not frappe.db.exists(
 			"Docker Control Site", {"domain": target, "team": order.team, "enabled": 1}
 		):
 			frappe.throw("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست.")
+		if HOSTED_SITE_RE.fullmatch(target or "") and frappe.db.get_value(
+			"Docker Control Site", target, "hosted_status"
+		) != "Active":
+			frappe.throw("سایت میزبانی هنوز برای نصب برنامه فعال نشده است.")
 		host = _host_doc()
 		client = _client(host)
 		if app not in client.available_apps():

@@ -19,6 +19,7 @@
   "subdomain",
   "original_plan",
   "agent_job",
+  "hosting_operation",
   "installation_required",
   "install_backup",
   "install_backup_id",
@@ -113,6 +114,13 @@
    "fieldtype": "Link",
    "label": "Site Provisioning Job",
    "options": "Agent Job",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hosting_operation",
+   "fieldtype": "Link",
+   "label": "Docker Hosting Operation",
+   "options": "Docker Control Operation",
    "read_only": 1
   },
   {

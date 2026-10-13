@@ -15,7 +15,11 @@ from press.saas.commerce.order_lifecycle import (
 	refund_order_update,
 	transition_order,
 )
-from press.saas.commerce.order_snapshot import hosting_order_snapshot, marketplace_app_order_snapshot
+from press.saas.commerce.order_snapshot import (
+	SITE_SUBDOMAIN_PATTERN,
+	hosting_order_snapshot,
+	marketplace_app_order_snapshot,
+)
 from press.saas.commerce.marketplace_plan_admin import build_marketplace_plan_draft
 from press.saas.commerce.marketplace_install import (
 	is_marketplace_app_sellable,
@@ -42,11 +46,9 @@ from press.saas.commerce.pricing import (
 	normalize_zarinpal_price,
 )
 from press.saas.commerce.service_delivery import (
-	has_active_wildcard_certificate,
-	is_public_shared_site_server,
-	is_proxy_dns_ready,
 	new_site_delivery_action,
 	new_site_hosting_order_action,
+	new_hosted_site_renewal_action,
 	normalize_site_plan_delivery_mode,
 )
 from press.saas.commerce.site_plan_admin import (
@@ -72,8 +74,7 @@ from press.saas.commerce.zarinpal import (
 	payment_is_verified,
 	verify_payment,
 )
-from press.utils import get_current_team, has_role, is_user_part_of_team, validate_subdomain
-from press.utils.dns import check_dns_a, check_dns_cname
+from press.utils import get_current_team, has_role, is_user_part_of_team
 
 ASUMI_ROOT_DOMAIN = "asumi.ir"
 HOSTING_CAPACITY_ORDER_STATUSES = (
@@ -103,6 +104,15 @@ def _merchant_id(settings) -> str | None:
 		return settings.get_password("merchant_id", raise_exception=False) or None
 	except Exception:
 		return None
+
+
+def _hosting_access_email_ready(user: str | None = None) -> bool:
+	if not frappe.db.exists("Email Account", {"enable_outgoing": 1}):
+		return False
+	if not user:
+		return True
+	email = frappe.db.get_value("User", user, "email")
+	return isinstance(email, str) and "@" in email
 
 
 def _checkout_enabled(settings, sale_type: str = "marketplace") -> bool:
@@ -304,25 +314,34 @@ def _live_docker_snapshot() -> dict:
 		client = _client(host)
 		health = client.health(timeout=(2, 3))
 		resource_snapshot = client.resources()
+		available_apps = client.available_apps()
 		resources = resource_snapshot.get("resources")
 		return {
 			"connected": health.get("protocol_version") == 1
-			and resource_snapshot.get("protocol_version") == 1,
+			and resource_snapshot.get("protocol_version") == 1
+			and isinstance(available_apps, list),
 			"resources": resources if isinstance(resources, dict) else {},
+			"apps": available_apps,
+			"host": host.name,
 		}
 	except Exception:
-		return {"connected": False, "resources": {}}
+		return {"connected": False, "resources": {}, "apps": []}
 
 
-def _hosting_capacity_reservation_totals() -> dict:
+def _hosting_capacity_reservation_totals(
+	exclude_order: str | None = None, exclude_site: str | None = None
+) -> dict:
 	"""Return fail-closed resource reservations for every pending or provisioned hosted site."""
+	filters = {
+		"order_type": "Hosting",
+		"service_delivery_mode": "Create New Site",
+		"status": ["in", list(HOSTING_CAPACITY_ORDER_STATUSES)],
+	}
+	if exclude_order:
+		filters["name"] = ["!=", exclude_order]
 	orders = frappe.get_all(
 		"Commerce Order",
-		filters={
-			"order_type": "Hosting",
-			"service_delivery_mode": "Create New Site",
-			"status": ["in", list(HOSTING_CAPACITY_ORDER_STATUSES)],
-		},
+		filters=filters,
 		fields=["site", "docker_site", "subdomain", "plan"],
 		limit_page_length=HOSTING_CAPACITY_ORDER_LIMIT + 1,
 		ignore_permissions=True,
@@ -346,6 +365,11 @@ def _hosting_capacity_reservation_totals() -> dict:
 			raise ValueError("اطلاعات سایت یا پلن یکی از سفارش‌های میزبانی کامل نیست.")
 		reservation_rows.append({"reservation_key": reservation_key, "plan": plan_name})
 		plan_names.add(plan_name)
+	if exclude_site:
+		reservation_rows = [row for row in reservation_rows if row["reservation_key"] != exclude_site]
+		plan_names = {row["plan"] for row in reservation_rows}
+		if not reservation_rows:
+			return {"sites": 0, "reserved_disk_mib": 0, "reserved_memory_mib": 0}
 
 	plan_rows = frappe.get_all(
 		"Site Plan",
@@ -379,18 +403,10 @@ def admin_hosting_readiness() -> dict:
 		and _merchant_id(settings)
 	)
 
-	domain_doc = None
-	if frappe.db.exists("Root Domain", ASUMI_ROOT_DOMAIN):
-		domain_doc = frappe.get_doc("Root Domain", ASUMI_ROOT_DOMAIN)
-	root_domain_ready = bool(domain_doc and domain_doc.enabled and domain_doc.default_cluster)
-
 	root_addresses = _resolve_ipv4(ASUMI_ROOT_DOMAIN)
+	root_domain_ready = bool(root_addresses)
 	wildcard_dns_ready = _wildcard_dns_targets_apex(root_addresses)
-	certificate_record_ready = frappe.db.exists(
-		"TLS Certificate",
-		{"domain": ASUMI_ROOT_DOMAIN, "wildcard": 1, "status": "Active"},
-	)
-	wildcard_tls_ready = bool(certificate_record_ready and root_addresses and _wildcard_tls_ready(root_addresses))
+	wildcard_tls_ready = bool(root_addresses and _wildcard_tls_ready(root_addresses))
 
 	plans = frappe.get_all(
 		"Site Plan",
@@ -477,7 +493,7 @@ def admin_hosting_readiness() -> dict:
 			f"{memory_available / 1024**3:.1f} گیگابایت است؛ برای هیچ پلنی سقف منابع و ذخیرهٔ تعریف‌شده جا نمی‌شود."
 		)
 	docker_connected = docker_snapshot["connected"]
-	press_infrastructure_ready = _press_shared_bench_ready(domain_doc)
+	press_infrastructure_ready = docker_connected
 
 	facts = {
 		"live_payment": {
@@ -499,9 +515,9 @@ def admin_hosting_readiness() -> dict:
 		"root_domain": {
 			"ready": root_domain_ready,
 			"detail": (
-				"دامنهٔ asumi.ir در Press فعال است."
+				"رکورد A دامنهٔ اصلی آسومی پاسخ می‌دهد."
 				if root_domain_ready
-				else "Root Domain با نام asumi.ir و یک Cluster پیش‌فرض در Press ثبت کنید."
+				else "رکورد A برای asumi.ir ثبت کنید و پس از انتشار دوباره بررسی کنید."
 			),
 		},
 		"wildcard_dns": {
@@ -513,21 +529,29 @@ def admin_hosting_readiness() -> dict:
 			"detail": (
 				"گواهی معتبر HTTPS نام زیردامنه را پوشش می‌دهد."
 				if wildcard_tls_ready
-				else "گواهی TLS wildcard برای *.asumi.ir نصب و در Press ثبت کنید."
+				else "گواهی TLS معتبر برای *.asumi.ir روی ورودی وب نصب کنید."
 			),
 		},
 		"press_infrastructure": {
 			"ready": press_infrastructure_ready,
 			"detail": (
-				"بنچ عمومی، Release Group و Proxy آماده‌اند."
+				"عامل به بنچ مشترک Docker متصل است."
 				if press_infrastructure_ready
-				else "سرور عمومی، بنچ فعال، Release Group و اتصال Proxy در Press لازم است."
+				else "عامل Docker روی بنچ مشترک متصل یا پاسخ‌گو نیست."
 			),
 		},
 		"capacity": {"ready": capacity_ready, "detail": capacity_detail},
 		"docker_agent": {
 			"ready": docker_connected,
 			"detail": "عامل Docker پاسخ می‌دهد." if docker_connected else "عامل Docker متصل یا پاسخ‌گو نیست.",
+		},
+		"access_email": {
+			"ready": _hosting_access_email_ready(),
+			"detail": (
+				"حساب SMTP خروجی برای تحویل دسترسی آماده است."
+				if _hosting_access_email_ready()
+				else "یک Email Account با ارسال خروجی فعال کنید تا اطلاعات ورود مشتری تحویل شود."
+			),
 		},
 	}
 	return build_hosting_readiness(facts, resources)
@@ -557,12 +581,14 @@ def my_purchase_sites() -> list[dict]:
 	docker_sites = frappe.get_all(
 		"Docker Control Site",
 		filters={"team": team, "enabled": 1},
-		fields=["domain"],
+		fields=["domain", "hosted_status"],
 		order_by="domain asc",
 		limit_page_length=100,
 		ignore_permissions=True,
 	)
 	for site in docker_sites:
+		if site.hosted_status and site.hosted_status != "Active":
+			continue
 		sites.append(
 			{
 				"name": site.domain,
@@ -588,10 +614,10 @@ def _marketplace_purchase_site(site_name: str, site_type: str, team: str) -> dic
 		site = frappe.db.get_value(
 			"Docker Control Site",
 			{"domain": site_name, "team": team, "enabled": 1},
-			["domain", "team", "enabled"],
+			["domain", "team", "enabled", "hosted_status"],
 			as_dict=True,
 		)
-		if not site:
+		if not site or (site.hosted_status and site.hosted_status != "Active"):
 			frappe.throw(_("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد."), frappe.PermissionError)
 		installed_apps = frappe.get_all(
 			"Docker Control Site App",
@@ -715,9 +741,13 @@ def _enqueue_provision_paid_order(order_name: str) -> None:
 
 
 def _new_site_plan_config(
-	plan_doc, subdomain: str | None = None, docker_snapshot: dict | None = None
+	plan_doc,
+	subdomain: str | None = None,
+	docker_snapshot: dict | None = None,
+	exclude_order: str | None = None,
+	exclude_site: str | None = None,
 ) -> dict | None:
-	"""Resolve a configured public Site Plan to one existing shared bench."""
+	"""Resolve a paid Asumi plan to the fixed Docker shared Bench."""
 	if plan_doc.private_bench_support:
 		return None
 	settings = _get_settings()
@@ -732,7 +762,9 @@ def _new_site_plan_config(
 		return None
 	docker_snapshot = docker_snapshot or _live_docker_snapshot()
 	try:
-		capacity_reservations = _hosting_capacity_reservation_totals()
+		capacity_reservations = _hosting_capacity_reservation_totals(
+			exclude_order=exclude_order, exclude_site=exclude_site
+		)
 	except ValueError:
 		return None
 	if not docker_snapshot["connected"] or not hosting_plan_fits_capacity(
@@ -743,19 +775,6 @@ def _new_site_plan_config(
 		reserved_disk_mib=capacity_reservations["reserved_disk_mib"],
 		reserved_memory_mib=capacity_reservations["reserved_memory_mib"],
 	):
-		return None
-	if not frappe.db.exists("Root Domain", ASUMI_ROOT_DOMAIN):
-		return None
-	domain = frappe.get_doc("Root Domain", ASUMI_ROOT_DOMAIN)
-	if not domain.enabled or not domain.default_cluster:
-		return None
-	wildcard_certificates = frappe.get_all(
-		"TLS Certificate",
-		filters={"domain": ASUMI_ROOT_DOMAIN, "wildcard": 1, "status": "Active"},
-		fields=["domain", "wildcard", "status"],
-		limit_page_length=5,
-	)
-	if not has_active_wildcard_certificate(ASUMI_ROOT_DOMAIN, wildcard_certificates):
 		return None
 	root_addresses = _resolve_ipv4(ASUMI_ROOT_DOMAIN)
 	if (
@@ -770,74 +789,22 @@ def _new_site_plan_config(
 		filters={"parent": plan_doc.name, "parenttype": "Site Plan", "parentfield": "allowed_apps"},
 		pluck="app",
 	)
-	release_groups = frappe.get_all(
-		"Site Plan Release Group",
-		filters={"parent": plan_doc.name, "parenttype": "Site Plan", "parentfield": "release_groups"},
-		pluck="release_group",
-	)
-	if not release_groups:
+	bench_apps = docker_snapshot.get("apps")
+	if not isinstance(bench_apps, list) or any(not isinstance(app, str) for app in bench_apps):
 		return None
-
-	for group_name in release_groups:
-		group = frappe.db.get_value(
-			"Release Group", group_name, ["enabled", "public", "version"], as_dict=True
-		)
-		if not group or not group.enabled or not group.public or not group.version:
-			continue
-		benches = frappe.get_all(
-			"Bench",
-			filters={"group": group_name, "cluster": domain.default_cluster, "status": "Active"},
-			fields=["name", "server"],
-			order_by="creation desc",
-			limit_page_length=50,
-		)
-		for bench in benches:
-			server = frappe.db.get_value(
-				"Server", bench.server, ["status", "public", "proxy_server"], as_dict=True
-			)
-			if not is_public_shared_site_server(server):
-				continue
-			proxy_status = frappe.db.get_value("Proxy Server", server.proxy_server, "status")
-			if proxy_status != "Active" or not frappe.db.exists(
-				"Proxy Server Domain", {"parent": server.proxy_server, "domain": ASUMI_ROOT_DOMAIN}
-			):
-				continue
-
-			bench_apps = [row.app for row in frappe.get_doc("Bench", bench.name).apps]
-			if "frappe" not in bench_apps:
-				continue
-			if allowed_apps:
-				if "frappe" not in allowed_apps:
-					continue
-				available_apps = [app for app in allowed_apps if app in bench_apps and app != "frappe"]
-			else:
-				available_apps = [app for app in bench_apps if app != "frappe"]
-
-			if domain.dns_provider == "Generic":
-				try:
-					checked_subdomain = subdomain or "asumi-hosting-check"
-					validate_subdomain(checked_subdomain)
-					proxy_hostname = frappe.db.get_value("Proxy Server", server.proxy_server, "host_name")
-					if not proxy_hostname:
-						return None
-					requested_domain = f"{checked_subdomain}.{ASUMI_ROOT_DOMAIN}"
-					dns_cname = check_dns_cname(proxy_hostname, requested_domain)
-					dns_a = check_dns_a(proxy_hostname, requested_domain)
-				except Exception:
-					return None
-				if not is_proxy_dns_ready(dns_cname, dns_a):
-					return None
-
-			return {
-				"domain": ASUMI_ROOT_DOMAIN,
-				"cluster": domain.default_cluster,
-				"group": group_name,
-				"version": group.version,
-				"apps": available_apps,
-				"bench": bench.name,
-				"server": bench.server,
-			}
-	return None
+	bench_apps = sorted(set(bench_apps).intersection({"accounts", "restaurant"}))
+	if allowed_apps:
+		if "frappe" not in allowed_apps:
+			return None
+		available_apps = [app for app in bench_apps if app in allowed_apps]
+	else:
+		available_apps = bench_apps
+	return {
+		"domain": ASUMI_ROOT_DOMAIN,
+		"apps": available_apps,
+		"host": docker_snapshot.get("host"),
+		"backend": "Docker Shared Bench",
+	}
 
 
 def _new_site_plan_renewal_sites(plan_name: str, team: str) -> list[dict]:
@@ -851,27 +818,56 @@ def _new_site_plan_renewal_sites(plan_name: str, team: str) -> list[dict]:
 			"service_delivery_mode": "Create New Site",
 			"status": ["in", ["Paid", "Provisioning", "Provisioning Failed", "Active", "Expired"]],
 		},
-		fields=["site"],
+		fields=["site", "docker_site"],
 		limit_page_length=500,
 		ignore_permissions=True,
 	)
 	site_names = list({row.site for row in orders if row.site})
-	if not site_names:
-		return []
-	return frappe.get_all(
-		"Site",
-		filters={
-			"name": ["in", site_names],
-			"team": team,
-			"domain": ASUMI_ROOT_DOMAIN,
-			"plan": plan_name,
-			"status": ["in", ["Active", "Suspended"]],
-		},
-		fields=["name", "subdomain", "domain", "status", "plan"],
-		order_by="name asc",
-		limit_page_length=100,
-		ignore_permissions=True,
-	)
+	docker_site_names = list({row.docker_site for row in orders if row.docker_site})
+	sites = []
+	if site_names:
+		sites.extend(
+			frappe.get_all(
+				"Site",
+				filters={
+					"name": ["in", site_names],
+					"team": team,
+					"domain": ASUMI_ROOT_DOMAIN,
+					"plan": plan_name,
+					"status": ["in", ["Active", "Suspended"]],
+				},
+				fields=["name", "subdomain", "domain", "status", "plan"],
+				order_by="name asc",
+				limit_page_length=100,
+				ignore_permissions=True,
+			)
+		)
+	if docker_site_names:
+		rows = frappe.get_all(
+			"Docker Control Site",
+			filters={
+				"domain": ["in", docker_site_names],
+				"team": team,
+				"hosting_plan": plan_name,
+				"hosted_status": ["in", ["Active", "Suspended"]],
+			},
+			fields=["domain", "team", "hosting_plan", "hosted_status"],
+			limit_page_length=100,
+			ignore_permissions=True,
+		)
+		for row in rows:
+			sites.append(
+				{
+					"name": row.domain,
+					"subdomain": row.domain.removesuffix(f".{ASUMI_ROOT_DOMAIN}"),
+					"domain": ASUMI_ROOT_DOMAIN,
+					"status": row.hosted_status,
+					"plan": row.hosting_plan,
+					"team": row.team,
+					"site_type": "Docker Control Site",
+				}
+			)
+	return sorted(sites, key=lambda site: site["name"])
 
 
 @frappe.whitelist()
@@ -941,9 +937,14 @@ def available_site_plan_offers() -> dict:
 		)
 		ready = (
 			_checkout_available_for_user(settings, "hosting")
+			and (mode != "Create New Site" or not settings.sandbox_mode)
 			and price_valid
 			and valid_interval
-			and (bool(sites) if mode == "Upgrade Existing Site" else bool(config or renewable_sites))
+			and (
+				bool(sites)
+				if mode == "Upgrade Existing Site"
+				else bool(renewable_sites or (config and _hosting_access_email_ready()))
+			)
 		)
 		offers.append(
 			{
@@ -1292,12 +1293,34 @@ def start_site_plan_purchase(
 	is_new_site_renewal = bool(site and delivery_mode == "Create New Site")
 	selected_site = None
 	if site:
-		selected_site = frappe.db.get_value(
-			"Site",
-			site,
-			["name", "team", "status", "plan", "server", "cluster", "group", "subdomain", "domain"],
-			as_dict=True,
-		)
+		if frappe.db.exists("Site", site):
+			selected_site = frappe.db.get_value(
+				"Site",
+				site,
+				["name", "team", "status", "plan", "server", "cluster", "group", "subdomain", "domain"],
+				as_dict=True,
+			)
+			selected_site.site_type = "Site"
+		elif delivery_mode == "Create New Site" and frappe.db.exists(
+			"Docker Control Site", {"domain": site, "enabled": 1, "hosted_status": ["in", ["Active", "Suspended"]]}
+		):
+			docker_site = frappe.db.get_value(
+				"Docker Control Site",
+				site,
+				["domain", "team", "hosting_plan", "hosted_status"],
+				as_dict=True,
+			)
+			selected_site = frappe._dict(
+				{
+					"name": docker_site.domain,
+					"team": docker_site.team,
+					"status": docker_site.hosted_status,
+					"plan": docker_site.hosting_plan,
+					"subdomain": docker_site.domain.removesuffix(f".{ASUMI_ROOT_DOMAIN}"),
+					"domain": ASUMI_ROOT_DOMAIN,
+					"site_type": "Docker Control Site",
+				}
+			)
 		allowed_statuses = {"Active"}
 		if delivery_mode == "Create New Site":
 			allowed_statuses.add("Suspended")
@@ -1306,7 +1329,7 @@ def start_site_plan_purchase(
 	if is_new_site_renewal and not frappe.db.exists(
 		"Commerce Order",
 		{
-			"site": selected_site.name,
+			("docker_site" if selected_site.site_type == "Docker Control Site" else "site"): selected_site.name,
 			"team": team.name,
 			"plan": plan_doc.name,
 			"order_type": "Hosting",
@@ -1335,6 +1358,10 @@ def start_site_plan_purchase(
 			if selected_site.plan != plan_doc.name or selected_site.domain != ASUMI_ROOT_DOMAIN:
 				frappe.throw(_("فقط سایت آسومی ساخته‌شده با همین پلن قابل تمدید است."))
 		else:
+			if settings.sandbox_mode:
+				frappe.throw(_("ساخت سایت Docker فقط پس از پرداخت واقعی زرین‌پال انجام می‌شود؛ حالت آزمایشی را خاموش کنید."))
+			if not _hosting_access_email_ready(frappe.session.user):
+				frappe.throw(_("برای تحویل امن دسترسی سایت، ایمیل معتبر و SMTP خروجی لازم است."))
 			_acquire_hosting_capacity_lock()
 			config = _new_site_plan_config(plan_doc, snapshot["subdomain"])
 			if not config:
@@ -1342,7 +1369,9 @@ def start_site_plan_purchase(
 			if any(app not in config["apps"] for app in snapshot["apps"]):
 				frappe.throw(_("یکی از برنامه‌های انتخاب‌شده روی بنچ این پلن آماده نیست."))
 			full_site_name = f"{snapshot['subdomain']}.{ASUMI_ROOT_DOMAIN}"
-			if frappe.db.exists("Site", full_site_name):
+			if frappe.db.exists("Site", full_site_name) or frappe.db.exists(
+				"Docker Control Site", full_site_name
+			):
 				frappe.throw(_("این زیردامنه قبلاً استفاده شده است."))
 	else:
 		from press.api.site import validate_plan
@@ -1374,7 +1403,7 @@ def start_site_plan_purchase(
 		"customer": frappe.session.user,
 		"team": team.name,
 		"plan": plan_doc.name,
-		"site": snapshot["site"],
+		("docker_site" if snapshot.get("docker_site") else "site"): snapshot.get("docker_site") or snapshot["site"],
 		"subdomain": snapshot["subdomain"],
 		"order_type": "Hosting",
 	}
@@ -1757,69 +1786,113 @@ def _provision_hosting_order(order):
 		frappe.throw(_("مشخصات پلن با مبلغ ثبت‌شدهٔ سفارش تطابق ندارد."))
 
 	if order.service_delivery_mode == "Create New Site":
-		if not order.site:
-			config = _new_site_plan_config(plan, order.subdomain)
-			if not config:
-				frappe.throw(_("دامنه، گواهی یا ظرفیت بنچ برای ساخت این سایت دیگر آماده نیست."))
-			apps = frappe.parse_json(order.apps or "[]")
-			if any(app not in config["apps"] for app in apps):
-				frappe.throw(_("یکی از برنامه‌های سفارش روی بنچ انتخاب‌شده آماده نیست."))
-			if frappe.db.exists("Site", f"{order.subdomain}.{ASUMI_ROOT_DOMAIN}"):
-				frappe.throw(_("این زیردامنه پس از ثبت سفارش در دسترس نیست."))
-			team = frappe.get_doc("Team", order.team)
-			if not team.enabled:
-				frappe.throw(_("این حساب غیرفعال است و امکان ساخت سایت ندارد."))
-			frappe.db.savepoint("asumi_hosting_site")
-			try:
-				current_user = frappe.session.user
-				try:
-					frappe.set_user(order.customer)
-					site_doc = frappe.get_doc(
-						{
-							"doctype": "Site",
-							"subdomain": order.subdomain,
-							"domain": config["domain"],
-							"cluster": config["cluster"],
-							"group": config["group"],
-							"bench": config["bench"],
-							"server": config["server"],
-							"apps": [{"app": app} for app in ["frappe", *apps]],
-							"team": order.team,
-							"free": team.free_account,
-							"subscription_plan": plan.name,
-							"version": config["version"],
-						}
-					)
-					site_doc.flags.commerce_hosting_order = order.name
-					site = site_doc.insert(ignore_permissions=True)
-				finally:
-					frappe.set_user(current_user)
-				if site.team != order.team or site.plan != order.plan:
-					frappe.throw(_("سایت ساخته‌شده با سفارش و تیم مشتری تطابق ندارد."))
-				job = site.flags.get("new_site_agent_job_name") or frappe.db.get_value(
-					"Agent Job",
-					{"site": site.name, "job_type": ("in", ["New Site", "New Site from Backup"])},
-				)
-				order.db_set({"site": site.name, "agent_job": job or ""})
-				order.reload()
-			except Exception:
-				frappe.db.rollback(save_point="asumi_hosting_site")
-				raise
-		else:
+		if order.site:
+			# Preserve delivery of older orders already handed to Press's native Agent.
 			site = frappe.get_doc("Site", order.site)
-		site.reload()
-		action = new_site_delivery_action(order.as_dict(), site.as_dict())
-		if action == "wait":
-			return order.status
-		if action == "resume":
-			site.unsuspend(reason="Asumi hosting plan renewed")
-			site.save(ignore_permissions=True)
 			site.reload()
+			action = new_site_delivery_action(order.as_dict(), site.as_dict())
+			if action == "wait":
+				return order.status
+			if action == "resume":
+				site.unsuspend(reason="Asumi hosting plan renewed")
+				site.save(ignore_permissions=True)
+				site.reload()
+				order.reload()
+				if order.status == "Active":
+					return order.status
+				if new_site_delivery_action(order.as_dict(), site.as_dict()) != "activate":
+					return order.status
+			return _activate_hosting_order(order)
+
+		if order.docker_site and order.name != frappe.db.get_value(
+			"Docker Control Site", order.docker_site, "hosting_order"
+		):
+			site = frappe.get_doc("Docker Control Site", order.docker_site)
+			original_order = frappe.get_doc("Commerce Order", site.hosting_order)
+			try:
+				action = new_hosted_site_renewal_action(
+					order.as_dict(), site.as_dict(), original_order.as_dict()
+				)
+			except ValueError as error:
+				frappe.throw(_(str(error)))
+			if action == "resume":
+				from press.api.docker_control import set_asumi_hosted_site_maintenance
+
+				set_asumi_hosted_site_maintenance(order, site, enabled=False)
+			return _activate_hosting_order(order)
+
+		config = _new_site_plan_config(
+			plan,
+			order.subdomain,
+			exclude_order=order.name,
+			exclude_site=order.docker_site,
+		)
+		if not isinstance(order.subdomain, str) or not SITE_SUBDOMAIN_PATTERN.fullmatch(order.subdomain):
+			frappe.throw(_("زیردامنهٔ سفارش میزبانی معتبر نیست."))
+		if not config:
+			frappe.throw(_("DNS، گواهی HTTPS یا ظرفیت بنچ برای ساخت این سایت آماده نیست."))
+		apps = frappe.parse_json(order.apps or "[]")
+		if any(app not in config["apps"] for app in apps):
+			frappe.throw(_("یکی از برنامه‌های سفارش روی بنچ انتخاب‌شده آماده نیست."))
+		target = f"{order.subdomain}.{ASUMI_ROOT_DOMAIN}"
+		team = frappe.get_doc("Team", order.team)
+		if not team.enabled:
+			frappe.throw(_("این حساب غیرفعال است و امکان ساخت سایت ندارد."))
+		if frappe.db.exists("Site", target):
+			frappe.throw(_("این زیردامنه پس از ثبت سفارش در دسترس نیست."))
+		if order.docker_site:
+			site = frappe.get_doc("Docker Control Site", order.docker_site)
+			if (
+				site.domain != target
+				or site.team != order.team
+				or site.hosting_order != order.name
+				or site.hosting_plan != plan.name
+			):
+				frappe.throw(_("سایت میزبانی با سفارش، پلن یا تیم تطابق ندارد."))
+		else:
+			reserved = frappe.db.exists(
+				"Commerce Order",
+				{
+					"subdomain": order.subdomain,
+					"order_type": "Hosting",
+					"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed", "Active"]],
+					"name": ["!=", order.name],
+				},
+			)
+			if reserved:
+				frappe.throw(_("این زیردامنه برای سفارش دیگری رزرو شده است."))
+			if frappe.db.exists("Docker Control Site", target):
+				site = frappe.get_doc("Docker Control Site", target)
+				if site.hosting_order != order.name:
+					frappe.throw(_("این زیردامنه برای سفارش دیگری ثبت شده است."))
+			else:
+				from press.api.docker_control import _host_doc
+
+				previous_user = frappe.session.user
+				frappe.set_user("Administrator")
+				try:
+					site = frappe.get_doc(
+						{
+							"doctype": "Docker Control Site",
+							"domain": target,
+							"host": _host_doc().name,
+							"enabled": 1,
+							"team": order.team,
+							"hosted_status": "Provisioning",
+							"hosting_plan": plan.name,
+							"hosting_order": order.name,
+						}
+					).insert(ignore_permissions=True)
+				finally:
+					frappe.set_user(previous_user)
+			order.db_set("docker_site", site.domain)
 			order.reload()
-			if order.status == "Active":
-				return order.status
-			if new_site_delivery_action(order.as_dict(), site.as_dict()) != "activate":
-				return order.status
+			frappe.db.commit()
+		site.reload()
+		if site.hosted_status != "Active":
+			from press.api.docker_control import execute_asumi_hosted_site
+
+			execute_asumi_hosted_site(order, site, apps)
 		return _activate_hosting_order(order)
 
 	if not order.site:
@@ -1846,15 +1919,16 @@ def _activate_hosting_order(order):
 	if order.status != "Provisioning":
 		return order.status
 	service_start = frappe.utils.now_datetime()
+	target = order.docker_site or order.site
 	previous_orders = frappe.get_all(
 		"Commerce Order",
 		filters={
-			"site": order.site,
 			"order_type": "Hosting",
 			"status": "Active",
 			"service_ends_at": [">", service_start],
 			"name": ["!=", order.name],
 		},
+		or_filters=[{"site": target}, {"docker_site": target}],
 		fields=["service_ends_at"],
 		order_by="service_ends_at desc",
 		limit_page_length=1,
@@ -2014,6 +2088,36 @@ def expire_commerce_orders():
 
 
 def _restore_hosting_site_after_term(order, now):
+	if order.docker_site:
+		if not frappe.db.exists("Docker Control Site", order.docker_site):
+			return
+		or_filters = [{"docker_site": order.docker_site}, {"site": order.docker_site}]
+		for statuses, service_filter in (
+			(["Active"], {"service_ends_at": [">", now]}),
+			(["Paid", "Provisioning", "Provisioning Failed"], {}),
+		):
+			filters = {
+				"order_type": "Hosting",
+				"status": ["in", statuses],
+				"name": ["!=", order.name],
+				**service_filter,
+			}
+			if frappe.get_all(
+				"Commerce Order",
+				filters=filters,
+				or_filters=or_filters,
+				fields=["name"],
+				limit_page_length=1,
+				ignore_permissions=True,
+			):
+				return
+		site = frappe.get_doc("Docker Control Site", order.docker_site)
+		if site.hosting_plan != order.plan or site.hosted_status != "Active":
+			return
+		from press.api.docker_control import set_asumi_hosted_site_maintenance
+
+		set_asumi_hosted_site_maintenance(order, site, enabled=True)
+		return
 	if not order.site or not frappe.db.exists("Site", order.site):
 		return
 	future_orders = frappe.get_all(
@@ -2497,6 +2601,12 @@ def admin_site_plans() -> list[dict]:
 
 def _site_plan_app_choices() -> dict[str, list[str]]:
 	choices = {}
+	docker_snapshot = _live_docker_snapshot()
+	if docker_snapshot.get("connected") and isinstance(docker_snapshot.get("apps"), list):
+		choices["__asumi_docker_shared_bench__"] = [
+			"frappe",
+			*sorted(set(docker_snapshot["apps"]).intersection({"accounts", "restaurant"})),
+		]
 	groups = frappe.get_all(
 		"Release Group",
 		filters={"enabled": 1, "public": 1},
@@ -2528,7 +2638,12 @@ def admin_site_plan_options() -> dict:
 	return {
 		"domain": ASUMI_ROOT_DOMAIN,
 		"release_groups": [
-			{"name": name, "apps": apps} for name, apps in sorted(apps_by_group.items())
+			{
+				"name": name,
+				"title": "بنچ مشترک آسومی" if name == "__asumi_docker_shared_bench__" else name,
+				"apps": apps,
+			}
+			for name, apps in sorted(apps_by_group.items())
 		],
 	}
 

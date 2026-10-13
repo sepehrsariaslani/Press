@@ -28,6 +28,7 @@ SITE_PLAN_MATERIAL_FIELDS = (
 	"release_groups",
 	"allowed_apps",
 )
+DOCKER_SHARED_BENCH = "__asumi_docker_shared_bench__"
 
 
 def _text(value, field: str, max_length: int, *, required: bool = False) -> str:
@@ -58,11 +59,15 @@ def _unique_names(values, field: str) -> list[str]:
 	return names
 
 
-def _normalize_app_selection(release_groups, allowed_apps, available_apps_by_group):
+def _normalize_app_selection(
+	release_groups, allowed_apps, available_apps_by_group, *, default_docker=False
+):
 	groups = _unique_names(release_groups, "گروه‌های انتشار")
 	apps = _unique_names(allowed_apps, "برنامه‌های مجاز")
 	if not isinstance(available_apps_by_group, dict):
 		raise ValueError("فهرست گروه‌های انتشار معتبر نیست.")
+	if not groups and default_docker and DOCKER_SHARED_BENCH in available_apps_by_group:
+		groups = [DOCKER_SHARED_BENCH]
 	if any(group not in available_apps_by_group for group in groups):
 		raise ValueError("یکی از گروه‌های انتشار دیگر فعال یا در دسترس نیست.")
 	app_groups = groups or list(available_apps_by_group)
@@ -77,7 +82,7 @@ def _normalize_app_selection(release_groups, allowed_apps, available_apps_by_gro
 		raise ValueError("برنامهٔ پایهٔ Frappe در گروه انتشار این پلن آماده نیست.")
 	if apps and "frappe" not in apps:
 		apps.insert(0, "frappe")
-	return groups, apps
+	return ([] if groups == [DOCKER_SHARED_BENCH] else groups), apps
 
 
 def _nonnegative_int(value, field: str) -> int:
@@ -132,7 +137,14 @@ def build_site_plan_draft(
 	if interval not in SITE_PLAN_INTERVALS:
 		raise ValueError("دورهٔ پلن میزبانی معتبر نیست.")
 	mode = normalize_site_plan_delivery_mode(delivery_mode)
-	groups, apps = _normalize_app_selection(release_groups, allowed_apps, available_apps_by_group)
+	if mode != "Create New Site" and DOCKER_SHARED_BENCH in (release_groups or []):
+		raise ValueError("بنچ مشترک آسومی فقط برای پلن ساخت سایت جدید است.")
+	groups, apps = _normalize_app_selection(
+		release_groups,
+		allowed_apps,
+		available_apps_by_group,
+		default_docker=mode == "Create New Site",
+	)
 
 	return {
 		"name": name,
@@ -198,6 +210,8 @@ def normalize_site_plan_admin_update(
 	if "release_groups" in payload or "allowed_apps" in payload:
 		requested_groups = _unique_names(payload.get("release_groups", current.get("release_groups", [])), "گروه‌های انتشار")
 		requested_apps = _unique_names(payload.get("allowed_apps", current.get("allowed_apps", [])), "برنامه‌های مجاز")
+		if mode != "Create New Site" and DOCKER_SHARED_BENCH in requested_groups:
+			raise ValueError("بنچ مشترک آسومی فقط برای پلن ساخت سایت جدید است.")
 		current_groups = _unique_names(current.get("release_groups", []), "گروه‌های انتشار")
 		current_apps = _unique_names(current.get("allowed_apps", []), "برنامه‌های مجاز")
 		if requested_groups != current_groups or requested_apps != current_apps:
@@ -205,6 +219,7 @@ def normalize_site_plan_admin_update(
 				requested_groups,
 				requested_apps,
 				available_apps_by_group,
+				default_docker=mode == "Create New Site",
 			)
 			values["release_groups"] = groups
 			values["allowed_apps"] = apps

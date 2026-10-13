@@ -126,8 +126,17 @@ class ControlHandler(BaseHTTPRequestHandler):
 				if not isinstance(payload, dict) or set(payload) != {"site", "app", "secret_key"}:
 					raise ValueError("Invalid request")
 				secret_key = payload.get("secret_key")
+				site_name = payload.get("site")
 				if (
-					payload.get("site") not in CUSTOMER_SITES
+					(
+						site_name not in CUSTOMER_SITES
+						and not (
+							isinstance(site_name, str)
+							and re.fullmatch(
+								r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.asumi\.ir", site_name
+							)
+						)
+					)
 					or not isinstance(payload.get("app"), str)
 					or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", payload.get("app", ""))
 					or (

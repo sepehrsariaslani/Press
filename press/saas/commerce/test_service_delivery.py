@@ -5,6 +5,7 @@ from press.saas.commerce.service_delivery import (
 	NEW_SITE_PROVISIONING,
 	has_active_wildcard_certificate,
 	is_verified_hosting_site_creation,
+	new_hosted_site_renewal_action,
 	is_proxy_dns_ready,
 	new_site_delivery_action,
 	new_site_hosting_order_action,
@@ -117,6 +118,53 @@ class SitePlanDeliveryModeTest(unittest.TestCase):
 		self.assertFalse(is_verified_hosting_site_creation(order, site, "another@example.com"))
 		order["status"] = "Pending Payment"
 		self.assertFalse(is_verified_hosting_site_creation(order, site, "buyer@example.com"))
+
+	def test_paid_hosting_renewal_resumes_only_the_site_linked_to_its_original_order(self):
+		original = {
+			"name": "ORDER-ORIGINAL",
+			"status": "Expired",
+			"order_type": "Hosting",
+			"service_delivery_mode": "Create New Site",
+			"team": "team-1",
+			"plan": "plan-1",
+			"subdomain": "shops",
+			"docker_site": "shops.asumi.ir",
+		}
+		renewal = {
+			"name": "ORDER-RENEWAL",
+			"status": "Provisioning",
+			"order_type": "Hosting",
+			"service_delivery_mode": "Create New Site",
+			"provider": "ZarinPal",
+			"sandbox_mode": 0,
+			"currency": "IRR",
+			"amount": 25000,
+			"paid_at": "2026-10-13 10:00:00",
+			"payment_reference": "ZP-123",
+			"team": "team-1",
+			"plan": "plan-1",
+			"subdomain": "shops",
+			"docker_site": "shops.asumi.ir",
+		}
+		site = {
+			"domain": "shops.asumi.ir",
+			"team": "team-1",
+			"hosting_plan": "plan-1",
+			"hosting_order": "ORDER-ORIGINAL",
+			"hosted_status": "Suspended",
+		}
+
+		self.assertEqual(new_hosted_site_renewal_action(renewal, site, original), "resume")
+		site["hosted_status"] = "Active"
+		self.assertEqual(new_hosted_site_renewal_action(renewal, site, original), "activate")
+		with self.assertRaises(ValueError):
+			new_hosted_site_renewal_action(
+				{**renewal, "payment_reference": None}, site, original
+			)
+		with self.assertRaises(ValueError):
+			new_hosted_site_renewal_action(
+				{**renewal, "docker_site": "other.asumi.ir"}, site, original
+			)
 
 
 if __name__ == "__main__":

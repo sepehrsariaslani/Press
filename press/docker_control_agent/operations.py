@@ -25,6 +25,47 @@ if TYPE_CHECKING:
 OPERATION_ID_RE = re.compile(r"^[a-f0-9-]{36,48}$")
 COMMIT_RE = re.compile(r"^[a-f0-9]{40}$")
 APP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+HOSTED_SITE_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.asumi\.ir$")
+ADMIN_PASSWORD_RE = re.compile(r"^[A-Za-z0-9!#$%&()*+,./:;<=>?@\[\]^_{|}~-]{24,128}$")
+HOSTED_SITE_SCRIPT = """
+import json
+import sys
+
+payload = json.load(sys.stdin)
+import frappe
+
+site = payload["site"]
+try:
+	frappe.init(site, new_site=not payload["existing"])
+	if payload["existing"]:
+		frappe.connect()
+		frappe.set_user("Administrator")
+		from frappe.utils.password import update_password
+
+		update_password(user="Administrator", pwd=payload["admin_password"])
+		frappe.db.commit()
+	else:
+		from frappe.installer import _new_site
+
+		_new_site(
+			None,
+			site,
+			db_root_username="root",
+			db_root_password=payload["database_password"],
+			admin_password=payload["admin_password"],
+			db_host="db",
+			db_port=3306,
+			mariadb_user_host_login_scope="%",
+		)
+	frappe.set_user("Administrator")
+	from frappe.installer import install_app
+
+	for app in payload["apps"]:
+		install_app(app)
+	frappe.db.commit()
+finally:
+	frappe.destroy()
+"""
 STACK_RESTART_ORDER = (
 	"db",
 	"redis-cache",
@@ -59,6 +100,13 @@ class MarketplaceInstallFailure(OperationError):
 		super().__init__(self.result["error"])
 
 
+def audit_arguments(action: str, arguments: dict) -> dict:
+	"""Remove short-lived customer credentials from persisted operation metadata."""
+	if action == "create_hosted_site":
+		return {"apps": list(arguments.get("apps") or []), "resume_existing": arguments.get("resume_existing") is True}
+	return arguments
+
+
 def write_site_subscription_key(
 	sites_root: Path,
 	site: str,
@@ -68,7 +116,11 @@ def write_site_subscription_key(
 	installed_apps: list[str],
 ) -> dict:
 	"""Set or remove one marketplace key in an allowlisted site's config atomically."""
-	if site not in CUSTOMER_SITES or not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
+	if (
+		(site not in CUSTOMER_SITES and not (isinstance(site, str) and HOSTED_SITE_RE.fullmatch(site)))
+		or not isinstance(app, str)
+		or not APP_NAME_RE.fullmatch(app)
+	):
 		raise OperationError("Site or app is not allowed")
 	if app not in installed_apps:
 		raise OperationError("Site or installed app is not allowed")
@@ -200,6 +252,7 @@ def validate_request(action: str, target: str | None, arguments: dict) -> None: 
 		"restart_stack",
 		"deploy_app_revision",
 		"install_marketplace_app",
+		"create_hosted_site",
 	}:
 		raise OperationError("Action is not allowed")
 	if not isinstance(arguments, dict):
@@ -212,6 +265,7 @@ def validate_request(action: str, target: str | None, arguments: dict) -> None: 
 		"restart_stack": {"services"},
 		"deploy_app_revision": {"app", "revision", "expected_migration_sites", "restart_services"},
 		"install_marketplace_app": {"app"},
+		"create_hosted_site": {"apps", "admin_password", "resume_existing"},
 	}
 	if set(arguments) - allowed_arguments.get(action, set()):
 		raise OperationError("Unexpected action arguments")
@@ -237,8 +291,31 @@ def validate_request(action: str, target: str | None, arguments: dict) -> None: 
 		return
 	if action == "install_marketplace_app":
 		app = arguments.get("app")
-		if target not in CUSTOMER_SITES or not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
+		if (
+			(target not in CUSTOMER_SITES and not (target and HOSTED_SITE_RE.fullmatch(target)))
+			or not isinstance(app, str)
+			or not APP_NAME_RE.fullmatch(app)
+		):
 			raise OperationError("Site or marketplace app is not allowed")
+		return
+	if action == "create_hosted_site":
+		apps = arguments.get("apps")
+		password = arguments.get("admin_password")
+		if (
+			target is None
+			or not HOSTED_SITE_RE.fullmatch(target)
+			or not isinstance(apps, list)
+			or any(not isinstance(app, str) or app not in ALLOWED_APPS for app in apps)
+			or len(apps) != len(set(apps))
+			or not isinstance(password, str)
+			or not ADMIN_PASSWORD_RE.fullmatch(password)
+			or not isinstance(arguments.get("resume_existing"), bool)
+		):
+			raise OperationError("Hosted site request is invalid")
+		return
+	if action == "set_maintenance" and target and HOSTED_SITE_RE.fullmatch(target):
+		if not isinstance(arguments.get("enabled"), bool):
+			raise OperationError("State must be a boolean")
 		return
 	if action == "restart_service":
 		if target not in ALLOWED_SERVICES:
@@ -253,7 +330,7 @@ def validate_request(action: str, target: str | None, arguments: dict) -> None: 
 		"migrate_site",
 		"read_site_logs",
 	}:
-		if target not in CUSTOMER_SITES:
+		if target not in CUSTOMER_SITES and not (target and HOSTED_SITE_RE.fullmatch(target)):
 			raise OperationError("Site is not allowed")
 		if action == "restore_site" and not re.fullmatch(
 			r"[A-Za-z0-9_.-]{1,120}", str(arguments.get("backup_id", ""))
@@ -457,7 +534,10 @@ def _available_bench_apps(config: AgentConfig) -> set[str]:
 def _install_marketplace_app(
 	config: AgentConfig, connection: sqlite3.Connection, site: str, app: str
 ) -> dict:
-	if site not in CUSTOMER_SITES or not APP_NAME_RE.fullmatch(app):
+	if (
+		(site not in CUSTOMER_SITES and not (isinstance(site, str) and HOSTED_SITE_RE.fullmatch(site)))
+		or not APP_NAME_RE.fullmatch(app)
+	):
 		raise OperationError("Site or marketplace app is not allowed")
 	if app not in _available_bench_apps(config):
 		raise OperationError("Marketplace app is not available on this Bench")
@@ -482,6 +562,101 @@ def _install_marketplace_app(
 		"installed": True,
 		"already_installed": False,
 		"backup": backup,
+	}
+
+
+def _database_root_password(config: AgentConfig) -> str:
+	"""Read the fixed Compose database credential into process memory only."""
+	try:
+		result = run_command(
+			config,
+			compose_command(config, "exec", "-T", "db", "printenv", "MYSQL_ROOT_PASSWORD"),
+			timeout=15,
+		)
+	except (OSError, subprocess.SubprocessError) as error:
+		raise OperationError("Database credential is unavailable") from error
+	password = result.stdout.strip() if result.returncode == 0 else ""
+	if not password or len(password) > 4096 or "\x00" in password:
+		raise OperationError("Database credential is unavailable")
+	return password
+
+
+def _run_hosted_site_script(config: AgentConfig, payload: dict) -> None:
+	"""Send short-lived credentials to Frappe over stdin, never process arguments."""
+	command = compose_command(
+		config, "exec", "-T", config.backend_service, "python", "-c", HOSTED_SITE_SCRIPT
+	)
+	try:
+		result = subprocess.run(
+			command,
+			cwd=config.project_root,
+			input=json.dumps(payload),
+			capture_output=True,
+			text=True,
+			shell=False,
+			timeout=7200,
+			check=False,
+		)
+	except subprocess.TimeoutExpired as error:
+		raise OperationError("Hosted site operation timed out") from error
+	if result.returncode != 0:
+		# Do not include subprocess output: Bench output may contain credentials or customer data.
+		raise OperationError("Hosted site command failed; inspect the protected agent journal")
+
+
+def _hosted_site_path(config: AgentConfig, site: str) -> Path:
+	try:
+		root = config.sites_root.resolve(strict=True)
+		path = (root / site).resolve(strict=False)
+	except (OSError, RuntimeError) as error:
+		raise OperationError("Hosted site path is unavailable") from error
+	if not path.is_relative_to(root):
+		raise OperationError("Hosted site path is invalid")
+	return path
+
+
+def _create_hosted_site(
+	config: AgentConfig, connection: sqlite3.Connection, site: str, arguments: dict
+) -> dict:
+	"""Back up the existing shared sites, then create one allowlisted Asumi tenant."""
+	validate_request("create_hosted_site", site, arguments)
+	apps = list(arguments["apps"])
+	available_apps = _available_bench_apps(config)
+	if any(app not in available_apps for app in apps):
+		raise OperationError("Selected app is not installed on the shared Bench")
+
+	path = _hosted_site_path(config, site)
+	exists = path.exists()
+	if exists:
+		if not arguments["resume_existing"] or not path.is_dir() or not (path / "site_config.json").is_file():
+			raise OperationError("Hosted site already exists; it cannot be overwritten")
+		installed_apps = _installed_apps(config, site)
+	elif arguments["resume_existing"]:
+		# A retry is allowed to continue if the earlier operation stopped before creating files.
+		installed_apps = []
+	else:
+		installed_apps = []
+
+	backups = [_create_backup(config, connection, existing_site) for existing_site in IMPACT_SITES]
+	if exists:
+		backups.append(_create_backup(config, connection, site))
+
+	payload = {
+		"site": site,
+		"existing": exists,
+		"database_password": _database_root_password(config) if not exists else "",
+		"admin_password": arguments["admin_password"],
+		"apps": [app for app in apps if app not in installed_apps],
+	}
+	_run_hosted_site_script(config, payload)
+	installed_apps = _installed_apps(config, site)
+	if "frappe" not in installed_apps or any(app not in installed_apps for app in apps):
+		raise OperationError("Shared Bench did not confirm the requested hosted site apps")
+	return {
+		"site": site,
+		"apps": sorted(set(["frappe", *apps])),
+		"backups": backups,
+		"created": not exists,
 	}
 
 
@@ -694,6 +869,8 @@ def _run_action(  # noqa: C901
 			target or "",
 			str(arguments.get("app", "")),
 		)
+	if action == "create_hosted_site":
+		return _create_hosted_site(config, connection, target or "", arguments)
 	if action == "restart_service":
 		_require_recent_backups(connection, list(IMPACT_SITES))
 		_checked_command(config, compose_command(config, "restart", target), timeout=600)
@@ -751,7 +928,7 @@ class OperationManager:
 			connection.execute(
 				"INSERT INTO operations(operation_id,payload_hash,action,target,arguments,status,progress,created_at,updated_at) "
 				"VALUES(?,?,?,?,?,'Accepted','Queued',?,?)",
-				(operation_id, payload_hash, action, target, json.dumps(arguments), now, now),
+				(operation_id, payload_hash, action, target, json.dumps(audit_arguments(action, arguments)), now, now),
 			)
 			connection.commit()
 		self.pool.submit(self._run, operation_id, action, target, arguments)

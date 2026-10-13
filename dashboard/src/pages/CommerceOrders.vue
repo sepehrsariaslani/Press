@@ -392,7 +392,7 @@
 					<div class="rounded-lg border border-gray-200 bg-white p-3">
 						<p class="text-sm font-medium text-gray-800">گروه انتشار سایت</p>
 						<div v-if="sitePlanOptions.data?.release_groups?.length" class="mt-2 flex flex-wrap gap-2">
-							<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="newSitePlan.release_groups.includes(group.name)" @change="toggleNewPlanGroup(group.name, $event.target.checked)" />{{ group.name }}</label>
+							<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="newSitePlan.release_groups.includes(group.name)" @change="toggleNewPlanGroup(group.name, $event.target.checked)" />{{ group.title || group.name }}</label>
 						</div>
 						<p v-else class="mt-2 text-xs leading-5 text-amber-800">هنوز گروه انتشار عمومی با بنچ فعال ثبت نشده است؛ این پیش‌نویس تا آماده‌شدن زیرساخت قابل فروش نمی‌شود.</p>
 					</div>
@@ -436,7 +436,7 @@
 										<div class="rounded-lg border border-gray-200 bg-white p-3">
 											<p class="text-xs font-medium text-gray-800">گروه‌های انتشار</p>
 											<div v-if="sitePlanOptions.data?.release_groups?.length" class="mt-2 flex flex-wrap gap-2">
-												<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="(row.release_groups || []).includes(group.name)" @change="toggleSitePlanGroup(row, group.name, $event.target.checked)" />{{ group.name }}</label>
+												<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="(row.release_groups || []).includes(group.name)" @change="toggleSitePlanGroup(row, group.name, $event.target.checked)" />{{ group.title || group.name }}</label>
 											</div>
 											<p v-else class="mt-2 text-xs leading-5 text-amber-800">گروه انتشار عمومی و بنچ فعال هنوز آماده نیست.</p>
 											<p class="mt-2 text-xs text-gray-500">خالی‌گذاشتن این فهرست به معنی اجازهٔ استفاده از همهٔ گروه‌های انتشار عمومی است.</p>

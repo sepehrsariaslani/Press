@@ -273,6 +273,28 @@ class HostingOrderSnapshotTest(unittest.TestCase):
 		self.assertEqual(snapshot["subdomain"], "shops")
 		self.assertEqual(snapshot["apps"], [])
 
+	def test_snapshots_docker_hosted_site_renewal_to_docker_site_field(self):
+		self.plan["commerce_delivery_mode"] = "Create New Site"
+		renewal_site = {
+			"name": "shops.asumi.ir",
+			"team": "team-1",
+			"status": "Suspended",
+			"plan": "SITE-PLAN-1",
+			"subdomain": "shops",
+			"domain": "asumi.ir",
+			"site_type": "Docker Control Site",
+		}
+		snapshot = hosting_order_snapshot(
+			self.plan,
+			self.team,
+			"buyer@example.com",
+			site=renewal_site,
+			renew_new_site=True,
+		)
+		self.assertIsNone(snapshot["site"])
+		self.assertEqual(snapshot["docker_site"], renewal_site["name"])
+		self.assertEqual(snapshot["subdomain"], "shops")
+
 	def test_rejects_unverified_new_site_renewal(self):
 		self.plan["commerce_delivery_mode"] = "Create New Site"
 		with self.assertRaises(ValueError):

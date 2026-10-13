@@ -9,12 +9,13 @@ from dns.resolver import Resolver
 READINESS_CHECKS = (
 	("live_payment", "درگاه پرداخت زنده"),
 	("site_plan", "پلن ساخت سایت"),
-	("root_domain", "دامنهٔ ریشه در Press"),
+	("root_domain", "دامنهٔ اصلی آسومی"),
 	("wildcard_dns", "DNS زیردامنه‌ها"),
 	("wildcard_tls", "گواهی HTTPS زیردامنه‌ها"),
-	("press_infrastructure", "بنچ و سرور عمومی Press"),
+	("press_infrastructure", "بنچ مشترک Docker"),
 	("capacity", "ظرفیت مطابق پلن"),
 	("docker_agent", "اتصال میزبان Docker"),
+	("access_email", "ایمیل تحویل دسترسی سایت"),
 )
 
 RESOURCE_FIELDS = (
