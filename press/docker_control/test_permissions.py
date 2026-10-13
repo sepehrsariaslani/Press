@@ -70,6 +70,16 @@ class TestSiteTeamAdminAccess(unittest.TestCase):
 						action=action, target=target, global_admin=False, site_admin=True
 					)
 				)
+		self.assertFalse(
+			has_docker_control_action_access(
+				action="install_marketplace_app", target="dehati.ir", global_admin=False, site_admin=True
+			)
+		)
+		self.assertTrue(
+			has_docker_control_action_access(
+				action="install_marketplace_app", target="dehati.ir", global_admin=True, site_admin=False
+			)
+		)
 
 	def test_global_admin_retains_host_wide_access(self):
 		self.assertTrue(

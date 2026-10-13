@@ -5,7 +5,7 @@
 				<p class="text-sm font-medium text-rose-700">آسومی · خرید امن برنامه‌ها</p>
 				<h1 class="mt-1 text-2xl font-semibold text-gray-950">خرید و سفارش‌ها</h1>
 				<p class="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-					تعرفهٔ برنامه‌های نصب‌شده روی سایتتان را ببینید، سفارش ثبت کنید و وضعیت تحویل را دنبال کنید.
+					برنامه‌های قابل نصب روی بنچ سایتتان را ببینید، سفارش دهید و وضعیت پرداخت و تحویل را دنبال کنید.
 				</p>
 			</div>
 			<Button label="بروزرسانی" :loading="loading" @click="refresh" />
@@ -43,7 +43,7 @@
 			<div class="flex flex-wrap items-end justify-between gap-4">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">{{ requestedMarketplaceAppTitle ? `خرید ${requestedMarketplaceAppTitle}` : 'تعرفه‌های قابل خرید' }}</h2>
-					<p class="mt-1 text-sm text-gray-600">{{ requestedMarketplaceApp ? 'سایتی را انتخاب کنید که این برنامه روی آن نصب شده باشد؛ سپس فقط تعرفه‌های همین برنامه را می‌بینید.' : 'فقط برنامه‌هایی نمایش داده می‌شوند که روی سایت انتخابی نصب هستند.' }}</p>
+					<p class="mt-1 text-sm text-gray-600">{{ requestedMarketplaceApp ? 'سایت را انتخاب کنید؛ فقط تعرفه‌های همین برنامه که کدشان روی بنچ آماده است نمایش داده می‌شود.' : 'برنامه‌های نصب‌شده یا آمادهٔ نصب روی بنچ سایت انتخابی نمایش داده می‌شوند.' }}</p>
 				</div>
 				<label class="min-w-64 text-sm font-medium text-gray-700">
 					سایت
@@ -57,22 +57,23 @@
 			<div v-if="!selectedSite" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای دیدن تعرفه‌ها یک سایت فعال انتخاب کنید.</div>
 			<div v-else-if="plans.loading" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">در حال دریافت تعرفه‌ها…</div>
 			<div v-else-if="requestedMarketplaceApp && plans.data && !visibleAppPlans.length" class="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm leading-6 text-amber-950" role="status">
-				<strong>{{ requestedMarketplaceAppTitle || requestedMarketplaceApp }}</strong> روی این سایت نصب نیست یا تعرفهٔ فعالی ندارد. ابتدا برنامه را از بخش برنامه‌های همان سایت نصب کنید؛ این صفحه تعرفهٔ برنامهٔ دیگری را به‌جای آن نشان نمی‌دهد.
+				<strong>{{ requestedMarketplaceAppTitle || requestedMarketplaceApp }}</strong> روی بنچ این سایت موجود نیست یا تعرفهٔ فعالی ندارد؛ سفارش و نصب از این مسیر در دسترس نیست.
 			</div>
-			<div v-else-if="!(plans.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای برنامه‌های نصب‌شده روی این سایت، تعرفهٔ فعال ثبت نشده است.</div>
+			<div v-else-if="!(plans.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای برنامه‌های موجود روی بنچ این سایت، تعرفهٔ فعالی ثبت نشده است.</div>
 			<div v-else class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<article v-for="plan in visibleAppPlans" :key="plan.name" class="flex flex-col rounded-xl border border-gray-200 p-5">
 					<div class="flex-1">
 						<p class="text-xs font-medium text-rose-700">{{ plan.app_title }}</p>
 						<h3 class="mt-1 text-lg font-semibold text-gray-950">{{ plan.title || 'تعرفه' }}</h3>
 						<p class="mt-1 text-sm text-gray-600">دوره: {{ intervalLabel(plan.interval) }}</p>
+						<p v-if="plan.installation_required" class="mt-2 text-xs leading-5 text-gray-600">با ثبت سفارش، پس از پشتیبان کامل روی {{ selectedSiteTarget?.label || 'سایت انتخابی' }} نصب می‌شود.</p>
 					</div>
 					<div class="mt-5 flex items-baseline gap-2">
 						<strong class="text-xl font-semibold text-gray-950">{{ !plan.asumi_checkout_supported ? 'قیمت ریالی لازم است' : Number(plan.price_irr) === 0 ? 'رایگان' : money(plan.price_irr) }}</strong>
 						<span v-if="plan.asumi_checkout_supported && Number(plan.price_irr) !== 0" class="text-sm text-gray-500">ریال</span>
 					</div>
 					<p v-if="plan.asumi_checkout_message" class="mt-2 text-xs leading-5 text-amber-800">{{ plan.asumi_checkout_message }}</p>
-					<Button class="mt-4 w-full" variant="solid" :disabled="!plan.asumi_checkout_supported || (Number(plan.price_irr) === 0 ? !plans.data.free_purchase_enabled : !plans.data.checkout_enabled) || busy" :loading="busyPlan === plan.name" :label="!plan.asumi_checkout_supported ? 'نیازمند قیمت ریالی' : Number(plan.price_irr) === 0 ? 'فعال‌سازی رایگان' : 'ثبت سفارش و پرداخت'" @click="purchase(plan)" />
+					<Button class="mt-4 w-full" variant="solid" :disabled="!plan.asumi_checkout_supported || (Number(plan.price_irr) === 0 ? !plans.data.free_purchase_enabled : !plans.data.checkout_enabled) || busy" :loading="busyPlan === plan.name" :label="marketplacePlanActionLabel(plan)" @click="purchase(plan)" />
 				</article>
 			</div>
 			<p v-if="plans.data?.message" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950">{{ plans.data.message }}</p>
@@ -408,14 +409,15 @@
 				<Button label="دریافت سفارش‌ها" :loading="adminOrders.loading" @click="adminOrders.fetch()" />
 			</div>
 			<div v-if="adminOrders.data?.length" class="mt-4 overflow-x-auto">
-				<table class="w-full min-w-[850px] text-sm">
-					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">سفارش</th><th>مشتری / تیم</th><th>مبلغ</th><th>وضعیت</th><th>خطای تحویل</th><th></th></tr></thead>
+				<table class="w-full min-w-[1100px] text-sm">
+					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">سفارش</th><th>مشتری / تیم</th><th>مبلغ</th><th>وضعیت</th><th>پشتیبان / عملیات نصب</th><th>خطای تحویل</th><th></th></tr></thead>
 					<tbody class="divide-y divide-gray-100">
 						<tr v-for="order in adminOrders.data" :key="order.name">
 							<td class="py-3 pr-2"><strong>{{ order.name }}</strong><span class="block text-xs text-gray-500">{{ order.plan }} · {{ order.docker_site || order.site || order.subdomain }}</span></td>
 							<td>{{ order.customer }}<span class="block text-xs text-gray-500">{{ order.team }}</span></td>
 							<td>{{ money(order.amount) }} {{ order.currency }}</td>
 							<td>{{ statusLabel(order.status) }}<span v-if="order.refund_reference" class="block text-xs text-gray-500">مرجع بازپرداخت: {{ order.refund_reference }}</span></td>
+							<td class="text-xs text-gray-600"><span v-if="order.install_backup" class="block">پشتیبان: {{ order.install_backup }}</span><span v-if="order.install_backup_id" class="block">پشتیبان Docker: {{ order.install_backup_id }}</span><span v-if="order.agent_job" class="block">کار نصب: {{ order.agent_job }}</span><span v-if="order.install_operation" class="block">عملیات: {{ order.install_operation }}</span></td>
 							<td class="max-w-64 truncate text-rose-700">{{ order.provisioning_error || order.payment_error || '—' }}</td>
 							<td class="flex items-center gap-2 py-2">
 								<Button v-if="order.status === 'Provisioning Failed'" label="تلاش مجدد تحویل" :loading="retrying === order.name" @click="retry(order)" />
@@ -440,7 +442,7 @@ import { session } from '@/data/session';
 import { canManageAsumiCommerce } from '@/utils/commerceAccess';
 import { commerceGatewayState } from '@/utils/commerceGatewayState';
 import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
-import { selectMarketplacePlans } from '@/utils/marketplacePlanSelection';
+import { marketplacePlanActionLabel, selectMarketplacePlans } from '@/utils/marketplacePlanSelection';
 import { parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));

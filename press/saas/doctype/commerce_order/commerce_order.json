@@ -19,6 +19,10 @@
   "subdomain",
   "original_plan",
   "agent_job",
+  "installation_required",
+  "install_backup",
+  "install_backup_id",
+  "install_operation",
   "apps",
   "team",
   "customer",
@@ -102,6 +106,33 @@
    "fieldtype": "Link",
    "label": "Site Provisioning Job",
    "options": "Agent Job",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "installation_required",
+   "fieldtype": "Check",
+   "label": "Install Marketplace App Snapshot",
+   "read_only": 1
+  },
+  {
+   "fieldname": "install_backup",
+   "fieldtype": "Link",
+   "label": "Marketplace App Installation Backup",
+   "options": "Site Backup",
+   "read_only": 1
+  },
+  {
+   "fieldname": "install_backup_id",
+   "fieldtype": "Data",
+   "label": "Docker Installation Backup ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "install_operation",
+   "fieldtype": "Link",
+   "label": "Marketplace App Installation Operation",
+   "options": "Docker Control Operation",
    "read_only": 1
   },
   {

@@ -8,6 +8,7 @@ from press.saas.commerce.pricing import (
 	normalize_marketplace_app_plan_prices,
 	normalize_zarinpal_price,
 )
+from press.saas.commerce.marketplace_install import marketplace_install_state
 from press.saas.commerce.service_delivery import (
 	EXISTING_SITE_UPGRADE,
 	NEW_SITE_PROVISIONING,
@@ -32,8 +33,11 @@ def marketplace_app_order_snapshot(plan, app, site, team, customer):
 		raise ValueError("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد")
 	if site_type not in {"Site", "Docker Control Site"}:
 		raise ValueError("نوع سایت برای خرید برنامه معتبر نیست")
-	if app.get("app") not in site.get("installed_apps", []):
-		raise ValueError("ابتدا باید برنامه را روی این سایت نصب کنید")
+	installation = marketplace_install_state(
+		app.get("app"),
+		site.get("installed_apps") or [],
+		site.get("available_apps") or site.get("installed_apps") or [],
+	)
 
 	try:
 		prices = normalize_marketplace_app_plan_prices(plan)
@@ -58,6 +62,7 @@ def marketplace_app_order_snapshot(plan, app, site, team, customer):
 		"customer": customer,
 		"currency": "IRR",
 		"amount": amount,
+		"installation_required": installation["installation_required"],
 	}
 	if site_type == "Docker Control Site":
 		snapshot["docker_site"] = site["name"]

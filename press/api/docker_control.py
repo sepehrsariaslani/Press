@@ -33,6 +33,7 @@ AGENT_ENDPOINT = "http://172.18.0.1:8769"
 CONFIRMATION_SECONDS = 600
 POLL_INTERVAL_SECONDS = 2
 OPERATION_TIMEOUT_SECONDS = 10800
+MARKETPLACE_INSTALL_TIMEOUT_SECONDS = 12600
 SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 
 
@@ -52,6 +53,13 @@ def _validate_inventory(inventory: dict) -> list[dict]:
 		frappe.throw("نسخهٔ پروتکل عامل با Press سازگار نیست.")
 	if inventory.get("domains") != list(IMPACT_SITES):
 		frappe.throw("فهرست دامنه‌های بنچ با فهرست مورد انتظار یکسان نیست.")
+	bench_apps = inventory.get("bench_apps")
+	if bench_apps is not None and (
+		not isinstance(bench_apps, list)
+		or any(not isinstance(app, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", app) for app in bench_apps)
+		or len(bench_apps) != len(set(bench_apps))
+	):
+		frappe.throw("فهرست برنامه‌های بنچ در موجودی عامل معتبر نیست.")
 	sites = inventory.get("sites")
 	if not isinstance(sites, list):
 		frappe.throw("ساختار موجودی سایت‌ها معتبر نیست.")
@@ -149,6 +157,7 @@ def _dashboard_payload(
 			"target",
 			"status",
 			"actor",
+			"commerce_order",
 			"impact_sites",
 			"backup_sites",
 			"migration_sites",
@@ -549,6 +558,7 @@ def _run_agent(
 	arguments: dict,
 	*,
 	operation_id_field: str = "agent_operation_id",
+	timeout: int = OPERATION_TIMEOUT_SECONDS,
 ) -> dict:
 	host = _host_doc()
 	client = _client(host)
@@ -562,7 +572,7 @@ def _run_agent(
 	)
 	client.submit(agent_id, action, target, arguments)
 	started = time.monotonic()
-	while time.monotonic() - started < OPERATION_TIMEOUT_SECONDS:
+	while time.monotonic() - started < timeout:
 		result = client.get_operation(agent_id)
 		status = result.get("status")
 		_set_operation(operation, progress=str(result.get("progress") or "در حال اجرا")[:500])
@@ -574,6 +584,73 @@ def _run_agent(
 			)
 		time.sleep(POLL_INTERVAL_SECONDS)
 	raise DockerControlError("زمان عملیات به پایان رسید؛ وضعیت را در تاریخچه بررسی کنید.")
+
+
+def execute_marketplace_app_install(order, app: str) -> dict:
+	"""Install one Bench-resident Marketplace app for a Commerce Order, with a verified full backup."""
+	target = order.docker_site
+	previous_user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		if target not in CUSTOMER_SITES or not frappe.db.exists(
+			"Docker Control Site", {"domain": target, "team": order.team, "enabled": 1}
+		):
+			frappe.throw("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست.")
+		host = _host_doc()
+		client = _client(host)
+		if app not in client.available_apps():
+			frappe.throw("برنامهٔ سفارش دیگر روی بنچ Docker موجود نیست.")
+		operation = frappe.get_doc(
+			{
+				"doctype": "Docker Control Operation",
+				"action": "install_marketplace_app",
+				"target": target,
+				"actor": order.customer,
+				"commerce_order": order.name,
+				"impact_sites": json.dumps([target]),
+				"backup_sites": json.dumps([target]),
+				"migration_sites": "[]",
+				"arguments": json.dumps({"app": app}, sort_keys=True),
+				"status": "Queued",
+				"progress": "در صف پشتیبان‌گیری و نصب برنامه",
+			}
+		).insert(ignore_permissions=True)
+		order.db_set("install_operation", operation.name)
+		frappe.db.commit()
+		try:
+			result = _run_agent(
+				operation,
+				"install_marketplace_app",
+				target,
+				{"app": app},
+				timeout=MARKETPLACE_INSTALL_TIMEOUT_SECONDS,
+			)
+			if result.get("site") != target or result.get("app") != app or not result.get("installed"):
+				raise DockerControlError("عامل نصب برنامه را تأیید نکرد.")
+			operation.reload()
+			_set_operation(
+				operation,
+				status="Success",
+				progress="پشتیبان کامل و نصب برنامه تأیید شد.",
+				result=json.dumps(result, ensure_ascii=False),
+				ended_at=now_datetime(),
+			)
+			backup = result.get("backup") or {}
+			if backup.get("backup_id"):
+				order.db_set("install_backup_id", backup["backup_id"])
+			inventory = _client(host).inventory()
+			_validate_inventory(inventory)
+			_store_inventory(host, inventory)
+			updated_site = frappe.get_doc("Docker Control Site", target)
+			if app not in {row.app for row in updated_site.apps}:
+				raise DockerControlError("موجودی بنچ نصب برنامه را تأیید نکرد.")
+			return {**result, "operation": operation.name}
+		except Exception as error:
+			operation.reload()
+			_set_failure(operation, str(error)[:500] or "اجرای نصب برنامه ناموفق شد.")
+			raise
+	finally:
+		frappe.set_user(previous_user)
 
 
 def process_preparation(operation_name: str) -> None:

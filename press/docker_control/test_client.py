@@ -7,6 +7,20 @@ from press.docker_control.client import DockerControlClient, DockerControlError
 
 class DockerControlClientTest(unittest.TestCase):
 	@patch("press.docker_control.client.requests.request")
+	def test_available_apps_reads_a_typed_private_inventory(self, request):
+		response = SimpleNamespace(
+			status_code=200,
+			json=lambda: {"protocol_version": 1, "apps": ["accounts", "restaurant"]},
+		)
+		request.return_value = response
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+		client = DockerControlClient(host)
+		self.assertIsNotNone(getattr(client, "available_apps", None))
+
+		self.assertEqual(client.available_apps(), ["accounts", "restaurant"])
+		self.assertEqual(request.call_args.args[:2], ("GET", "http://172.18.0.1:8769/v1/available-apps"))
+
+	@patch("press.docker_control.client.requests.request")
 	def test_site_admins_uses_private_read_only_endpoint_for_fixed_site(self, request):
 		response = SimpleNamespace(
 			status_code=200,

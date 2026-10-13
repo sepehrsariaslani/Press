@@ -79,6 +79,18 @@ class DockerControlClient:
 	def resources(self) -> dict:
 		return self.request("GET", "/v1/resources", timeout=(2, 5))
 
+	def available_apps(self) -> list[str]:
+		result = self.request("GET", "/v1/available-apps", timeout=(5, 60))
+		apps = result.get("apps")
+		if (
+			result.get("protocol_version") != 1
+			or not isinstance(apps, list)
+			or any(not isinstance(app, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", app) for app in apps)
+			or len(apps) != len(set(apps))
+		):
+			raise DockerControlError("فهرست برنامه‌های بنچ معتبر نیست.")
+		return apps
+
 	def site_admins(self, domain: str) -> dict:
 		if domain not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}:
 			raise DockerControlError("سایت برای همگام‌سازی مدیران مجاز نیست.")

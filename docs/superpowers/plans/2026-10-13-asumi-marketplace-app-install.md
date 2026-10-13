@@ -1,0 +1,129 @@
+# نصب امن برنامه‌های Marketplace آسومی — برنامهٔ پیاده‌سازی
+
+> **برای اجرا:** این برنامه در همین شاخه و به‌صورت درون‌خطی اجرا می‌شود؛ ساخت شاخه یا استفاده از عامل دیگر انجام نمی‌شود. هر بخش با آزمون شکست‌خورده آغاز و پس از پیاده‌سازی دوباره اجرا می‌شود.
+
+**هدف:** مشتری بتواند برنامهٔ منتشرشده و دارای کد روی بنچ سایت انتخابی‌اش را بخرد یا رایگان فعال کند؛ نصب فقط بعد از پشتیبان کامل و تأیید پرداختِ لازم انجام شود.
+
+**معماری:** مسیر سفارش فعلی `Commerce Order` حفظ می‌شود. کاتالوگ برای سایت منتخب، برنامه‌های منتشرشده‌ای را می‌دهد که کدشان در Bench آن سایت موجود است و نصب‌بودن را جداگانه مشخص می‌کند. سایت Press از `Site Backup` و `Agent Job` استاندارد استفاده می‌کند؛ سایت Docker از عملیات نوع‌دار و allowlist‌شدهٔ عامل استفاده می‌کند. فقط پس از بازخوانی موجودی و تأیید نصب، اشتراک فعال می‌شود.
+
+**فناوری:** Frappe/Press Python، Docker Control Agent، Vue 3 داشبورد، `unittest` و Vitest.
+
+## محدودیت‌های سراسری
+
+- فقط برنامهٔ Published با پلن فعال و کد موجود روی بنچ سایت انتخاب‌شده قابل سفارش است.
+- نام برنامه و دستور shell آزاد از مشتری پذیرفته نمی‌شود؛ عامل فقط فرمان ثابت نصب را با آرگومان‌های جدا اجرا می‌کند.
+- پیش از نصب، وجود پشتیبان کامل پایگاه داده، فایل‌های عمومی و خصوصی الزامی است.
+- پلن پولی فقط بعد از تأیید سمت‌سرور زرین‌پال نصب می‌شود؛ پلن رایگان از مسیر سفارش رایگان می‌گذرد.
+- عملیات فقط سایت انتخاب‌شده را تغییر می‌دهد؛ کد Bench یا سرویس‌های مشترک restart نمی‌شوند و restore خودکار اجرا نمی‌شود.
+- قیمت‌های فعلی صفر می‌مانند و Raven و Sales دوباره وارد کاتالوگ نمی‌شوند.
+
+---
+
+### کار ۱: محاسبهٔ برنامه‌های قابل نصب برای سایت انتخابی
+
+**فایل‌ها:**
+- ایجاد: `press/saas/commerce/marketplace_install.py`
+- تغییر: `press/saas/commerce/order_snapshot.py`
+- تغییر: `press/saas/commerce/api.py`
+- آزمون: `press/saas/commerce/test_marketplace_install.py`
+- آزمون: `press/saas/commerce/test_order_snapshot.py`
+- آزمون: `press/saas/commerce/test_marketplace_targets.py`
+
+**رابط‌ها:**
+- `marketplace_install_state(app: str, installed_apps: list[str], available_apps: list[str]) -> dict` وضعیت نصب‌شده/قابل‌نصب را فقط از موجودی معتبر می‌سازد.
+- `marketplace_app_order_snapshot(...)` به‌جای شرط «از قبل نصب باشد»، شرط «روی بنچ حاضر باشد» را بررسی و فیلد `installation_required` را در snapshot ذخیره می‌کند.
+- `available_app_plans(site, site_type)` برنامه‌ها و پلن‌های منتشرشده را فقط برای سایت تیم جاری می‌دهد و `installation_required` را در پاسخ می‌گذارد.
+
+- [x] آزمون‌های قرمز/سبز برای برنامهٔ نصب‌شده، برنامهٔ حاضر ولی نصب‌نشده، برنامهٔ خارج از بنچ و نام معتبر نوشته و اجرا شدند.
+- [x] آزمون‌های واحد امن در container اجرا شدند؛ آزمون Frappe روی `asumi.ir` اجرا نشد چون اجرای تست روی سایت زنده غیرفعال است.
+- [x] موجودی Bench برای Press از `Bench.apps` و برای Docker از endpoint امضاشدهٔ عامل خوانده می‌شود؛ مالکیت تیم و فعال‌بودن سایت بررسی می‌شود.
+- [x] آزمون‌های `test_marketplace_install` و `test_order_snapshot` سبز شدند. آزمون API وابسته به Frappe در این محیط اجرا نشد.
+
+### کار ۲: عملیات Docker برای پشتیبان و نصب محدود به یک سایت
+
+**فایل‌ها:**
+- تغییر: `press/docker_control_agent/inventory.py`
+- تغییر: `press/docker_control_agent/operations.py`
+- تغییر: `press/docker_control_agent/test_inventory.py`
+- تغییر: `press/docker_control_agent/test_operations.py`
+- تغییر: `press/docker_control/permissions.py`
+- تغییر: `press/docker_control/client.py`
+- تغییر: `press/api/docker_control.py`
+- تغییر: `press/press/doctype/docker_control_operation/docker_control_operation.json`
+
+**رابط‌ها:**
+- عملیات عامل `install_marketplace_app` فقط `{app: string}` می‌پذیرد، هدف باید یکی از سایت‌های مشتری allowlist‌شده باشد و نام برنامه باید در apps نصب‌شدهٔ بنچ و مسیر منبع معتبر آن بنچ وجود داشته باشد.
+- عامل ابتدا `_create_backup(config, connection, target)` را اجرا می‌کند؛ سپس فرمان ثابت `bench --site target install-app app` را با `subprocess` و آرگومان‌های مستقل اجرا می‌کند؛ در پایان `_installed_apps` باید نصب را تأیید کند.
+- پاسخ شامل `site`, `app`, `backup_id`, `installed` است؛ خطا در SQLite عامل و `Docker Control Operation` ثبت می‌شود.
+
+- [x] آزمون‌های عامل، شامل app ناموجود، بکاپ کامل، فرمان ثابت، تأیید موجودی نهایی و idempotency نوشته و اجرا شدند.
+- [x] آزمون‌های عامل در container اجرا شدند؛ اجرای Frappe test runner روی سایت زنده غیرفعال است.
+- [x] action فقط از مسیر داخلی سفارش اجرا می‌شود؛ شناسهٔ سفارش در رکورد Press می‌ماند و به عامل یا shell فرستاده نمی‌شود.
+- [x] موجودی کدهای Bench از نصب‌شده‌های هر سایت جداست و endpoint عامل آن را مستقل اعلام می‌کند.
+- [x] آزمون‌های واحد عامل و منطق دسترسی اجرا شدند؛ روی سایت مشتری نصب آزمایشی انجام نشد.
+
+### کار ۳: orchestration سفارش تا نصب و فعال‌سازی اشتراک
+
+**فایل‌ها:**
+- تغییر: `press/saas/doctype/commerce_order/commerce_order.json`
+- تغییر: `press/saas/commerce/api.py`
+- تغییر: `press/api/docker_control.py`
+- تغییر: `press/press/doctype/site/site.py` فقط اگر برای ثبت وضعیت Agent Job لازم باشد.
+- آزمون: `press/saas/commerce/test_provisioning_recovery.py`
+- آزمون: `press/saas/commerce/test_order_integration.py`
+- آزمون: آزمون‌های تازهٔ `press/saas/commerce/test_marketplace_install.py`
+
+**رابط‌ها:**
+- به سفارش، snapshot نصب، `Site Backup`, `Agent Job` یا `Docker Control Operation`, و شناسهٔ پشتیبان لینک داده می‌شود تا مدیر سابقهٔ تحویل را ببیند.
+- مسیر Site: ساخت `Site Backup` با فایل‌ها، انتظار برای `Success` و کامل‌بودن سه artifact، سپس `Agent.install_app_site`; پس از موفقیت job، `site.sync_apps()` و بازخوانی برنامه.
+- مسیر Docker: ساخت operation متصل به سفارش و اجرای typed action عامل که backup و install را در یک عملیات idempotent انجام می‌دهد.
+- worker موجود فقط بعد از تأیید نصب، subscription/key را ایجاد یا به‌روزرسانی و سفارش را `Active` می‌کند؛ خطا `Provisioning Failed` می‌سازد و backup را نگه می‌دارد.
+
+- [ ] آزمون‌های یکپارچهٔ Frappe برای ترتیب backup → install → subscription، شکست و retry را در محیط آزمایشی ایزوله اجرا کن؛ تست روی `asumi.ir` عمداً فعال نشد.
+- [x] provisioning در worker طولانی اجرا می‌شود و بعد از تأیید نصب اشتراک را فعال می‌کند؛ صف برای زمان backup و نصب تنظیم شده است.
+- [x] retry همان سفارش را ادامه می‌دهد و موجودی را دوباره می‌خواند؛ اگر برنامه نصب شده باشد نصب تکراری نمی‌شود.
+- [ ] آزمون یکپارچهٔ provisioning در این محیط به‌علت غیرفعال‌بودن تست روی سایت زنده اجرا نشد؛ آزمون‌های واحد helper/agent سبز هستند.
+
+### کار ۴: رابط خرید و پنل پیگیری مدیر
+
+**فایل‌ها:**
+- تغییر: `dashboard/src/pages/CommerceOrders.vue`
+- تغییر یا آزمون: `dashboard/src/utils/marketplacePlanSelection.js`
+- آزمون: فایل Vitest کنار `dashboard/src/utils/marketplacePlanSelection.test.ts`
+
+**رابط‌ها:**
+- صفحهٔ سفارش برای هر پلن مشخص می‌کند برنامه روی سایت انتخاب‌شده نصب است یا بعد از backup نصب می‌شود؛ سایت و برنامهٔ هدف پیش از ثبت سفارش آشکارند.
+- دکمهٔ پلن رایگان «ثبت سفارش رایگان و نصب» و دکمهٔ پلن پولی «پرداخت و نصب» است؛ پرداخت/نصب فقط مطابق وضعیت سمت سرور فعال می‌شود.
+- پنل مدیر شناسهٔ پشتیبان و لینک عملیات/job نصب را کنار سفارش نشان می‌دهد و retry موجود را حفظ می‌کند.
+
+- [x] آزمون‌های فیلترکردن برنامه و CTA رایگان/پولی برای حالت نصب‌شده و نصب‌لازم نوشته شدند.
+- [x] Vitest مربوطه سبز است: ۶ آزمون.
+- [x] صفحهٔ سفارش وضعیت نصب و سایت مقصد را نشان می‌دهد؛ CTAهای رایگان/پولی با نصب هماهنگ‌اند و پنل مدیر شناسه‌های backup/job/operation را نشان می‌دهد.
+- [x] بازیابی سفارش و پیام‌های عمومی موجود حفظ شدند.
+- [x] `yarn build` موفق شد؛ `yarn lint` به خطای داخلی ناسازگاری ESLint/Prettier برخورد کرد.
+
+### کار ۵: بازبینی الزامات و انتشار کنترل‌شده
+
+**فایل‌ها:**
+- بدون تغییر تولید مگر اینکه یک آزمون یا بررسی عملی defect نشان دهد.
+
+- [x] معیارها با آزمون‌های helper/عامل، schema، موجودی واقعی Bench، asset رابط و route عمومی بررسی شدند.
+- [x] آزمون‌های واحد Docker/Commerce و Vitest، build و parse فایل‌های Python/JSON اجرا شدند؛ آزمون‌های Frappe روی سایت زنده اجرا نشدند.
+- [x] فضای دیسک و agent بررسی شد؛ بکاپ کامل `asumi.ir` گرفته و صحت DB/public/private بررسی شد؛ migrate و restart عامل/backend/queue-long موفق بود.
+- [ ] نصب end-to-end روی مشتری واقعی انجام نشد تا سایت زندهٔ کاربر بدون سفارش تغییر نکند؛ برای این بررسی یک سایت آزمایشی ایزوله لازم است.
+- [x] route عمومی و asset داشبورد پاسخ ۲۰۰ دادند؛ endpoint عامل فهرست ۲۵ اپ را برگرداند و ستون‌های سفارش/عملیات در DB تأیید شدند. تاریخچهٔ سفارش نصب واقعی هنوز با سفارش واقعی exercise نشده است.
+
+## بازبینی طرح در برابر مشخصات
+
+- مسیر سایت Press و Docker هر دو از کاتالوگ تا provisioning پوشش داده شده‌اند.
+- پشتیبان کامل پیش از نصب، بررسی server-side برنامه و تیم، Verify پرداخت، idempotency، retry و ثبت خطا پوشش دارند.
+- سطح اثر از یک سایت فراتر نمی‌رود و restore خودکار یا restart بنچ وارد طرح نشده است.
+- رابط مشتری و مدیر و آزمون انتشار در کارهای ۴ و ۵ آمده‌اند.
+- اپ‌های Raven و Sales و قیمت‌های فعلی صفر در هیچ کار این طرح تغییر نمی‌کنند.
+
+## نتیجهٔ انتشار و محدودیت‌های بررسی
+
+- پیاده‌سازی روی شاخهٔ `server-snapshot-20260825` با کامیت فارسی ثبت شد و روی Bench فعال شد.
+- بکاپ کامل بررسی‌شده: `runtime/sites/asumi.ir/private/backups/20261013_042914-asumi_ir-*`.
+- `bench execute` برای کاتالوگ با کاربر `Administrator` به‌درستی به‌خاطر تعلق نداشتن سایت به تیم همان کاربر رد شد؛ مسیر `_marketplace_purchase_site` با تیم واقعی و موجودی عامل به‌صورت read-only بررسی شد.
+- آزمون کامل خرید و نصب روی سایت مشتری انجام نشد؛ این کار دادهٔ سایت را تغییر می‌داد و سایت آزمایشی جداگانه‌ای در این Bench وجود ندارد.

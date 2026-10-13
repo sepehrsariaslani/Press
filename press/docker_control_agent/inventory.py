@@ -79,6 +79,37 @@ def _parse_app_versions(output: str) -> dict[str, dict[str, str]]:
 	return versions
 
 
+def get_available_apps(config: AgentConfig) -> list[str]:
+	"""Return app code registered on this Bench and confined to its apps directory."""
+	result = run_command(
+		config,
+		compose_command(
+			config,
+			"exec",
+			"-T",
+			config.backend_service,
+			"bench",
+			"version",
+			"--format",
+			"json",
+		),
+		timeout=45,
+	)
+	if result.returncode != 0:
+		raise RuntimeError("Bench app inventory query failed")
+	versions = _parse_app_versions(result.stdout)
+	apps_root = config.apps_root.resolve(strict=True)
+	available = []
+	for app in versions:
+		if app == "frappe":
+			continue
+		app_path = (apps_root / app).resolve(strict=True)
+		if not app_path.is_relative_to(apps_root) or not app_path.is_dir():
+			raise ValueError("Bench app source path is invalid")
+		available.append(app)
+	return sorted(available)
+
+
 def _app_revision(config: AgentConfig, app: str) -> dict:
 	if not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
 		return {"app": app, "version": "unknown", "branch": "unknown"}
@@ -300,6 +331,7 @@ def get_inventory(config: AgentConfig) -> dict:
 	return {
 		"protocol_version": 1,
 		"domains": list(IMPACT_SITES),
+		"bench_apps": sorted(app for app in app_versions if app != "frappe"),
 		"resources": _resource_summary(config),
 		"services": _compose_state(config),
 		"sites": sites,

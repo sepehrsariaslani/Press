@@ -14,6 +14,35 @@ from press.docker_control_agent.service import ControlHandler
 
 
 class ResourcesEndpointTest(unittest.TestCase):
+	def test_available_apps_endpoint_returns_only_bench_registered_apps(self):
+		server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
+		server.control_config = SimpleNamespace()
+		server.operation_manager = SimpleNamespace()
+		thread = Thread(target=server.serve_forever, daemon=True)
+		thread.start()
+		try:
+			with (
+				patch.object(ControlHandler, "_authenticate"),
+				patch(
+					"press.docker_control_agent.service.get_available_apps",
+					return_value=["accounts", "restaurant"],
+					create=True,
+				),
+			):
+				try:
+					response = urlopen(f"http://127.0.0.1:{server.server_port}/v1/available-apps", timeout=2)
+				except HTTPError as error:
+					self.fail(f"available-apps endpoint returned HTTP {error.code}")
+				self.assertEqual(response.status, 200)
+				self.assertEqual(
+					json.loads(response.read()),
+					{"protocol_version": 1, "apps": ["accounts", "restaurant"]},
+				)
+		finally:
+			server.shutdown()
+			server.server_close()
+			thread.join(timeout=2)
+
 	def test_resources_endpoint_returns_fast_capacity_payload(self):
 		server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
 		server.control_config = SimpleNamespace()

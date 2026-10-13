@@ -43,22 +43,40 @@ class MarketplacePurchaseTargetTest(unittest.TestCase):
 		})
 
 	@patch("press.saas.commerce.api.frappe")
-	def test_docker_target_requires_exact_team_and_uses_installed_app_inventory(self, frappe_mock):
+	def test_docker_target_requires_exact_team_and_uses_live_bench_app_inventory(self, frappe_mock):
 		frappe_mock.get_all.return_value = ["accounts", "restaurant", "erpnext"]
 		frappe_mock.db.get_value.return_value = frappe._dict(
 			domain="veederakht.ir", team="veederakht-team", enabled=1
 		)
-
-		target = api._marketplace_purchase_site("veederakht.ir", "Docker Control Site", "veederakht-team")
+		with patch.object(api, "_docker_bench_apps", create=True, return_value=["accounts", "restaurant"]):
+			target = api._marketplace_purchase_site(
+				"veederakht.ir", "Docker Control Site", "veederakht-team"
+			)
 
 		self.assertEqual(target["site_type"], "Docker Control Site")
 		self.assertEqual(target["installed_apps"], ["accounts", "restaurant", "erpnext"])
+		self.assertEqual(target["available_apps"], ["accounts", "restaurant"])
 		self.assertEqual(frappe_mock.db.get_value.call_args.args[1], {
 			"domain": "veederakht.ir",
 			"team": "veederakht-team",
 			"enabled": 1,
 		})
 		self.assertEqual(frappe_mock.get_all.call_args.kwargs["filters"]["parent"], "veederakht.ir")
+
+	@patch("press.saas.commerce.api.frappe")
+	def test_press_target_uses_installed_and_bench_app_lists_separately(self, frappe_mock):
+		frappe_mock.db.get_value.return_value = frappe._dict(
+			name="store.asumi.ir", team="team-1", status="Active", bench="BENCH-1"
+		)
+		frappe_mock.get_all.return_value = ["accounts"]
+		frappe_mock.get_doc.return_value = frappe._dict(
+			apps=[frappe._dict(app="frappe"), frappe._dict(app="accounts"), frappe._dict(app="restaurant")]
+		)
+
+		target = api._marketplace_purchase_site("store.asumi.ir", "Site", "team-1")
+
+		self.assertEqual(target["installed_apps"], ["accounts"])
+		self.assertEqual(target["available_apps"], ["accounts", "restaurant"])
 
 	@patch("press.saas.commerce.api.frappe")
 	def test_docker_target_rejects_sites_owned_by_another_team(self, frappe_mock):

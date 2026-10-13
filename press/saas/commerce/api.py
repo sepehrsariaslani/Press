@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import socket
 import ssl
+import time
 from urllib.parse import quote
 
 import frappe
@@ -15,6 +16,10 @@ from press.saas.commerce.order_lifecycle import (
 )
 from press.saas.commerce.order_snapshot import hosting_order_snapshot, marketplace_app_order_snapshot
 from press.saas.commerce.marketplace_plan_admin import build_marketplace_plan_draft
+from press.saas.commerce.marketplace_install import (
+	marketplace_install_state,
+	should_install_marketplace_app,
+)
 from press.saas.commerce.periods import period_end
 from press.saas.commerce.provisioning_recovery import subscription_recovery_state
 from press.saas.commerce.hosting_readiness import (
@@ -62,6 +67,9 @@ from press.utils import get_current_team, has_role, is_user_part_of_team, valida
 from press.utils.dns import check_dns_a, check_dns_cname
 
 ASUMI_ROOT_DOMAIN = "asumi.ir"
+MARKETPLACE_INSTALL_TIMEOUT_SECONDS = 10800
+MARKETPLACE_INSTALL_POLL_SECONDS = 3
+MARKETPLACE_PROVISION_TIMEOUT_SECONDS = MARKETPLACE_INSTALL_TIMEOUT_SECONDS * 2 + 300
 
 
 def _get_settings():
@@ -430,6 +438,15 @@ def my_purchase_sites() -> list[dict]:
 	return sites
 
 
+def _docker_bench_apps() -> list[str]:
+	from press.api.docker_control import DockerControlError, _client, _host_doc
+
+	try:
+		return _client(_host_doc()).available_apps()
+	except DockerControlError as error:
+		frappe.throw(str(error))
+
+
 def _marketplace_purchase_site(site_name: str, site_type: str, team: str) -> dict:
 	if site_type == "Docker Control Site":
 		site = frappe.db.get_value(
@@ -453,21 +470,110 @@ def _marketplace_purchase_site(site_name: str, site_type: str, team: str) -> dic
 			"status": "Active",
 			"site_type": "Docker Control Site",
 			"installed_apps": installed_apps,
+			"available_apps": _docker_bench_apps(),
 		}
 	if site_type != "Site":
 		frappe.throw(_("نوع سایت برای خرید برنامه معتبر نیست."))
-	site = frappe.db.get_value(
-		"Site", site_name, ["name", "team", "status"], as_dict=True
-	)
+	site = frappe.db.get_value("Site", site_name, ["name", "team", "status", "bench"], as_dict=True)
 	if not site or site.team != team or site.status != "Active":
 		frappe.throw(_("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد."), frappe.PermissionError)
+	bench_apps = []
+	if site.bench and frappe.db.exists("Bench", site.bench):
+		bench_apps = [row.app for row in frappe.get_doc("Bench", site.bench).apps if row.app != "frappe"]
 	return {
 		**site,
 		"site_type": "Site",
 		"installed_apps": frappe.get_all(
 			"Site App", filters={"parent": site_name, "parenttype": "Site"}, pluck="app"
 		),
+		"available_apps": bench_apps,
 	}
+
+
+def _wait_for_site_backup(backup_name: str) -> dict:
+	deadline = time.monotonic() + MARKETPLACE_INSTALL_TIMEOUT_SECONDS
+	while time.monotonic() < deadline:
+		backup = frappe.db.get_value(
+			"Site Backup",
+			backup_name,
+			["status", "with_files", "database_file", "public_file", "private_file"],
+			as_dict=True,
+		)
+		if not backup:
+			frappe.throw(_("رکورد پشتیبان سایت پیدا نشد."))
+		if backup.status == "Failure":
+			frappe.throw(_("پشتیبان‌گیری سایت ناموفق شد؛ نصب برنامه آغاز نشد."))
+		if backup.status == "Success":
+			if not backup.with_files or not all(
+				(backup.database_file, backup.public_file, backup.private_file)
+			):
+				frappe.throw(_("پشتیبان کامل پایگاه داده و فایل‌های سایت تأیید نشد."))
+			return backup
+		time.sleep(MARKETPLACE_INSTALL_POLL_SECONDS)
+	frappe.throw(_("زمان پشتیبان‌گیری به پایان رسید؛ نصب برنامه آغاز نشد."))
+
+
+def _wait_for_site_agent_job(job_name: str) -> None:
+	deadline = time.monotonic() + MARKETPLACE_INSTALL_TIMEOUT_SECONDS
+	while time.monotonic() < deadline:
+		status = frappe.db.get_value("Agent Job", job_name, "status")
+		if status == "Success":
+			return
+		if status in {"Failure", "Delivery Failure"}:
+			frappe.throw(_("نصب برنامه روی سایت ناموفق شد؛ پشتیبان برای رسیدگی حفظ شده است."))
+		if not status:
+			frappe.throw(_("کار نصب برنامه پیدا نشد."))
+		time.sleep(MARKETPLACE_INSTALL_POLL_SECONDS)
+	frappe.throw(_("زمان نصب برنامه به پایان رسید؛ وضعیت عملیات در پنل مدیر ثبت شده است."))
+
+
+def _install_marketplace_app_for_order(order, site, app) -> None:
+	if order.docker_site:
+		from press.api.docker_control import execute_marketplace_app_install
+
+		execute_marketplace_app_install(order, app.app)
+		return
+
+	from press.agent import Agent
+	from press.press.doctype.site_activity.site_activity import log_site_activity
+
+	backup = frappe.get_doc(
+		{
+			"doctype": "Site Backup",
+			"site": site.name,
+			"team": order.team,
+			"with_files": 1,
+			"offsite": 0,
+			"physical": 0,
+		}
+	).insert(ignore_permissions=True)
+	order.db_set("install_backup", backup.name)
+	frappe.db.commit()
+	backup_result = _wait_for_site_backup(backup.name)
+	if not all((backup_result.database_file, backup_result.public_file, backup_result.private_file)):
+		frappe.throw(_("پشتیبان کامل سایت تأیید نشد؛ نصب برنامه آغاز نشد."))
+
+	job = Agent(site.server).install_app_site(site, app.app)
+	frappe.db.set_value("Site", site.name, "status", "Pending")
+	log_site_activity(site.name, "Install App", app.app, job.name)
+	order.db_set("agent_job", job.name)
+	frappe.db.commit()
+	_wait_for_site_agent_job(job.name)
+	updated_site = frappe.get_doc("Site", site.name)
+	updated_site.sync_apps()
+	updated_site.reload()
+	if app.app not in {row.app for row in updated_site.apps}:
+		frappe.throw(_("موجودی سایت نصب برنامه را تأیید نکرد؛ پشتیبان برای رسیدگی حفظ شده است."))
+
+
+def _enqueue_provision_paid_order(order_name: str) -> None:
+	frappe.enqueue(
+		"press.saas.commerce.api.provision_paid_order",
+		queue="long",
+		timeout=MARKETPLACE_PROVISION_TIMEOUT_SECONDS + 60,
+		enqueue_after_commit=True,
+		order_name=order_name,
+	)
 
 
 def _new_site_plan_config(
@@ -726,7 +832,7 @@ def available_app_plans(site: str, site_type: str = "Site") -> dict:
 	settings = _get_settings()
 	apps = frappe.get_all(
 		"Marketplace App",
-		filters={"app": ["in", site_values["installed_apps"] or [""]], "status": "Published"},
+		filters={"app": ["in", site_values["available_apps"] or [""]], "status": "Published"},
 		fields=["name", "app", "title", "route"],
 	)
 	app_by_name = {app.name: app for app in apps}
@@ -746,10 +852,17 @@ def available_app_plans(site: str, site_type: str = "Site") -> dict:
 		app = app_by_name.get(plan.app)
 		if not app:
 			continue
+		try:
+			installation = marketplace_install_state(
+				app.app, site_values["installed_apps"], site_values["available_apps"]
+			)
+		except ValueError:
+			continue
 		plan.update(
 			{
 				"app_title": app.title,
 				"app_route": app.route,
+				"installation_required": installation["installation_required"],
 				"asumi_checkout_supported": marketplace_plan_supported_by_asumi_checkout(prices),
 				"asumi_checkout_message": (
 					"برای خرید مستقیم، قیمت ریالی وارد کنید؛ تعرفهٔ غیرریالی بدون قیمت ریالی رایگان نمی‌شود."
@@ -861,11 +974,7 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 		if in_flight_free_orders:
 			order = in_flight_free_orders[0]
 			if order.status == "Provisioning Failed":
-				frappe.enqueue(
-					"press.saas.commerce.api.provision_paid_order",
-					order_name=order.name,
-					enqueue_after_commit=True,
-				)
+				_enqueue_provision_paid_order(order.name)
 			return {"order": order.name, "free": True, "already_requested": True}
 		if not frappe.db.exists("Currency", "IRR"):
 			frappe.throw(_("واحد پول ریال در تنظیمات آسومی ثبت نشده است."))
@@ -883,11 +992,7 @@ def start_marketplace_app_purchase(plan: str, site: str, site_type: str = "Site"
 				"paid_at": frappe.utils.now_datetime(),
 			}
 		)
-		frappe.enqueue(
-			"press.saas.commerce.api.provision_paid_order",
-			order_name=order.name,
-			enqueue_after_commit=True,
-		)
+		_enqueue_provision_paid_order(order.name)
 		return {"order": order.name, "free": True}
 	pending_order = frappe.get_all(
 		"Commerce Order",
@@ -1186,11 +1291,7 @@ def zarinpal_callback():
 	order = frappe.get_doc("Commerce Order", order_name, for_update=True)
 	if order.status in {"Paid", "Provisioning", "Active", "Provisioning Failed"}:
 		if order.status in {"Paid", "Provisioning Failed"}:
-			frappe.enqueue(
-				"press.saas.commerce.api.provision_paid_order",
-				order_name=order.name,
-				enqueue_after_commit=True,
-			)
+			_enqueue_provision_paid_order(order.name)
 		return _redirect_to_orders(order.status.lower().replace(" ", "-"), order.name)
 	if order.status != "Pending Payment":
 		return _redirect_to_orders(order.status.lower().replace(" ", "-"), order.name)
@@ -1228,11 +1329,7 @@ def zarinpal_callback():
 			"payment_error": "",
 		}
 	)
-	frappe.enqueue(
-		"press.saas.commerce.api.provision_paid_order",
-		order_name=order.name,
-		enqueue_after_commit=True,
-	)
+	_enqueue_provision_paid_order(order.name)
 	return _redirect_to_orders("paid", order.name)
 
 
@@ -1263,20 +1360,6 @@ def provision_paid_order(order_name: str):
 			return _provision_hosting_order(order)
 		plan = frappe.get_doc("Marketplace App Plan", order.plan)
 		app = frappe.get_doc("Marketplace App", order.marketplace_app)
-		if order.docker_site:
-			site = frappe.get_doc("Docker Control Site", order.docker_site)
-			installed_apps = [row.app for row in site.apps]
-			if not site.enabled or site.team != order.team:
-				frappe.throw(_("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست."))
-		else:
-			if not order.site:
-				frappe.throw(_("سایت سفارش ثبت نشده است."))
-			site = frappe.get_doc("Site", order.site)
-			installed_apps = [row.app for row in site.apps]
-			if not site or site.team != order.team or site.status != "Active":
-				frappe.throw(_("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست."))
-		if app.app not in installed_apps:
-			frappe.throw(_("برنامهٔ خریداری‌شده دیگر روی سایت نصب نیست."))
 		if (
 			plan.app != app.name
 			or not plan.enabled
@@ -1284,6 +1367,43 @@ def provision_paid_order(order_name: str):
 			or plan.interval != order.interval
 		):
 			frappe.throw(_("مشخصات تعرفه با مبلغ ثبت‌شدهٔ سفارش تطابق ندارد."))
+		if order.docker_site:
+			site = frappe.get_doc("Docker Control Site", order.docker_site)
+			installed_apps = [row.app for row in site.apps]
+			if not site.enabled or site.team != order.team:
+				frappe.throw(_("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست."))
+			available_apps = _docker_bench_apps()
+		else:
+			if not order.site:
+				frappe.throw(_("سایت سفارش ثبت نشده است."))
+			site = frappe.get_doc("Site", order.site)
+			installed_apps = [row.app for row in site.apps]
+			if not site or site.team != order.team or site.status != "Active":
+				frappe.throw(_("سایت سفارش دیگر فعال یا متعلق به تیم سفارش نیست."))
+			bench_apps = (
+				[row.app for row in frappe.get_doc("Bench", site.bench).apps if row.app != "frappe"]
+				if site.bench and frappe.db.exists("Bench", site.bench)
+				else []
+			)
+			available_apps = bench_apps
+		try:
+			install_app = should_install_marketplace_app(
+				app.app,
+				bool(order.installation_required),
+				installed_apps,
+				available_apps,
+			)
+		except ValueError as error:
+			frappe.throw(_(str(error)))
+		if install_app:
+			_install_marketplace_app_for_order(order, site, app)
+			if order.docker_site:
+				site = frappe.get_doc("Docker Control Site", order.docker_site)
+			else:
+				site = frappe.get_doc("Site", order.site)
+			installed_apps = [row.app for row in site.apps]
+		if app.app not in installed_apps:
+			frappe.throw(_("موجودی سایت نصب برنامه را تأیید نکرد."))
 
 		subscription = _get_app_subscription(order, app)
 		previous_subscription = None
@@ -1696,7 +1816,7 @@ def my_orders(limit: int = 50) -> list[dict]:
 	rows = frappe.get_all(
 		"Commerce Order",
 		filters={"customer": frappe.session.user, "team": team},
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "docker_site", "subdomain", "service_delivery_mode", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 50), 1), 100),
 		ignore_permissions=True,
@@ -1716,7 +1836,7 @@ def admin_orders(limit: int = 100) -> list[dict]:
 	_require_commerce_admin()
 	return frappe.get_all(
 		"Commerce Order",
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "site", "docker_site", "subdomain", "service_delivery_mode", "team", "customer", "amount", "currency", "provider", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "team", "customer", "amount", "currency", "provider", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "agent_job", "install_backup", "install_backup_id", "install_operation", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 100), 1), 200),
 		ignore_permissions=True,
@@ -1804,7 +1924,7 @@ def retry_provisioning(order: str) -> dict:
 			frappe.throw(_("ابتدا سایت را از بخش مدیریت تعمیر کنید؛ سپس تحویل سفارش را دوباره اجرا کنید."))
 		if site_status and site_status not in {"Pending", "Installing", "Updating", "Recovering", "Active", "Suspended"}:
 			frappe.throw(_("وضعیت فعلی سایت برای تلاش مجدد تحویل مناسب نیست."))
-	frappe.enqueue("press.saas.commerce.api.provision_paid_order", order_name=doc.name, enqueue_after_commit=True)
+	_enqueue_provision_paid_order(doc.name)
 	return {"name": doc.name, "queued": True}
 
 

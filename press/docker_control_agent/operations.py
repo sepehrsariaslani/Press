@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .config import ALLOWED_APPS, ALLOWED_SERVICES, CUSTOMER_SITES, IMPACT_SITES, AgentConfig
-from .inventory import compose_command, get_inventory, run_command
+from .inventory import compose_command, get_available_apps, get_inventory, run_command
 
 if TYPE_CHECKING:
 	from pathlib import Path
@@ -191,6 +191,7 @@ def validate_request(action: str, target: str | None, arguments: dict) -> None: 
 		"restart_service",
 		"restart_stack",
 		"deploy_app_revision",
+		"install_marketplace_app",
 	}:
 		raise OperationError("Action is not allowed")
 	if not isinstance(arguments, dict):
@@ -202,6 +203,7 @@ def validate_request(action: str, target: str | None, arguments: dict) -> None: 
 		"set_scheduler": {"enabled"},
 		"restart_stack": {"services"},
 		"deploy_app_revision": {"app", "revision", "expected_migration_sites", "restart_services"},
+		"install_marketplace_app": {"app"},
 	}
 	if set(arguments) - allowed_arguments.get(action, set()):
 		raise OperationError("Unexpected action arguments")
@@ -224,6 +226,11 @@ def validate_request(action: str, target: str | None, arguments: dict) -> None: 
 				!= ["backend", "queue-short", "queue-long", "scheduler", "websocket"]
 			):
 				raise OperationError("App deployment preview is invalid")
+		return
+	if action == "install_marketplace_app":
+		app = arguments.get("app")
+		if target not in CUSTOMER_SITES or not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
+			raise OperationError("Site or marketplace app is not allowed")
 		return
 	if action == "restart_service":
 		if target not in ALLOWED_SERVICES:
@@ -432,6 +439,36 @@ def _installed_apps(config: AgentConfig, site: str) -> list[str]:
 	raise OperationError(f"Installed-app inventory is unreadable for {site}")
 
 
+def _available_bench_apps(config: AgentConfig) -> set[str]:
+	try:
+		return set(get_available_apps(config))
+	except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
+		raise OperationError("Bench app inventory is unavailable") from error
+
+
+def _install_marketplace_app(
+	config: AgentConfig, connection: sqlite3.Connection, site: str, app: str
+) -> dict:
+	if site not in CUSTOMER_SITES or not APP_NAME_RE.fullmatch(app):
+		raise OperationError("Site or marketplace app is not allowed")
+	if app not in _available_bench_apps(config):
+		raise OperationError("Marketplace app is not available on this Bench")
+	if app in _installed_apps(config, site):
+		return {"site": site, "app": app, "installed": True, "already_installed": True, "backup": None}
+
+	backup = _create_backup(config, connection, site)
+	_bench(config, site, "install-app", app, timeout=7200)
+	if app not in _installed_apps(config, site):
+		raise OperationError("Bench did not confirm the marketplace app installation")
+	return {
+		"site": site,
+		"app": app,
+		"installed": True,
+		"already_installed": False,
+		"backup": backup,
+	}
+
+
 def _require_recent_backups(connection: sqlite3.Connection, sites: list[str]) -> dict[str, sqlite3.Row]:
 	cutoff = datetime.now(UTC) - timedelta(hours=2)
 	backups = {}
@@ -634,6 +671,13 @@ def _run_action(  # noqa: C901
 				logs = result.stdout
 				break
 		return {"site": target, "logs": sanitize_text(logs, 12000)}
+	if action == "install_marketplace_app":
+		return _install_marketplace_app(
+			config,
+			connection,
+			target or "",
+			str(arguments.get("app", "")),
+		)
 	if action == "restart_service":
 		_require_recent_backups(connection, list(IMPACT_SITES))
 		_checked_command(config, compose_command(config, "restart", target), timeout=600)

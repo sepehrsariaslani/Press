@@ -12,8 +12,8 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 			"price_irr": 125000,
 			"interval": "Monthly",
 		}
-		self.app = {"name": "MARKETPLACE-APP-1", "app": "APP-1", "status": "Published"}
-		self.site = {"name": "site-1", "team": "team-1", "status": "Active", "installed_apps": ["APP-1"]}
+		self.app = {"name": "MARKETPLACE-APP-1", "app": "demo_app", "status": "Published"}
+		self.site = {"name": "site-1", "team": "team-1", "status": "Active", "installed_apps": ["demo_app"]}
 		self.team = {"name": "team-1", "currency": "IRR"}
 
 	def test_uses_server_price_and_ignores_no_client_amount(self):
@@ -40,6 +40,17 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 		with self.assertRaises(ValueError):
 			marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
 
+	def test_allows_app_present_on_bench_but_not_yet_installed_on_site(self):
+		self.site["installed_apps"] = []
+		self.site["available_apps"] = ["demo_app"]
+
+		snapshot = marketplace_app_order_snapshot(
+			self.plan, self.app, self.site, self.team, "buyer@example.com"
+		)
+
+		self.assertTrue(snapshot["installation_required"])
+		self.assertEqual(snapshot["app"], "demo_app")
+
 	def test_checkout_uses_irr_independent_of_team_accounting_currency(self):
 		self.team["currency"] = "USD"
 		snapshot = marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
@@ -53,7 +64,7 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 			"status": "Active",
 			"enabled": 1,
 			"site_type": "Docker Control Site",
-			"installed_apps": ["APP-1"],
+			"installed_apps": ["demo_app"],
 		}
 		snapshot = marketplace_app_order_snapshot(
 			self.plan, self.app, docker_site, self.team, "buyer@example.com"

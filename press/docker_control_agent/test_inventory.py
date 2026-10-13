@@ -68,6 +68,31 @@ class AppRevisionInventoryTest(unittest.TestCase):
 
 
 class BenchVersionInventoryTest(unittest.TestCase):
+	def test_lists_apps_available_on_the_bench_independently_of_site_installations(self):
+		with tempfile.TemporaryDirectory() as temporary_directory:
+			apps_root = Path(temporary_directory) / "apps"
+			apps_root.mkdir()
+			(apps_root / "restaurant").mkdir()
+			versions = [
+				{"app": "frappe", "commit": "f" * 40, "branch": "main", "version": "16"},
+				{"app": "restaurant", "commit": "r" * 40, "branch": "main", "version": "1"},
+			]
+			config = SimpleNamespace(
+				compose_files=(),
+				backend_service="backend",
+				apps_root=apps_root,
+				project_root=Path(temporary_directory),
+			)
+			with patch.object(
+				inventory,
+				"run_command",
+				return_value=subprocess.CompletedProcess([], 0, stdout=json.dumps(versions), stderr=""),
+			) as run:
+				available_apps = inventory.get_available_apps(config)
+
+		self.assertEqual(available_apps, ["restaurant"])
+		self.assertIn("version", run.call_args.args[1])
+
 	def test_uses_bench_version_for_apps_without_a_git_repository(self):
 		with tempfile.TemporaryDirectory() as temporary_directory:
 			base = Path(temporary_directory)

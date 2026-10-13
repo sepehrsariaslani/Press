@@ -41,6 +41,7 @@ function label(action) {
 		restart_service: 'راه‌اندازی دوبارهٔ سرویس',
 		restart_stack: 'راه‌اندازی دوبارهٔ بنچ',
 		deploy_app_revision: 'انتشار نسخهٔ برنامه',
+		install_marketplace_app: 'نصب برنامهٔ Marketplace',
 	})[action] || action;
 }
 
