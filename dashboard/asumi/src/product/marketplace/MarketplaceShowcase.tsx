@@ -1,4 +1,5 @@
 import './marketplace-showcase.css';
+import { buildMarketplacePurchaseHref } from './marketplacePurchaseRoute';
 
 export type MarketplacePrice = { currency: string; symbol: string; amount: number };
 export type MarketplacePlan = {
@@ -54,7 +55,7 @@ export function MarketplaceShowcase({ apps, canManagePrices = false }: Marketpla
 								: <div className="marketplace-plan-prices">{plan.prices.map(price => <p key={price.currency}><span>{price.currency}</span><strong>{price.amount === 0 ? 'رایگان' : `${formatAmount(price.amount)} ${price.symbol}`}</strong></p>)}</div>}
 						</div>)}
 					</div>
-					<a className="marketplace-app-details" href={app.route}>جزئیات و دریافت اپ <span aria-hidden="true">↗</span></a>
+					<a className="marketplace-app-details" href={buildMarketplacePurchaseHref(app)}>انتخاب سایت و ادامه خرید <span aria-hidden="true">↗</span></a>
 				</article>)}
 			</div> : <div className="marketplace-app-empty"><span className="marketplace-empty-mark" aria-hidden="true">i</span><div><h3>فعلاً اپلیکیشنی با پلن فعال وجود ندارد</h3><p>وقتی یک اپ منتشر و پلنش فعال شود، در همین صفحه نمایش داده می‌شود.</p></div></div>}
 

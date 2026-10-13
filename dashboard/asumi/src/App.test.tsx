@@ -72,7 +72,11 @@ test('shows published marketplace apps and their live prices inside the homepage
   expect(within(section).getByRole('heading', { level: 3, name: 'اپ نمونه' })).toBeInTheDocument();
   expect(within(section).getByText('۳۵٬۰۰۰ ریال')).toBeInTheDocument();
   expect(within(section).getByText(/تمام اپلیکیشن‌های منتشرشده.*همین صفحه/)).toBeInTheDocument();
-  expect(within(section).getByRole('link', { name: /جزئیات و دریافت اپ/ })).toHaveAttribute('href', '/marketplace/apps/demo-app');
+  const purchaseLink = within(section).getByRole('link', { name: /انتخاب سایت و ادامه خرید/ });
+  const purchaseUrl = new URL(purchaseLink.getAttribute('href')!, window.location.origin);
+  expect(purchaseUrl.pathname).toBe('/dashboard/orders');
+  expect(purchaseUrl.searchParams.get('asumi_app')).toBe('demo-app');
+  expect(purchaseUrl.searchParams.get('asumi_app_title')).toBe('اپ نمونه');
   expect(within(section).getByRole('link', { name: /مدیریت اپ‌ها و قیمت‌ها/ })).toHaveAttribute('href', '/dashboard/seller/apps');
   expect(within(section).queryByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).not.toBeInTheDocument();
 });

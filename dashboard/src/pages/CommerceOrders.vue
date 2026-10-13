@@ -42,8 +42,8 @@
 		<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
 			<div class="flex flex-wrap items-end justify-between gap-4">
 				<div>
-					<h2 class="text-lg font-semibold text-gray-950">تعرفه‌های قابل خرید</h2>
-					<p class="mt-1 text-sm text-gray-600">فقط برنامه‌هایی نمایش داده می‌شوند که روی سایت انتخابی نصب هستند.</p>
+					<h2 class="text-lg font-semibold text-gray-950">{{ requestedMarketplaceAppTitle ? `خرید ${requestedMarketplaceAppTitle}` : 'تعرفه‌های قابل خرید' }}</h2>
+					<p class="mt-1 text-sm text-gray-600">{{ requestedMarketplaceApp ? 'سایتی را انتخاب کنید که این برنامه روی آن نصب شده باشد؛ سپس فقط تعرفه‌های همین برنامه را می‌بینید.' : 'فقط برنامه‌هایی نمایش داده می‌شوند که روی سایت انتخابی نصب هستند.' }}</p>
 				</div>
 				<label class="min-w-64 text-sm font-medium text-gray-700">
 					سایت
@@ -56,9 +56,12 @@
 
 			<div v-if="!selectedSite" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای دیدن تعرفه‌ها یک سایت فعال انتخاب کنید.</div>
 			<div v-else-if="plans.loading" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">در حال دریافت تعرفه‌ها…</div>
+			<div v-else-if="requestedMarketplaceApp && plans.data && !visibleAppPlans.length" class="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm leading-6 text-amber-950" role="status">
+				<strong>{{ requestedMarketplaceAppTitle || requestedMarketplaceApp }}</strong> روی این سایت نصب نیست یا تعرفهٔ فعالی ندارد. ابتدا برنامه را از بخش برنامه‌های همان سایت نصب کنید؛ این صفحه تعرفهٔ برنامهٔ دیگری را به‌جای آن نشان نمی‌دهد.
+			</div>
 			<div v-else-if="!(plans.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">برای برنامه‌های نصب‌شده روی این سایت، تعرفهٔ فعال ثبت نشده است.</div>
 			<div v-else class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-				<article v-for="plan in plans.data.plans" :key="plan.name" class="flex flex-col rounded-xl border border-gray-200 p-5">
+				<article v-for="plan in visibleAppPlans" :key="plan.name" class="flex flex-col rounded-xl border border-gray-200 p-5">
 					<div class="flex-1">
 						<p class="text-xs font-medium text-rose-700">{{ plan.app_title }}</p>
 						<h3 class="mt-1 text-lg font-semibold text-gray-950">{{ plan.title || 'تعرفه' }}</h3>
@@ -437,15 +440,20 @@ import { session } from '@/data/session';
 import { canManageAsumiCommerce } from '@/utils/commerceAccess';
 import { commerceGatewayState } from '@/utils/commerceGatewayState';
 import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
+import { selectMarketplacePlans } from '@/utils/marketplacePlanSelection';
 import { parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const serviceRequest = ref(parseAsumiServiceRequest(window.location.search));
+const marketplaceQuery = new URLSearchParams(window.location.search);
+const requestedMarketplaceApp = ref((marketplaceQuery.get('asumi_app') || '').trim());
+const requestedMarketplaceAppTitle = ref((marketplaceQuery.get('asumi_app_title') || '').trim());
 const serviceRequestForm = reactive({ full_name: '', phone: '', company: '' });
 const serviceRequestResult = ref(null);
 const submittingServiceRequest = ref(false);
 const selectedSite = ref('');
 const selectedSiteTarget = computed(() => resolveCommercePurchaseSite(sites.data, selectedSite.value));
+const visibleAppPlans = computed(() => selectMarketplacePlans(plans.data?.plans, requestedMarketplaceApp.value));
 const merchantId = ref('');
 const busyPlan = ref('');
 const hostingSiteByPlan = reactive({});
