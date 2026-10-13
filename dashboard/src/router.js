@@ -5,6 +5,7 @@ import session from './data/session';
 import { privateSourceOnly } from './data/security';
 import { canAccessSellerDashboard } from './data/sellerAccess';
 import { canAccessDockerControl, isDockerControlOnlyUser } from './data/dockerControlAccess';
+import { getProtectedRouteRedirect } from './utils/authRouting';
 
 async function ensureSellerOwnerAccess(to, from, next) {
 	if (!session.isLoggedIn) {
@@ -713,13 +714,18 @@ router.beforeEach(async (to, from, next) => {
 	} else {
 		if (goingToLoginPage) {
 			next();
+		} else if (to.name == 'Site Login') {
+			next();
 		} else {
-			if (to.name == 'Site Login') {
-				next();
-			} else if (!hasTeamPrivileges) {
+			const decision = getProtectedRouteRedirect({
+				isLoggedIn,
+				hasTeamPrivileges,
+				destination: to.href,
+			});
+			if (decision.type === 'invalid-team') {
 				logoutWithTeamError();
 			} else {
-				next({ name: 'Login', query: { redirect: to.href } });
+				next(decision.route);
 			}
 		}
 	}
