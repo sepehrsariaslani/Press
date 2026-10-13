@@ -1,5 +1,5 @@
-import { productModules } from '../modules';
-import { completeModulesPackagePrice, moduleAddonPrices, pricingAddonPrices, pricingPresets, type PricingAddonId, type ModuleId } from './catalog';
+import { pricingPresets, type PricingAddonId, type ModuleId } from './catalog';
+import type { ServicePriceMap } from './pricingApi';
 
 export type PricingEstimate = {
 	moduleTotal: number;
@@ -7,23 +7,21 @@ export type PricingEstimate = {
 	listedTotal: number;
 	bundleDiscount: number;
 	bundleDiscountLabel: string;
+	packageId: keyof ServicePriceMap['packages'] | null;
 	total: number;
 };
 
-export function estimateSelection(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[]): PricingEstimate {
-	const moduleTotal = moduleIds.reduce((sum, id) => sum + moduleAddonPrices[id], 0);
-	const addonTotal = addonIds.reduce((sum, id) => sum + pricingAddonPrices[id], 0);
+export function estimateSelection(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[], prices: ServicePriceMap): PricingEstimate {
+	const moduleTotal = moduleIds.reduce((sum, id) => sum + prices.modules[id], 0);
+	const addonTotal = addonIds.reduce((sum, id) => sum + prices.addons[id], 0);
 	const listedTotal = moduleTotal + addonTotal;
-	const includesAllModules = productModules.every(module => moduleIds.includes(module.id));
-	const discountedPreset = pricingPresets.find(preset => preset.packageMonthlyPrice !== undefined
-		&& sameItems(moduleIds, preset.moduleIds) && sameItems(addonIds, preset.addonIds));
-	const bundleDiscount = discountedPreset
-		? Math.max(0, moduleTotal - discountedPreset.packageMonthlyPrice!)
-		: includesAllModules ? Math.max(0, moduleTotal - completeModulesPackagePrice) : 0;
-	const bundleDiscountLabel = discountedPreset
-		? `تخفیف بستهٔ ${discountedPreset.title}`
-		: 'تخفیف بستهٔ کامل';
-	return { moduleTotal, addonTotal, listedTotal, bundleDiscount, bundleDiscountLabel, total: listedTotal - bundleDiscount };
+	const exactPreset = pricingPresets.find(preset =>
+		sameItems(moduleIds, preset.moduleIds) && sameItems(addonIds, preset.addonIds));
+	const packageId = exactPreset?.id || null;
+	const total = packageId ? prices.packages[packageId] : listedTotal;
+	const bundleDiscount = Math.max(0, listedTotal - total);
+	const bundleDiscountLabel = packageId && exactPreset ? `تخفیف بستهٔ ${exactPreset.title}` : '';
+	return { moduleTotal, addonTotal, listedTotal, bundleDiscount, bundleDiscountLabel, packageId, total };
 }
 
 function sameItems(left: readonly string[], right: readonly string[]) {

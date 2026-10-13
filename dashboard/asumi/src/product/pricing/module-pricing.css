@@ -96,6 +96,10 @@
 .pricing-preset-price b { color: var(--product-ink); font-size: 21px; font-weight: 700; }
 .pricing-preset-price small { color: var(--product-muted); font-size: 11px; }
 .pricing-preset-modules { margin-top: auto; color: #645d56; font-size: 10px; line-height: 1.8; }
+.pricing-load-state { display: grid; min-height: 160px; place-content: center; justify-items: center; gap: 12px; margin: 24px 0; border: 1px solid var(--product-line); background: #fffefa; color: var(--product-muted); font-size: 13px; text-align: center; }
+.pricing-load-state p { max-width: 520px; margin: 0; line-height: 1.9; }
+.pricing-load-error { border-color: #d7a8a6; background: #fff8f6; color: #81252d; }
+.pricing-load-state button { min-height: 38px; border: 1px solid var(--product-red); padding: 0 16px; background: var(--product-red); color: #fff; font: inherit; cursor: pointer; }
 
 .pricing-workspace { display: grid; direction: ltr; grid-template-columns: minmax(0, 1fr) minmax(300px, 355px); align-items: start; gap: 22px; padding-top: 35px; }
 .pricing-module-selector { position: sticky; top: 88px; grid-column: 2; grid-row: 1; display: flex; max-height: calc(100dvh - 108px); min-height: 500px; flex-direction: column; overflow: hidden; direction: rtl; border: 1px solid #d7cec3; background: #f5f1e9; box-shadow: 0 12px 32px #30271c0b; }

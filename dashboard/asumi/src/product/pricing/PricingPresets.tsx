@@ -1,6 +1,7 @@
 import { pricingPresets, type PricingPreset } from './catalog';
 import { productModules } from '../modules';
 import { estimateSelection } from './estimate';
+import type { ServicePriceMap } from './pricingApi';
 
 export function formatToman(amount: number) {
 	return `${new Intl.NumberFormat('fa-IR').format(amount)} تومان`;
@@ -8,14 +9,15 @@ export function formatToman(amount: number) {
 
 type PricingPresetsProps = {
 	selectedPresetId: PricingPreset['id'] | null;
+	prices: ServicePriceMap;
 	onSelect: (preset: PricingPreset) => void;
 };
 
-function monthlyEstimate(preset: PricingPreset) {
-	return estimateSelection(preset.moduleIds, preset.addonIds).total;
+function monthlyEstimate(preset: PricingPreset, prices: ServicePriceMap) {
+	return estimateSelection(preset.moduleIds, preset.addonIds, prices).total;
 }
 
-export function PricingPresets({ selectedPresetId, onSelect }: PricingPresetsProps) {
+export function PricingPresets({ selectedPresetId, prices, onSelect }: PricingPresetsProps) {
 	return <section className="pricing-preset-section" aria-labelledby="pricing-presets-title">
 		<div className="pricing-section-heading">
 			<div><p>ترکیب‌های پیشنهادی · قابل ویرایش</p><h2 id="pricing-presets-title">از یک انتخاب آماده شروع کن</h2></div>
@@ -35,7 +37,7 @@ export function PricingPresets({ selectedPresetId, onSelect }: PricingPresetsPro
 					<span className="pricing-preset-mark" aria-hidden="true">{selectedPresetId === preset.id ? '✓' : '+'}</span>
 				</span>
 				<strong className="pricing-preset-name">{preset.title}</strong>
-				<span className="pricing-preset-price"><b>{formatToman(monthlyEstimate(preset))}</b><small> / ماه</small></span>
+				<span className="pricing-preset-price"><b>{formatToman(monthlyEstimate(preset, prices))}</b><small> / ماه</small></span>
 				<span className="pricing-preset-modules">{preset.moduleIds.map(id => productModules.find(module => module.id === id)?.shortTitle).filter(Boolean).join(' · ')}{preset.addonIds.length ? ' · مدیریت منو' : ''}</span>
 			</button>)}
 		</div>

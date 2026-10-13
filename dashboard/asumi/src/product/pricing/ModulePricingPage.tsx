@@ -14,6 +14,7 @@ import {
 } from './catalog';
 import { addModule, removeModule, validSavedModules, type ModuleId } from './selection';
 import { estimateSelection } from './estimate';
+import { loadServicePrices, type ServicePriceMap } from './pricingApi';
 import './module-pricing.css';
 
 const storageKey = 'asumi-pricing-selection-v2';
@@ -32,10 +33,6 @@ function initialSelection(): SavedSelection {
 	}
 }
 
-function getEstimate(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[]) {
-	return estimateSelection(moduleIds, addonIds).total;
-}
-
 function matchingPreset(moduleIds: readonly ModuleId[], addonIds: readonly PricingAddonId[]) {
 	return pricingPresets.find(preset => sameItems(moduleIds, preset.moduleIds) && sameItems(addonIds, preset.addonIds))?.id || null;
 }
@@ -51,7 +48,7 @@ function persianNumber(value: number) {
 type ModulePricingPageProps = {
 	onOpenModule: (moduleId: string) => void;
 	onReturnToModules: () => void;
-	onRequestPurchase: (moduleIds: string[], context: string) => void;
+	onRequestPurchase: (moduleIds: string[], context: string, addonIds: string[]) => void;
 };
 
 export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPurchase }: ModulePricingPageProps) {
@@ -62,11 +59,30 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	const [activeId, setActiveId] = useState<ModuleId>(initial.moduleIds[0] || 'finance');
 	const [status, setStatus] = useState('');
 	const [saved, setSaved] = useState(false);
+	const [prices, setPrices] = useState<ServicePriceMap | null>(null);
+	const [pricesLoading, setPricesLoading] = useState(true);
+	const [pricesError, setPricesError] = useState('');
+	const [pricingAttempt, setPricingAttempt] = useState(0);
 	const activeModule = productModules.find(module => module.id === activeId) || productModules[0];
-	const total = getEstimate(selectedIds, selectedAddonIds);
 	const selectedPresetId = matchingPreset(selectedIds, selectedAddonIds);
 
 	useEffect(() => heading.current?.focus({ preventScroll: true }), []);
+	useEffect(() => {
+		let active = true;
+		setPricesLoading(true);
+		setPricesError('');
+		loadServicePrices().then(result => {
+			if (active) setPrices(result);
+		}).catch(() => {
+			if (active) {
+				setPrices(null);
+				setPricesError('تعرفهٔ زندهٔ آسومی در دسترس نیست. تا زمان دریافت قیمت معتبر، درخواست ثبت نمی‌شود.');
+			}
+		}).finally(() => {
+			if (active) setPricesLoading(false);
+		});
+		return () => { active = false; };
+	}, [pricingAttempt]);
 
 	function selectPreset(preset: PricingPreset) {
 		let moduleIds: ModuleId[] = [];
@@ -141,14 +157,11 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	}
 
 	function requestPurchase() {
-		if (!selectedIds.length) return;
+		if (!selectedIds.length || !prices || pricesLoading) return;
 		try {
 			window.localStorage.setItem(storageKey, JSON.stringify({ moduleIds: selectedIds, addonIds: selectedAddonIds } satisfies SavedSelection));
 		} catch { /* The request can continue with the current selection. */ }
-		const moduleNames = selectedIds.map(moduleTitle).join('، ');
-		const addonNames = selectedAddonIds.map(id => pricingAddons.find(addon => addon.id === id)?.title || id).join('، ') || 'بدون افزونه';
-		const amount = new Intl.NumberFormat('fa-IR').format(total);
-		onRequestPurchase(selectedIds, `ماژول‌های انتخاب‌شده: ${moduleNames}\nافزونه‌ها: ${addonNames}\nتعرفهٔ ماهانه: ${amount} تومان\nتعداد کاربر و شرکت محدودیتی ندارد. مالیات، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. این درخواست سفارش مالی یا فعال‌سازی خودکار نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.`);
+		onRequestPurchase(selectedIds, '', selectedAddonIds);
 	}
 
 	return <main className="module-pricing-page" dir="rtl" aria-labelledby="module-pricing-title">
@@ -163,20 +176,25 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 					<h1 id="module-pricing-title" ref={heading} tabIndex={-1}>فقط چیزهایی را بگیر<br /><span>که برای کارت لازم داری.</span></h1>
 					<p>ماژول‌ها و افزونه‌های هر بخش را جداگانه انتخاب کن. تعداد کاربرها و شرکت‌ها روی هزینه تأثیر ندارد؛ قیمت ترکیب همان لحظه محاسبه می‌شود.</p>
 				</div>
-				<div className="pricing-page-stamp"><span>{formatToman(50_000_000)}</span><small>برای تمام ماژول‌ها<br />و افزونهٔ مدیریت منو</small></div>
+				{prices && <div className="pricing-page-stamp"><span>{formatToman(prices.packages.complete)}</span><small>برای تمام ماژول‌ها<br />و افزونهٔ مدیریت منو · ماهانه</small></div>}
 			</section>
 
-			<PricingPresets selectedPresetId={selectedPresetId} onSelect={selectPreset} />
+			{pricesLoading && <section className="pricing-load-state" role="status">در حال دریافت تعرفهٔ به‌روز آسومی…</section>}
+			{!pricesLoading && pricesError && <section className="pricing-load-state pricing-load-error" role="alert">
+				<p>{pricesError}</p><button type="button" onClick={() => setPricingAttempt(attempt => attempt + 1)}>تلاش دوباره</button>
+			</section>}
+			{prices && <>
+				<PricingPresets prices={prices} selectedPresetId={selectedPresetId} onSelect={selectPreset} />
+				<section className="pricing-workspace" aria-label="انتخاب ماژول‌ها و افزونه‌ها">
+					<ModuleChooser
+						selectedIds={selectedIds} selectedAddonIds={selectedAddonIds} prices={prices} status={status} activeId={activeId}
+						onActivate={setActiveId} onToggle={toggleModule} onClearAddons={clearSelection} onSave={saveSelection} onRequestPurchase={requestPurchase} saved={saved}
+					/>
+					<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} prices={prices} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
+				</section>
+			</>}
 
-			<section className="pricing-workspace" aria-label="انتخاب ماژول‌ها و افزونه‌ها">
-				<ModuleChooser
-					selectedIds={selectedIds} selectedAddonIds={selectedAddonIds} status={status} activeId={activeId}
-					onActivate={setActiveId} onToggle={toggleModule} onClearAddons={clearSelection} onSave={saveSelection} onRequestPurchase={requestPurchase} saved={saved}
-				/>
-				<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
-			</section>
-
-			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice} بستهٔ همهٔ ماژول‌ها بدون افزونهٔ منو ماهانه ۴۷٬۵۰۰٬۰۰۰ تومان و با افزونهٔ منو دقیقاً ۵۰٬۰۰۰٬۰۰۰ تومان است؛ در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
+			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice}{prices && <> بستهٔ حرفه‌ای ماهانه {formatToman(prices.packages.professional)}، همهٔ ماژول‌ها بدون افزونهٔ منو {formatToman(prices.packages.completeWithoutMenu)} و با مدیریت منو {formatToman(prices.packages.complete)} است.</>} در این صفحه فاکتور یا پرداختی انجام نمی‌شود.</p></aside>
 		</div>
 		<SiteFooter />
 	</main>;

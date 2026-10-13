@@ -1,13 +1,15 @@
 import { ModuleMark } from '../ModuleMark';
 import { productModules } from '../modules';
-import { moduleAddonPrices, pricingAddons, type PricingAddonId } from './catalog';
+import { pricingAddons, type PricingAddonId } from './catalog';
 import { estimateSelection } from './estimate';
 import { formatToman } from './PricingPresets';
 import type { ModuleId } from './selection';
+import type { ServicePriceMap } from './pricingApi';
 
 type ModuleChooserProps = {
 	selectedIds: readonly ModuleId[];
 	selectedAddonIds: readonly PricingAddonId[];
+	prices: ServicePriceMap;
 	status: string;
 	activeId: ModuleId;
 	onActivate: (id: ModuleId) => void;
@@ -18,8 +20,8 @@ type ModuleChooserProps = {
 	saved: boolean;
 };
 
-export function ModuleChooser({ selectedIds, selectedAddonIds, status, activeId, onActivate, onToggle, onClearAddons, onSave, onRequestPurchase, saved }: ModuleChooserProps) {
-	const estimate = estimateSelection(selectedIds, selectedAddonIds);
+export function ModuleChooser({ selectedIds, selectedAddonIds, prices, status, activeId, onActivate, onToggle, onClearAddons, onSave, onRequestPurchase, saved }: ModuleChooserProps) {
+	const estimate = estimateSelection(selectedIds, selectedAddonIds, prices);
 	return <aside className="pricing-module-selector" aria-labelledby="pricing-module-list-title">
 		<div className="pricing-selector-heading">
 			<div><p>پیکربندی انتخاب تو</p><h2 id="pricing-module-list-title">ماژول‌ها</h2></div>
@@ -39,10 +41,10 @@ export function ModuleChooser({ selectedIds, selectedAddonIds, status, activeId,
 						className="pricing-module-toggle"
 						type="button"
 						aria-pressed={selected}
-						aria-label={`${selected ? 'حذف' : 'افزودن'} ماژول ${module.title} با قیمت ${formatToman(moduleAddonPrices[module.id])} در ماه`}
+						aria-label={`${selected ? 'حذف' : 'افزودن'} ماژول ${module.title} با قیمت ${formatToman(prices.modules[module.id])} در ماه`}
 						onClick={() => onToggle(module.id)}
 					>
-						{selected ? <><span className="pricing-toggle-check" aria-hidden="true">✓</span><span>{formatToman(moduleAddonPrices[module.id])}</span></> : <><span aria-hidden="true">+</span><span>{formatToman(moduleAddonPrices[module.id])}</span></>}
+						{selected ? <><span className="pricing-toggle-check" aria-hidden="true">✓</span><span>{formatToman(prices.modules[module.id])}</span></> : <><span aria-hidden="true">+</span><span>{formatToman(prices.modules[module.id])}</span></>}
 					</button>
 				</div>;
 			})}

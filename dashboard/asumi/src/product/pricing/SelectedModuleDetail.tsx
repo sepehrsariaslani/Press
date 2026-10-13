@@ -1,14 +1,16 @@
 import { ModuleMark } from '../ModuleMark';
 import { productModuleDetails } from '../moduleDetails';
 import { productModules, type ProductModule } from '../modules';
-import { moduleAddonPrices, modulePrerequisites, pricingAddons, type PricingAddonId } from './catalog';
+import { modulePrerequisites, pricingAddons, type PricingAddonId } from './catalog';
 import { formatToman } from './PricingPresets';
 import type { ModuleId } from './selection';
+import type { ServicePriceMap } from './pricingApi';
 
 type SelectedModuleDetailProps = {
 	module: ProductModule;
 	selected: boolean;
 	selectedAddonIds: readonly PricingAddonId[];
+	prices: ServicePriceMap;
 	onToggleAddon: (addonId: PricingAddonId) => void;
 	onOpenModule: (moduleId: string) => void;
 };
@@ -17,13 +19,13 @@ function toPersianNumber(value: number) {
 	return String(value).replace(/\d/g, number => '۰۱۲۳۴۵۶۷۸۹'[+number]);
 }
 
-export function SelectedModuleDetail({ module, selected, selectedAddonIds, onToggleAddon, onOpenModule }: SelectedModuleDetailProps) {
+export function SelectedModuleDetail({ module, selected, selectedAddonIds, prices, onToggleAddon, onOpenModule }: SelectedModuleDetailProps) {
 	const details = productModuleDetails[module.id];
 	const prerequisites = modulePrerequisiteTitles(module.id);
 	const linkedModules = details.relatedIds.map(id => productModules.find(item => item.id === id)).filter((item): item is ProductModule => Boolean(item));
 	const availableAddons = pricingAddons.filter(addon => addon.moduleId === module.id);
 	return <section className="pricing-module-detail" aria-labelledby="pricing-detail-title">
-		<div className="pricing-detail-topline"><span>امکانات و هزینهٔ ماهانه</span><span>{formatToman(moduleAddonPrices[module.id])}</span></div>
+		<div className="pricing-detail-topline"><span>امکانات و هزینهٔ ماهانه</span><span>{formatToman(prices.modules[module.id])}</span></div>
 		<header className="pricing-detail-heading">
 			<span className="pricing-detail-mark"><ModuleMark icon={module.icon} /></span>
 			<div><p>ماژول آسومی</p><h2 id="pricing-detail-title">{module.title}</h2></div>
@@ -33,7 +35,7 @@ export function SelectedModuleDetail({ module, selected, selectedAddonIds, onTog
 		{availableAddons.map(addon => {
 			const addonSelected = selectedAddonIds.includes(addon.id);
 			return <section className="pricing-addon-option" aria-label={`افزونه‌های ${module.shortTitle}`} key={addon.id}>
-				<div><strong>{addon.title}</strong><span>{formatToman(addon.monthlyPrice)} در ماه</span><small>{addon.description}</small></div>
+				<div><strong>{addon.title}</strong><span>{formatToman(prices.addons[addon.id])} در ماه</span><small>{addon.description}</small></div>
 				<button type="button" aria-pressed={addonSelected} disabled={!selected} onClick={() => onToggleAddon(addon.id)}>
 					{addonSelected ? 'افزونه فعال است ✓' : 'افزودن افزونه'}
 				</button>

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { AsumiApp } from './App';
 import { getAccountsPreviewHref } from './components/site/accountsPreviewRoute';
 import { industryPaths } from './product/industries/industryData';
@@ -7,8 +7,27 @@ import { productModuleDetails } from './product/moduleDetails';
 import { productModules } from './product/modules';
 import { roleDashboards } from './product/roles/roleData';
 
+const servicePrices = {
+  modules: {
+    finance: 5_500_000, sales: 5_500_000, crm: 2_500_000, procurement: 6_000_000,
+    inventory: 6_000_000, projects: 3_200_000, manufacturing: 5_500_000, quality: 2_500_000,
+    people: 3_600_000, assets: 3_200_000, fleet: 3_200_000, pricing: 3_000_000,
+    growth: 3_500_000, business: 3_800_000, restaurant: 6_500_000,
+  },
+  addons: { restaurantMenu: 2_500_000 },
+  packages: {
+    restaurant: 6_500_000, restaurantPurchasing: 12_500_000, professional: 9_900_000,
+    completeWithoutMenu: 47_500_000, complete: 50_000_000,
+  },
+};
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ message: servicePrices }) } as Response)));
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   window.localStorage.removeItem('asumi-pricing-selection-v2');
   window.history.replaceState(null, '', window.location.pathname);
 });
@@ -169,15 +188,17 @@ test('resolves the marketing module name to the growth detail page for direct li
   expect(screen.getByText('Marketing Campaign Brief')).toBeInTheDocument();
 });
 
-test('opens the pricing configurator and shows the selected module features beside its chooser', () => {
+test('opens the pricing configurator and shows the selected module features beside its chooser', async () => {
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
   expect(screen.getByRole('heading', { level: 1, name: /فقط چیزهایی را بگیر/ })).toBeInTheDocument();
-  expect(screen.getByRole('group', { name: 'انتخاب بسته‌ی تعرفه' })).toBeInTheDocument();
-  expect(screen.getByRole('group', { name: 'انتخاب ماژول‌های آسومی' })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { level: 2, name: 'مالی و حسابداری' })).toBeInTheDocument();
-  expect(screen.getByText('دفتر کل و سندهای حسابداری')).toBeInTheDocument();
-  expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۵۰۰٬۰۰۰ تومان');
+  await waitFor(() => {
+    expect(screen.getByRole('group', { name: 'انتخاب بسته‌ی تعرفه' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'انتخاب ماژول‌های آسومی' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'مالی و حسابداری' })).toBeInTheDocument();
+    expect(screen.getByText('دفتر کل و سندهای حسابداری')).toBeInTheDocument();
+    expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۵۰۰٬۰۰۰ تومان');
+  });
 });
 
 test('opens module pricing directly from the homepage module directory', async () => {
@@ -188,9 +209,10 @@ test('opens module pricing directly from the homepage module directory', async (
   expect(window.location.hash).toBe('#pricing');
 });
 
-test('adds growth when business planning is selected and blocks removing its prerequisite', () => {
+test('adds growth when business planning is selected and blocks removing its prerequisite', async () => {
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
+  await waitFor(() => expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۵۰۰٬۰۰۰ تومان'));
   fireEvent.click(screen.getByRole('button', { name: 'پاک‌کردن انتخاب' }));
   fireEvent.click(screen.getByRole('button', { name: /افزودن ماژول برنامه‌ریزی کسب‌وکار/ }));
   expect(screen.getByRole('status')).toHaveTextContent('پیش‌نیازش هم اضافه شد: بازاریابی و رشد');
@@ -201,9 +223,10 @@ test('adds growth when business planning is selected and blocks removing its pre
   expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۷٬۳۰۰٬۰۰۰ تومان');
 });
 
-test('switching to the complete package keeps a selected CRM module only once', () => {
+test('switching to the complete package keeps a selected CRM module only once', async () => {
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
+  await waitFor(() => expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۵۰۰٬۰۰۰ تومان'));
   fireEvent.click(screen.getByRole('button', { name: 'پاک‌کردن انتخاب' }));
   fireEvent.click(screen.getByRole('button', { name: /افزودن ماژول مدیریت ارتباط با مشتری/ }));
   expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۲٬۵۰۰٬۰۰۰ تومان');
@@ -213,9 +236,10 @@ test('switching to the complete package keeps a selected CRM module only once', 
   expect(selectedModules.match(/CRM/g)).toHaveLength(1);
 });
 
-test('switching to the professional package keeps a selected CRM module only once', () => {
+test('switching to the professional package keeps a selected CRM module only once', async () => {
   window.history.replaceState(null, '', '#pricing');
   const { container } = render(<AsumiApp />);
+  await waitFor(() => expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۵٬۵۰۰٬۰۰۰ تومان'));
   fireEvent.click(screen.getByRole('button', { name: 'پاک‌کردن انتخاب' }));
   fireEvent.click(screen.getByRole('button', { name: /افزودن ماژول مدیریت ارتباط با مشتری/ }));
   expect(container.querySelector('.pricing-estimate-total')).toHaveTextContent('۲٬۵۰۰٬۰۰۰ تومان');
