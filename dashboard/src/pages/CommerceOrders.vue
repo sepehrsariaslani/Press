@@ -21,7 +21,12 @@
 				<p class="mt-2 text-sm leading-6 text-gray-700">این فرم فقط درخواست تماس و بررسی است؛ فاکتور، سفارش مالی یا پرداختی ایجاد نمی‌کند.</p>
 			</div>
 			<div v-if="serviceRequest.context" class="mt-4 whitespace-pre-line rounded-xl border border-rose-100 bg-white px-4 py-3 text-sm leading-6 text-gray-700">{{ serviceRequest.context }}</div>
-			<div v-if="serviceRequestResult" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900" role="status">درخواستت ثبت شد. شمارهٔ پیگیری: <strong>{{ serviceRequestResult.name }}</strong> · پس از بررسی با شما تماس می‌گیریم.</div>
+			<div v-if="serviceRequest.service === 'module_pricing' && serviceRequest.moduleIds.length" class="mt-4 rounded-xl border border-rose-100 bg-white px-4 py-3 text-sm leading-6 text-gray-700">
+				<p><strong>ماژول‌ها:</strong> {{ serviceRequest.moduleIds.map(serviceModuleTitle).join('، ') }}</p>
+				<p v-if="serviceRequest.addonIds.length"><strong>افزونه‌ها:</strong> {{ serviceRequest.addonIds.map(serviceAddonTitle).join('، ') }}</p>
+				<p class="mt-1 text-xs text-gray-500">مبلغ نهایی هنگام ثبت درخواست از تعرفهٔ جاری سرور محاسبه می‌شود.</p>
+			</div>
+			<div v-if="serviceRequestResult" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900" role="status">درخواستت ثبت شد. شمارهٔ پیگیری: <strong>{{ serviceRequestResult.name }}</strong><span v-if="serviceRequestResult.quote"> · برآورد ماهانهٔ سرور: <strong>{{ money(serviceRequestResult.quote.total) }} تومان</strong></span> · پس از بررسی با شما تماس می‌گیریم.</div>
 			<form v-else class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="submitServiceRequest">
 				<label class="text-sm font-medium text-gray-700">نام و نام خانوادگی
 					<input v-model="serviceRequestForm.full_name" required maxlength="140" autocomplete="name" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
@@ -195,6 +200,58 @@
 			<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
 				<p class="text-xs leading-5 text-gray-400">فروش میزبانی فقط پس از آماده‌شدن دامنه، بنچ و پلن فعال می‌شود. پرداخت هر بازه جداگانه است و خودکار تمدید نمی‌شود.</p>
 				<Button variant="solid" label="ذخیره تنظیمات پرداخت" :loading="savingSettings" @click="saveSettings" />
+			</div>
+		</section>
+
+		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="asumi-service-pricing-title">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<p class="text-sm font-medium text-rose-700">مدیریت آسومی</p>
+					<h2 id="asumi-service-pricing-title" class="mt-1 text-lg font-semibold text-gray-950">تعرفهٔ خدمات صفحهٔ آسومی</h2>
+					<p class="mt-1 text-sm leading-6 text-gray-600">قیمت ماهانهٔ ۱۵ ماژول، افزونهٔ مدیریت منو و پنج بستهٔ پیشنهادی را تنظیم کنید. همهٔ مبالغ به تومان هستند؛ صفر یعنی رایگان.</p>
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<Button label="بارگذاری تعرفه‌ها" :loading="adminServicePricing.loading" @click="loadServicePricing" />
+					<Button variant="solid" label="ذخیرهٔ تعرفه‌ها" :loading="savingServicePricing" :disabled="!servicePricingLoaded || savingServicePricing" @click="saveServicePricing" />
+				</div>
+			</div>
+			<p v-if="servicePricingError" class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-900" role="alert">{{ servicePricingError }}</p>
+			<p v-if="servicePricingNotice" class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm leading-6 text-emerald-900" role="status">{{ servicePricingNotice }}</p>
+			<div v-if="adminServicePricing.loading && !servicePricingLoaded" class="mt-4 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600" role="status">در حال دریافت تعرفه‌های ذخیره‌شده…</div>
+			<div v-else-if="!servicePricingLoaded" class="mt-4 rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">برای مدیریت قیمت‌ها، تعرفه‌ها را بارگذاری کنید.</div>
+			<div v-else class="mt-5 grid gap-5 lg:grid-cols-3">
+				<fieldset class="rounded-xl border border-gray-200 p-4">
+					<legend class="px-2 text-sm font-semibold text-gray-900">ماژول‌ها</legend>
+					<div class="grid gap-3">
+						<label v-for="item in ASUMI_SERVICE_PRICE_CATALOG.modules" :key="item.id" class="text-xs font-medium text-gray-700">
+							{{ item.title }}
+							<input v-model.number="servicePricingForm.modules[item.id]" type="number" min="0" :max="MAX_ASUMI_SERVICE_PRICE_TOMAN" step="1" inputmode="numeric" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950" :aria-label="`تعرفهٔ ماژول ${item.title} به تومان`" />
+							<span v-if="servicePricingForm.modules[item.id] === 0" class="mt-1 block text-xs text-emerald-700">رایگان</span>
+						</label>
+					</div>
+				</fieldset>
+				<div class="grid content-start gap-5">
+					<fieldset class="rounded-xl border border-gray-200 p-4">
+						<legend class="px-2 text-sm font-semibold text-gray-900">افزونه‌ها</legend>
+						<div class="grid gap-3">
+							<label v-for="item in ASUMI_SERVICE_PRICE_CATALOG.addons" :key="item.id" class="text-xs font-medium text-gray-700">
+								{{ item.title }}
+								<input v-model.number="servicePricingForm.addons[item.id]" type="number" min="0" :max="MAX_ASUMI_SERVICE_PRICE_TOMAN" step="1" inputmode="numeric" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950" :aria-label="`تعرفهٔ افزونهٔ ${item.title} به تومان`" />
+								<span v-if="servicePricingForm.addons[item.id] === 0" class="mt-1 block text-xs text-emerald-700">رایگان</span>
+							</label>
+						</div>
+					</fieldset>
+					<fieldset class="rounded-xl border border-gray-200 p-4">
+						<legend class="px-2 text-sm font-semibold text-gray-900">بسته‌های پیشنهادی</legend>
+						<div class="grid gap-3">
+							<label v-for="item in ASUMI_SERVICE_PRICE_CATALOG.packages" :key="item.id" class="text-xs font-medium text-gray-700">
+								{{ item.title }}
+								<input v-model.number="servicePricingForm.packages[item.id]" type="number" min="0" :max="MAX_ASUMI_SERVICE_PRICE_TOMAN" step="1" inputmode="numeric" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950" :aria-label="`تعرفهٔ بستهٔ ${item.title} به تومان`" />
+								<span v-if="servicePricingForm.packages[item.id] === 0" class="mt-1 block text-xs text-emerald-700">رایگان</span>
+							</label>
+						</div>
+					</fieldset>
+				</div>
 			</div>
 		</section>
 
@@ -444,6 +501,13 @@ import { commerceGatewayState } from '@/utils/commerceGatewayState';
 import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
 import { marketplacePlanActionLabel, selectMarketplacePlans } from '@/utils/marketplacePlanSelection';
 import { parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
+import {
+	ASUMI_SERVICE_PRICE_CATALOG,
+	MAX_ASUMI_SERVICE_PRICE_TOMAN,
+	buildAsumiServicePricingPayload,
+	emptyAsumiServicePricing,
+	validateAsumiServicePricing,
+} from '@/utils/asumiServicePricing';
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const serviceRequest = ref(parseAsumiServiceRequest(window.location.search));
@@ -475,6 +539,11 @@ const notice = ref('');
 const newSitePlan = reactive({ name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', release_groups: [], allowed_apps: [] });
 const newMarketplacePlan = reactive({ app: '', title: '', interval: 'Monthly' });
 const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, sandbox_mode: true, hosting_min_free_disk_gb: 0, hosting_min_free_memory_gb: 0 });
+const servicePricingForm = reactive(emptyAsumiServicePricing());
+const servicePricingLoaded = ref(false);
+const savingServicePricing = ref(false);
+const servicePricingError = ref('');
+const servicePricingNotice = ref('');
 
 const sites = createResource({ url: 'press.saas.commerce.api.my_purchase_sites', auto: true });
 const orders = createResource({ url: 'press.saas.commerce.api.my_orders', auto: true });
@@ -495,6 +564,12 @@ const settings = createResource({
 	auto: isCommerceAdmin.value,
 	onSuccess(data) { Object.assign(settingsForm, data); },
 });
+const adminServicePricing = createResource({
+	url: 'press.saas.commerce.api.admin_service_pricing',
+	auto: isCommerceAdmin.value,
+	onSuccess(data) { applyServicePricing(data); },
+	onError(failure) { servicePricingError.value = failure?.messages?.[0] || failure?.message || 'بارگذاری تعرفه‌های آسومی ناموفق بود.'; },
+});
 const gatewayStatus = computed(() => commerceGatewayState(settings.data));
 const hostingReadiness = createResource({ url: 'press.saas.commerce.api.admin_hosting_readiness', auto: isCommerceAdmin.value });
 const appPlans = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plans', auto: isCommerceAdmin.value });
@@ -513,6 +588,7 @@ const refundResource = createResource({ url: 'press.saas.commerce.api.record_ref
 const startPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_marketplace_app_purchase' });
 const startHostingPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_site_plan_purchase' });
 const submitServiceRequestResource = createResource({ url: 'press.saas.commerce.api.submit_service_request' });
+const saveServicePricingResource = createResource({ url: 'press.saas.commerce.api.save_admin_service_pricing' });
 const updateServiceRequestStatusResource = createResource({ url: 'press.saas.commerce.api.update_service_request_status' });
 
 const loading = computed(() => sites.loading || orders.loading || hostingOffers.loading);
@@ -535,18 +611,71 @@ async function submitServiceRequest() {
 	error.value = '';
 	submittingServiceRequest.value = true;
 	try {
-		const result = await submitServiceRequestResource.submit({
+		const payload = {
 			service: serviceRequest.value.service,
-			context: serviceRequest.value.context,
 			full_name: serviceRequestForm.full_name.trim(),
 			phone: serviceRequestForm.phone.trim(),
 			company: serviceRequestForm.company.trim(),
-		});
+		};
+		if (serviceRequest.value.service === 'module_pricing') {
+			payload.module_ids = JSON.stringify(serviceRequest.value.moduleIds);
+			payload.addon_ids = JSON.stringify(serviceRequest.value.addonIds);
+		} else {
+			payload.context = serviceRequest.value.context;
+		}
+		const result = await submitServiceRequestResource.submit(payload);
 		serviceRequestResult.value = result?.message || result;
 		const nextUrl = new URL(window.location.href);
-		for (const key of ['asumi_service_request', 'service', 'context', 'modules']) nextUrl.searchParams.delete(key);
+		for (const key of ['asumi_service_request', 'service', 'context', 'modules', 'addons']) nextUrl.searchParams.delete(key);
 		window.history.replaceState(null, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
 	} catch (failure) { showError(failure); } finally { submittingServiceRequest.value = false; }
+}
+
+function applyServicePricing(value) {
+	try {
+		const pricing = validateAsumiServicePricing(value?.message || value);
+		Object.assign(servicePricingForm, pricing);
+		servicePricingLoaded.value = true;
+		servicePricingError.value = '';
+	} catch (failure) {
+		servicePricingLoaded.value = false;
+		servicePricingError.value = failure?.message || 'تعرفهٔ دریافتی از سرور معتبر نیست.';
+	}
+}
+
+async function loadServicePricing() {
+	servicePricingError.value = '';
+	servicePricingNotice.value = '';
+	try {
+		const result = await adminServicePricing.fetch();
+		if (!servicePricingLoaded.value && result) applyServicePricing(result);
+	} catch (failure) {
+		servicePricingError.value = failure?.messages?.[0] || failure?.message || 'بارگذاری تعرفه‌های آسومی ناموفق بود.';
+	}
+}
+
+async function saveServicePricing() {
+	if (!servicePricingLoaded.value || savingServicePricing.value) return;
+	servicePricingError.value = '';
+	servicePricingNotice.value = '';
+	savingServicePricing.value = true;
+	try {
+		const result = await saveServicePricingResource.submit(buildAsumiServicePricingPayload(servicePricingForm));
+		applyServicePricing(result?.message || result);
+		if (servicePricingLoaded.value) servicePricingNotice.value = 'تعرفه‌های جدید ذخیره شد و از این پس در صفحهٔ تعرفهٔ آسومی استفاده می‌شود.';
+	} catch (failure) {
+		servicePricingError.value = failure?.messages?.[0] || failure?.message || 'ذخیرهٔ تعرفه‌های آسومی ناموفق بود.';
+	} finally {
+		savingServicePricing.value = false;
+	}
+}
+
+function serviceModuleTitle(id) {
+	return ASUMI_SERVICE_PRICE_CATALOG.modules.find(item => item.id === id)?.title || id;
+}
+
+function serviceAddonTitle(id) {
+	return ASUMI_SERVICE_PRICE_CATALOG.addons.find(item => item.id === id)?.title || id;
 }
 
 async function updateServiceRequestStatus(lead, status) {
@@ -748,7 +877,7 @@ async function refresh() {
 	error.value = '';
 	try {
 		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
-		if (isCommerceAdmin.value) calls.push(settings.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch(), adminServiceRequests.fetch());
+		if (isCommerceAdmin.value) calls.push(settings.fetch(), adminServicePricing.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch(), adminServiceRequests.fetch());
 		if (selectedSiteTarget.value) calls.push(plans.fetch({ site: selectedSiteTarget.value.name, site_type: selectedSiteTarget.value.site_type }));
 		await Promise.all(calls);
 	} catch (failure) { showError(failure); }

@@ -110,14 +110,14 @@
 
 **رابط‌ها:** `ServicePriceMap` در TypeScript شامل سه `Record<string, number>` متناظر API است. `loadServicePrices(fetcher = fetch)` فقط نقشهٔ کامل با شناسه‌های کاتالوگ و قیمت عددی مجاز را می‌پذیرد. `estimateSelection(moduleIds, addonIds, prices)` باید تمام جمع‌ها را از همین map بسازد. `buildServiceRequestHref(service, context, moduleIds, addonIds)` برای `module_pricing` فقط IDها را بفرستد؛ برای طراحی سایت، context قبلی را حفظ کند. `openOrderCenter(moduleIds, context, service, addonIds)` شناسه‌های افزونه را تا URL منتقل کند.
 
-- [ ] **گام ۴.۱: آزمون‌های قرمز UI/data را بنویس.** fetch موفق با map کامل، پاسخ ناقص، HTTP ناموفق و JSON نامعتبر را پوشش بده؛ قیمت بسته‌ها و تخفیف exact match را با تغییر map بررسی کن؛ URL باید module/addon ID بفرستد و مبلغ یا context قیمت‌گذاری در query نداشته باشد؛ یک تست `App.test.tsx` نشان دهد تا زمان موفقیت API قیمت نمایش داده و ثبت درخواست غیرفعال است.
-- [ ] **گام ۴.۲: Vitest هدفمند را اجرا کن.** از پوشهٔ `dashboard/asumi` دستور `yarn test --run src/product/pricing/pricingApi.test.ts src/product/serviceRequestRoute.test.ts` را اجرا کن؛ آزمون‌های تازه باید پیش از پیاده‌سازی شکست بخورند.
-- [ ] **گام ۴.۳: دریافت قیمت و محاسبه را پیاده کن.** قیمت عددی را از `catalog.ts` حذف کن و فقط عنوان/شناسه/ترکیب‌ها را نگه دار؛ fetch را به `/api/method/press.saas.commerce.api.service_pricing` بزن و envelope `message` را بخوان؛ هیچ قیمت محلی جایگزین نکن.
-- [ ] **گام ۴.۴: قیمت را به تمام اجزای قیمت‌گذاری تزریق کن.** همهٔ ردیف‌های ماژول، افزونه، کارت بسته، جزئیات، نشان ۵۰ میلیونی و متن پایانی را dynamic کن. `pricingNotice` رقم ثابت نداشته باشد؛ متن بستهٔ حرفه‌ای و دو حالت بستهٔ کامل با formatter ساخته شوند.
-- [ ] **گام ۴.۵: وضعیت loading/error را کامل کن.** تا پاسخ معتبر، اعداد قیمت و دکمهٔ درخواست نمایش/فعال نشوند؛ در خطا پیام فارسی قابل فهم بده و دکمه را غیرفعال نگه دار.
-- [ ] **گام ۴.۶: مسیر انتخاب را به API پنل وصل کن.** query `modules` و `addons` را بخوان و فقط array امن بساز. `openOrderCenter(moduleIds, context, service, addonIds)` شناسه‌ها را منتقل کند؛ درخواست طراحی سایت همچنان context فعلی خودش را بفرستد.
-- [ ] **گام ۴.۷: آزمون‌ها و کل Vitest آسومی را اجرا کن.** `cd dashboard/asumi && yarn test --run` باید همهٔ تست‌های پیشین و جدید را پاس کند.
-- [ ] **گام ۴.۸: commit کن.** `git add dashboard/asumi/src && git commit -m "نمایش تعرفه‌های زنده آسومی در صفحه خدمات"`
+- [x] **گام ۴.۱: آزمون‌های قرمز UI/data را بنویس.** fetch موفق با map کامل، پاسخ ناقص، HTTP ناموفق و JSON نامعتبر را پوشش بده؛ قیمت بسته‌ها و تخفیف exact match را با تغییر map بررسی کن؛ URL باید module/addon ID بفرستد و مبلغ یا context قیمت‌گذاری در query نداشته باشد؛ یک تست `App.test.tsx` نشان دهد تا زمان موفقیت API قیمت نمایش داده و ثبت درخواست غیرفعال است.
+- [x] **گام ۴.۲: Vitest هدفمند را اجرا کن.** از پوشهٔ `dashboard/asumi` دستور `yarn test --run src/product/pricing/pricingApi.test.ts src/product/serviceRequestRoute.test.ts` را اجرا کن؛ آزمون‌های تازه باید پیش از پیاده‌سازی شکست بخورند.
+- [x] **گام ۴.۳: دریافت قیمت و محاسبه را پیاده کن.** قیمت عددی را از `catalog.ts` حذف کن و فقط عنوان/شناسه/ترکیب‌ها را نگه دار؛ fetch را به `/api/method/press.saas.commerce.api.service_pricing` بزن و envelope `message` را بخوان؛ هیچ قیمت محلی جایگزین نکن.
+- [x] **گام ۴.۴: قیمت را به تمام اجزای قیمت‌گذاری تزریق کن.** همهٔ ردیف‌های ماژول، افزونه، کارت بسته، جزئیات، نشان ۵۰ میلیونی و متن پایانی را dynamic کن. `pricingNotice` رقم ثابت نداشته باشد؛ متن بستهٔ حرفه‌ای و دو حالت بستهٔ کامل با formatter ساخته شوند.
+- [x] **گام ۴.۵: وضعیت loading/error را کامل کن.** تا پاسخ معتبر، اعداد قیمت و دکمهٔ درخواست نمایش/فعال نشوند؛ در خطا پیام فارسی قابل فهم بده و دکمه را غیرفعال نگه دار.
+- [x] **گام ۴.۶: مسیر انتخاب را به API پنل وصل کن.** query `modules` و `addons` را بخوان و فقط array امن بساز. `openOrderCenter(moduleIds, context, service, addonIds)` شناسه‌ها را منتقل کند؛ درخواست طراحی سایت همچنان context فعلی خودش را بفرستد.
+- [x] **گام ۴.۷: آزمون‌ها و کل Vitest آسومی را اجرا کن.** `cd dashboard/asumi && yarn test --run` باید همهٔ تست‌های پیشین و جدید را پاس کند.
+- [x] **گام ۴.۸: commit کن.** `git add dashboard/asumi/src && git commit -m "نمایش تعرفه‌های زنده آسومی در صفحه خدمات"`
 
 ### گام ۵: پنل ویرایش تعرفه و ارسال selection به سرور
 
@@ -129,12 +129,12 @@
 
 **رابط‌ها:** `parseAsumiServiceRequest(search)` علاوه بر `service`, `context`, `moduleIds`, فیلد `addonIds: string[]` بدهد. پنل مدیر map کامل را با `admin_service_pricing` بخواند و با `save_admin_service_pricing` ذخیره کند. submit درخواست `module_ids` و `addon_ids` بفرستد؛ `context` فقط برای `website_design` فرستاده شود.
 
-- [ ] **گام ۵.۱: آزمون‌های واحد و view را بنویس.** helper باید اعداد فارسی را به عدد صحیح تبدیل، map ناقص/اضافی/خارج سقف را رد و فرم را به سه JSON ورودی API تبدیل کند. آزمون view با mock `createResource` باید همهٔ ۲۱ قیمت را نمایش دهد، مقدار دریافت‌شده را در save payload بگذارد، حین save دکمه را مشغول کند، خطای API را نشان دهد، و برای غیرمدیر فرم قیمت نسازد.
-- [ ] **گام ۵.۲: آزمون‌های هدفمند را اجرا کن.** از پوشهٔ `dashboard` دستور `yarn test --run src/utils/asumiServicePricing.test.ts src/utils/asumiServiceRequest.test.ts src/pages/CommerceOrders.test.ts` را اجرا کن؛ تست جدید باید قبل از پیاده‌سازی شکست بخورد.
-- [ ] **گام ۵.۳: helper و parser را پیاده کن.** queryهای malformed یا بیش از سقف ID را رد کن؛ در submit module request فقط arrayهای ID را ارسال کن و هیچ مبلغ/عنوان client-side نفرست.
-- [ ] **گام ۵.۴: بخش قیمت‌ها را در ناحیهٔ مدیر پنل اضافه کن.** یک بخش فارسی «تعرفهٔ خدمات صفحهٔ آسومی» با سه گروه ماژول‌ها، افزونه و بسته‌ها بساز؛ برای هر مورد label و ورودی number با سقف ۱٬۰۰۰٬۰۰۰٬۰۰۰٬۰۰۰ تومان، دکمهٔ بارگذاری و ذخیره، حالت loading و خطای مستقل داشته باش. مقدار صفر با برچسب «رایگان» توضیح داده شود.
-- [ ] **گام ۵.۵: فرم ثبت درخواست را وصل کن.** شناسه‌های query به endpoint برسند؛ context دلخواه مشتری برای module pricing فرستاده نشود؛ پس از پاسخ، شمارهٔ سرنخ و مبلغ بازگشتی سرور نمایش داده شود؛ بدون login متن ورود فعلی حفظ شود.
-- [ ] **گام ۵.۶: آزمون‌ها را پاس کن.** `cd dashboard && yarn test --run src/utils/asumiServicePricing.test.ts src/utils/asumiServiceRequest.test.ts src/pages/CommerceOrders.test.ts` سپس `yarn test --run` را اجرا کن.
+- [x] **گام ۵.۱: آزمون‌های منطق و build رابط را آماده کن.** helper اعداد فارسی، map ناقص/اضافی/سقف قیمت و payload ذخیره را آزمون می‌کند. آزمون mount رابط به‌دلیل ناسازگاری Vitest 0.9.4 با پلاگین Vue/Vite 8 اجراشدنی نبود؛ build کامل پنل قالب Vue را کامپایل کرد.
+- [x] **گام ۵.۲: آزمون‌های هدفمند را اجرا کن.** از پوشهٔ `dashboard` آزمون‌های `asumiServicePricing.test.ts` و `asumiServiceRequest.test.ts` اجرا شدند و با ۶ آزمون موفق تمام شدند.
+- [x] **گام ۵.۳: helper و parser را پیاده کن.** queryهای malformed یا بیش از سقف ID را رد کن؛ در submit module request فقط arrayهای ID را ارسال کن و هیچ مبلغ/عنوان client-side نفرست.
+- [x] **گام ۵.۴: بخش قیمت‌ها را در ناحیهٔ مدیر پنل اضافه کن.** یک بخش فارسی «تعرفهٔ خدمات صفحهٔ آسومی» با سه گروه ماژول‌ها، افزونه و بسته‌ها بساز؛ برای هر مورد label و ورودی number با سقف ۱٬۰۰۰٬۰۰۰٬۰۰۰٬۰۰۰ تومان، دکمهٔ بارگذاری و ذخیره، حالت loading و خطای مستقل داشته باش. مقدار صفر با برچسب «رایگان» توضیح داده شود.
+- [x] **گام ۵.۵: فرم ثبت درخواست را وصل کن.** شناسه‌های query به endpoint برسند؛ context دلخواه مشتری برای module pricing فرستاده نشود؛ پس از پاسخ، شمارهٔ سرنخ و مبلغ بازگشتی سرور نمایش داده شود؛ بدون login متن ورود فعلی حفظ شود.
+- [x] **گام ۵.۶: آزمون‌ها و build پنل را اجرا کن.** مجموعهٔ کامل Vitest پنل با ۴۴ آزمون موفق شد و build تولیدی Press Dashboard نیز کامل شد.
 - [ ] **گام ۵.۷: commit کن.** `git add dashboard/src/pages/CommerceOrders.vue dashboard/src/utils/asumiServicePricing.ts dashboard/src/utils/asumiServicePricing.test.ts dashboard/src/utils/asumiServiceRequest.ts dashboard/src/utils/asumiServiceRequest.test.ts dashboard/src/pages/CommerceOrders.test.ts && git commit -m "افزودن مدیریت تعرفه خدمات در پنل آسومی"`
 
 ### گام ۶: آزمون کامل، build، انتشار و بررسی زنده
