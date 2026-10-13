@@ -12,7 +12,7 @@ class CheckoutAccessTest(unittest.TestCase):
 		self.assertIn(api.checkout_status, frappe.guest_methods)
 		settings = SimpleNamespace(sandbox_mode=True)
 		with patch("press.saas.commerce.api._get_settings", return_value=settings), patch(
-			"press.saas.commerce.api._checkout_available_for_user", side_effect=[True, False, False]
+			"press.saas.commerce.api._checkout_available_for_user", side_effect=[True, False, False, True]
 		):
 			status = api.checkout_status()
 
@@ -22,6 +22,7 @@ class CheckoutAccessTest(unittest.TestCase):
 				"enabled": True,
 				"marketplace_apps_enabled": False,
 				"hosting_enabled": False,
+				"services_enabled": True,
 				"sandbox_mode": True,
 				"currency": "IRR",
 			},

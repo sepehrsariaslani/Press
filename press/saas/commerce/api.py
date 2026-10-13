@@ -57,6 +57,7 @@ from press.saas.commerce.service_requests import (
 	build_service_request_lead,
 	normalize_service_request_status,
 )
+from press.saas.commerce.service_orders import build_service_order_snapshot
 from press.saas.commerce.service_pricing import (
 	calculate_service_quote,
 	default_service_prices,
@@ -141,6 +142,10 @@ def _free_marketplace_purchase_enabled(settings) -> bool:
 	return bool(settings and settings.enabled and settings.allow_marketplace_app_sales)
 
 
+def _free_service_purchase_enabled(settings) -> bool:
+	return bool(settings and settings.enabled and sale_enabled_for_settings(settings, "services"))
+
+
 def _acquire_transaction_lock(lock_name: str, timeout: int = 10) -> bool:
 	"""Hold a MySQL advisory lock until this request commits or rolls back."""
 	db = frappe.db
@@ -221,6 +226,7 @@ def checkout_status() -> dict:
 		"enabled": _checkout_available_for_user(settings),
 		"marketplace_apps_enabled": _checkout_available_for_user(settings, "marketplace"),
 		"hosting_enabled": _checkout_available_for_user(settings, "hosting"),
+		"services_enabled": _checkout_available_for_user(settings, "services"),
 		"sandbox_mode": bool(settings and settings.sandbox_mode),
 		"currency": "IRR",
 	}
@@ -1225,8 +1231,9 @@ def _create_zarinpal_checkout(snapshot: dict, settings, description: str, pendin
 		email=frappe.session.user if "@" in frappe.session.user else None,
 	)
 	order_values = {"doctype": "Commerce Order", **snapshot, "sandbox_mode": int(bool(settings.sandbox_mode))}
-	if isinstance(order_values.get("apps"), list):
-		order_values["apps"] = frappe.as_json(order_values["apps"])
+	for fieldname in ("apps", "service_quote_snapshot"):
+		if isinstance(order_values.get(fieldname), (dict, list)):
+			order_values[fieldname] = frappe.as_json(order_values[fieldname])
 	order = frappe.get_doc(order_values).insert(ignore_permissions=True)
 	try:
 		response = create_payment(payload, sandbox=bool(settings.sandbox_mode))
@@ -1421,6 +1428,107 @@ def start_site_plan_purchase(
 	)
 
 
+@frappe.whitelist(methods=["POST"])
+def start_service_purchase(
+	module_ids: str,
+	addon_ids: str,
+	full_name: str,
+	phone: str,
+	company: str = "",
+) -> dict:
+	"""Create a one-month service order using only server-managed prices."""
+	if frappe.session.user == "Guest":
+		frappe.throw(_("برای خرید خدمات آسومی ابتدا وارد حساب شوید."), frappe.AuthenticationError)
+
+	settings = _get_settings()
+	if not _free_service_purchase_enabled(settings):
+		frappe.throw(_("فروش خدمات آسومی هنوز توسط مدیر فعال نشده است."))
+
+	team = get_current_team(get_doc=True)
+	if not team or (team.user != frappe.session.user and not is_user_part_of_team(frappe.session.user, team.name)):
+		frappe.throw(_("به این تیم دسترسی ندارید."), frappe.PermissionError)
+	try:
+		module_selection = _parse_service_selection(module_ids, "module_ids")
+		addon_selection = _parse_service_selection(addon_ids, "addon_ids")
+		snapshot = build_service_order_snapshot(
+			module_ids=module_selection,
+			addon_ids=addon_selection,
+			prices=_get_service_prices(),
+			customer=frappe.session.user,
+			team=team.name,
+			full_name=full_name,
+			phone=phone,
+			company=company,
+			quoted_at=str(frappe.utils.now_datetime()),
+		)
+		snapshot["customer"] = frappe.session.user
+		snapshot["team"] = team.name
+	except (TypeError, ValueError) as error:
+		frappe.throw(_(str(error)))
+
+	is_free = snapshot["amount"] == 0
+	if not is_free:
+		merchant_id = _merchant_id(settings)
+		if not merchant_id or not _checkout_available_for_user(settings, "services"):
+			if _sandbox_checkout_restricted(settings, "services"):
+				frappe.throw(_("پرداخت آزمایشی خدمات فقط برای مدیران آسومی در دسترس است؛ برای خرید مشتریان، حالت آزمایشی را خاموش کنید."))
+			frappe.throw(_("پرداخت آنلاین خدمات آسومی هنوز توسط مدیر پیکربندی نشده است."))
+
+	if not frappe.db.exists("Currency", "IRR"):
+		frappe.throw(_("واحد پول ریال در تنظیمات آسومی ثبت نشده است."))
+	fingerprint = snapshot["service_fingerprint"]
+	lock_digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:40]
+	if not _acquire_transaction_lock(f"asumi-service:{lock_digest}"):
+		frappe.throw(_("ثبت همین سفارش خدمات هم‌اکنون در حال انجام است؛ کمی بعد دوباره تلاش کنید."))
+
+	pending_filters = {
+		"customer": frappe.session.user,
+		"team": team.name,
+		"order_type": "Asumi Service",
+		"service_fingerprint": fingerprint,
+	}
+	existing_orders = frappe.get_all(
+		"Commerce Order",
+		filters={
+			**pending_filters,
+			"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed", "Active"]],
+		},
+		fields=["name", "status", "authority", "sandbox_mode"],
+		order_by="creation desc",
+		limit_page_length=1,
+		ignore_permissions=True,
+	)
+	if existing_orders:
+		previous = existing_orders[0]
+		if previous.status == "Pending Payment":
+			if previous.authority:
+				return {
+					"order": previous.name,
+					"checkout_url": checkout_url(previous.authority, sandbox=bool(previous.sandbox_mode)),
+				}
+			frappe.throw(_("درخواست پرداخت قبلی همین سفارش هنوز در حال ثبت است."))
+		return {"order": previous.name, "free": is_free, "already_requested": True, "status": previous.status}
+
+	if is_free:
+		order_values = {"doctype": "Commerce Order", **snapshot, "provider": "Free", "sandbox_mode": 0}
+		order_values["service_quote_snapshot"] = frappe.as_json(order_values["service_quote_snapshot"])
+		order = frappe.get_doc(order_values).insert(ignore_permissions=True)
+		order.db_set(
+			{
+				"status": transition_order("Pending Payment", "Paid"),
+				"paid_at": frappe.utils.now_datetime(),
+			}
+		)
+		return {"order": order.name, "free": True}
+
+	return _create_zarinpal_checkout(
+		snapshot,
+		settings,
+		f"Asumi service: {snapshot['service_title']}",
+		pending_filters,
+	)
+
+
 @frappe.whitelist(allow_guest=True)
 def zarinpal_callback():
 	"""Verify a ZarinPal return using the stored order amount, never callback data."""
@@ -1432,7 +1540,7 @@ def zarinpal_callback():
 
 	order = frappe.get_doc("Commerce Order", order_name, for_update=True)
 	if order.status in {"Paid", "Provisioning", "Active", "Provisioning Failed"}:
-		if order.status in {"Paid", "Provisioning Failed"}:
+		if order.order_type != "Asumi Service" and order.status in {"Paid", "Provisioning Failed"}:
 			_enqueue_provision_paid_order(order.name)
 		return _redirect_to_orders(order.status.lower().replace(" ", "-"), order.name)
 	if order.status != "Pending Payment":
@@ -1471,7 +1579,8 @@ def zarinpal_callback():
 			"payment_error": "",
 		}
 	)
-	_enqueue_provision_paid_order(order.name)
+	if order.order_type != "Asumi Service":
+		_enqueue_provision_paid_order(order.name)
 	return _redirect_to_orders("paid", order.name)
 
 
@@ -1487,6 +1596,8 @@ def _redirect_to_orders(result: str, order: str | None = None):
 def provision_paid_order(order_name: str):
 	"""Idempotently deliver a verified marketplace or hosting order."""
 	order = frappe.get_doc("Commerce Order", order_name, for_update=True)
+	if order.order_type == "Asumi Service":
+		return order.status
 	if order.status not in {"Paid", "Provisioning Failed"}:
 		return order.status
 	new_status = transition_order(order.status, "Provisioning")
@@ -1958,7 +2069,7 @@ def my_orders(limit: int = 50) -> list[dict]:
 	rows = frappe.get_all(
 		"Commerce Order",
 		filters={"customer": frappe.session.user, "team": team},
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "service_title", "service_amount_toman", "service_quote_snapshot", "service_contact_name", "service_contact_phone", "service_company", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 50), 1), 100),
 		ignore_permissions=True,
@@ -1978,7 +2089,7 @@ def admin_orders(limit: int = 100) -> list[dict]:
 	_require_commerce_admin()
 	return frappe.get_all(
 		"Commerce Order",
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "team", "customer", "amount", "currency", "provider", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "agent_job", "install_backup", "install_backup_id", "install_operation", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "service_title", "service_amount_toman", "service_quote_snapshot", "service_contact_name", "service_contact_phone", "service_company", "team", "customer", "amount", "currency", "provider", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "agent_job", "install_backup", "install_backup_id", "install_operation", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 100), 1), 200),
 		ignore_permissions=True,
@@ -2109,6 +2220,8 @@ def update_service_request_status(name: str, status: str) -> dict:
 def retry_provisioning(order: str) -> dict:
 	_require_commerce_admin()
 	doc = frappe.get_doc("Commerce Order", order, for_update=True)
+	if doc.order_type == "Asumi Service":
+		frappe.throw(_("سفارش خدمات آسومی به‌صورت دستی تحویل می‌شود و در صف نصب یا میزبانی قرار نمی‌گیرد."))
 	if doc.status != "Provisioning Failed":
 		frappe.throw(_("فقط سفارش‌های دارای خطای تحویل قابل تلاش مجدد هستند."))
 	if doc.order_type == "Hosting" and doc.service_delivery_mode == "Create New Site" and doc.site:
@@ -2119,6 +2232,28 @@ def retry_provisioning(order: str) -> dict:
 			frappe.throw(_("وضعیت فعلی سایت برای تلاش مجدد تحویل مناسب نیست."))
 	_enqueue_provision_paid_order(doc.name)
 	return {"name": doc.name, "queued": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def update_service_order_status(order: str, status: str) -> dict:
+	"""Record the two administrator-controlled delivery steps for Asumi services."""
+	_require_commerce_admin()
+	doc = frappe.get_doc("Commerce Order", order, for_update=True)
+	if doc.order_type != "Asumi Service":
+		frappe.throw(_("این سفارش از نوع خدمات آسومی نیست."), frappe.PermissionError)
+	if status not in {"Provisioning", "Active"}:
+		frappe.throw(_("وضعیت تحویل خدمات آسومی معتبر نیست."))
+	try:
+		next_status = transition_order(doc.status, status)
+	except ValueError as error:
+		frappe.throw(_(str(error)))
+	values = {"status": next_status, "provisioning_error": ""}
+	if next_status == "Active":
+		start = frappe.utils.now_datetime()
+		values["service_starts_at"] = start
+		values["service_ends_at"] = period_end(start, "Monthly")
+	doc.db_set(values)
+	return {"name": doc.name, "status": next_status}
 
 
 @frappe.whitelist()
@@ -2548,6 +2683,7 @@ def admin_settings() -> dict:
 		"enabled": bool(settings and settings.enabled),
 		"allow_marketplace_app_sales": bool(settings and settings.allow_marketplace_app_sales),
 		"allow_site_plan_sales": bool(settings and settings.allow_site_plan_sales),
+		"allow_service_sales": bool(settings and settings.allow_service_sales),
 		"sandbox_mode": bool(settings is None or settings.sandbox_mode),
 		"merchant_id_configured": bool(_merchant_id(settings)),
 		"hosting_min_free_disk_gb": getattr(settings, "hosting_min_free_disk_gb", 0) if settings else 0,
@@ -2561,6 +2697,7 @@ def save_admin_settings(
 	allow_marketplace_app_sales: bool,
 	sandbox_mode: bool,
 	allow_site_plan_sales: bool | None = None,
+	allow_service_sales: bool | None = None,
 	merchant_id: str | None = None,
 	hosting_min_free_disk_gb: float | str | None = None,
 	hosting_min_free_memory_gb: float | str | None = None,
@@ -2571,6 +2708,8 @@ def save_admin_settings(
 	settings.allow_marketplace_app_sales = int(frappe.utils.cint(allow_marketplace_app_sales))
 	if allow_site_plan_sales is not None:
 		settings.allow_site_plan_sales = int(frappe.utils.cint(allow_site_plan_sales))
+	if allow_service_sales is not None:
+		settings.allow_service_sales = int(frappe.utils.cint(allow_service_sales))
 	settings.sandbox_mode = int(frappe.utils.cint(sandbox_mode))
 	try:
 		if hosting_min_free_disk_gb is not None:
