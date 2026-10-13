@@ -186,7 +186,7 @@ class MarketplaceProvisioningTest(unittest.TestCase):
 		self.assertEqual(install_calls, ["accounts"])
 
 	def test_pending_payment_order_cannot_start_installation(self):
-		order = FakeDocument(name="ORDER-1", status="Pending Payment")
+		order = FakeDocument(name="ORDER-1", status="Pending Payment", order_type="Marketplace App")
 		with (
 			patch.object(api.frappe, "get_doc", return_value=order),
 			patch.object(api, "_install_marketplace_app_for_order") as install,
