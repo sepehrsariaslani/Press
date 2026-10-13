@@ -29,7 +29,7 @@ from press.utils import (
 	is_user_part_of_team,
 	unique,
 )
-from press.utils.billing import get_frappe_io_connection
+from press.utils.billing import get_frappe_io_connection, is_frappe_auth_disabled
 from press.utils.marketplace_app_plan_permissions import can_manage_marketplace_app_plans
 from press.utils import user as user_utils
 
@@ -1244,7 +1244,11 @@ def get_discount_percent(plan, discount=0.0):
 		"Bronze": 30.0,
 	}
 
-	if team.erpnext_partner and frappe.get_value("Marketplace App Plan", plan, "partner_discount"):
+	if (
+		team.erpnext_partner
+		and frappe.get_value("Marketplace App Plan", plan, "partner_discount")
+		and not is_frappe_auth_disabled()
+	):
 		client = get_frappe_io_connection()
 		response = client.session.post(
 			f"{client.url}/api/method/partner_relationship_management.api.get_partner_type",

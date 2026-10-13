@@ -967,6 +967,10 @@ def redirect_to(location):
 
 def get_frappe_io_auth_url() -> str | None:
 	"""Get auth url for oauth login with frappe.io."""
+	from press.utils.billing import is_frappe_auth_disabled
+
+	if is_frappe_auth_disabled():
+		return None
 
 	try:
 		provider = frappe.get_last_doc(

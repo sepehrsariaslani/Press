@@ -1101,7 +1101,10 @@ def add_new_lead(lead_details: dict[str, Any]) -> None:
 @frappe.whitelist()
 @role_guard.api("partner")
 def can_apply_for_certificate() -> dict | None:
-	from press.utils.billing import get_frappe_io_connection
+	from press.utils.billing import get_frappe_io_connection, is_frappe_auth_disabled
+
+	if is_frappe_auth_disabled():
+		return None
 
 	team = get_current_team(get_doc=True)
 	client = get_frappe_io_connection()

@@ -67,7 +67,10 @@ class PartnerApprovalRequest(Document):
 				self.send_approval_request_email()
 
 	def send_approval_request_email(self):
-		from press.utils.billing import get_frappe_io_connection
+		from press.utils.billing import get_frappe_io_connection, is_frappe_auth_disabled
+
+		if is_frappe_auth_disabled():
+			return
 
 		client = get_frappe_io_connection()
 		email = frappe.db.get_value("Team", self.partner, "partner_email")
