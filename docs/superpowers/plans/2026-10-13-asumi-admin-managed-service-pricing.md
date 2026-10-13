@@ -135,20 +135,27 @@
 - [x] **گام ۵.۴: بخش قیمت‌ها را در ناحیهٔ مدیر پنل اضافه کن.** یک بخش فارسی «تعرفهٔ خدمات صفحهٔ آسومی» با سه گروه ماژول‌ها، افزونه و بسته‌ها بساز؛ برای هر مورد label و ورودی number با سقف ۱٬۰۰۰٬۰۰۰٬۰۰۰٬۰۰۰ تومان، دکمهٔ بارگذاری و ذخیره، حالت loading و خطای مستقل داشته باش. مقدار صفر با برچسب «رایگان» توضیح داده شود.
 - [x] **گام ۵.۵: فرم ثبت درخواست را وصل کن.** شناسه‌های query به endpoint برسند؛ context دلخواه مشتری برای module pricing فرستاده نشود؛ پس از پاسخ، شمارهٔ سرنخ و مبلغ بازگشتی سرور نمایش داده شود؛ بدون login متن ورود فعلی حفظ شود.
 - [x] **گام ۵.۶: آزمون‌ها و build پنل را اجرا کن.** مجموعهٔ کامل Vitest پنل با ۴۴ آزمون موفق شد و build تولیدی Press Dashboard نیز کامل شد.
-- [ ] **گام ۵.۷: commit کن.** `git add dashboard/src/pages/CommerceOrders.vue dashboard/src/utils/asumiServicePricing.ts dashboard/src/utils/asumiServicePricing.test.ts dashboard/src/utils/asumiServiceRequest.ts dashboard/src/utils/asumiServiceRequest.test.ts dashboard/src/pages/CommerceOrders.test.ts && git commit -m "افزودن مدیریت تعرفه خدمات در پنل آسومی"`
+- [x] **گام ۵.۷: commit کن.** انجام شد: `307bec1f5 افزودن مدیریت تعرفه خدمات در پنل آسومی`.
 
 ### گام ۶: آزمون کامل، build، انتشار و بررسی زنده
 
 **فایل‌ها:** تغییرات همهٔ مراحل پیشین؛ فایل جدیدی برای secrets نساز.
 
-- [ ] **گام ۶.۱: بررسی اختلاف‌ها و تاریخچه را انجام بده.** `git status --short`, `git log -5 --oneline`, `git diff origin/server-snapshot-20260825...HEAD --check` باید بدون فایل تصادفی، commit گم‌شده یا whitespace error باشد.
-- [ ] **گام ۶.۲: آزمون Python را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing press.saas.commerce.test_service_requests press.saas.commerce.test_service_pricing_api -v` را برای منطق خالص و seed اجرا کن؛ suite `press.saas.commerce.test_service_pricing_endpoints` را در Frappe Console اجرا کن و خروجی `OK` را ثبت کن. آزمون endpoint فقط mock استفاده می‌کند؛ `allow_tests` سایت زنده را تغییر نده.
-- [ ] **گام ۶.۳: آزمون و build هر دو رابط را اجرا کن.** در `dashboard/asumi`: `yarn typecheck && yarn test --run && yarn build`; برای کل Press در ریشهٔ مخزن: `yarn test --run && yarn build`. `yarn build` باید هر دو dashboard، دارایی‌های CSS و shell در `press/www/asumi.html` را بسازد.
-- [ ] **گام ۶.۴: نسخه و منابع را پیش از انتشار ثبت کن.** وضعیت git، فضای آزاد و حافظه را بگیر؛ backup کامل دیتابیس و فایل‌های Asumi بساز و وجود و اندازهٔ backup را قبل از migrate تأیید کن. اگر backup ناقص یا فضای آزاد کمتر از ۲ گیگابایت شد، انتشار را متوقف و خطا را گزارش کن.
-- [ ] **گام ۶.۵: migration و دارایی‌ها را منتشر کن.** روی bench مشترک ابتدا patch و DocType را migrate کن، سپس build مربوط به Press Dashboard/Asumi را بساز و frontend و workerهای لازم را با روش نرم و بدون restart دیتابیس فعال کن. چون منابع asset بین سایت‌های bench مشترک است، قبل از هر reload وضعیت هر پنج سایت روی bench را ثبت کن.
-- [ ] **گام ۶.۶: smoke test زنده بگیر.** `/`, `/#pricing`, `/dashboard/orders`, API عمومی قیمت، API ذخیرهٔ مدیر با نشست مدیر، API عمومی بدون نشست و ثبت درخواست با حساب تست را بررسی کن. قیمت API باید با ۲۱ مقدار seed برابر باشد؛ ذخیرهٔ مقدار آزمایشی از پنل و بازخوانی عمومی باید همان مقدار را بدهد؛ آن را به مقدار آغازین برگردان. درخواست test باید فقط یک Lead با مبلغ و زمان server snapshot بسازد و شمار سفارش‌ها/فاکتورها تغییر نکند.
-- [ ] **گام ۶.۷: محدودیت پرداخت را ثبت کن.** پرداخت آزمایشی انجام نده. وضعیت checkout و میزبانی را دوباره بخوان؛ انتشار قیمت خدمات را با فعال‌بودن فروش پولی یکی اعلام نکن. آماده‌شدن پرداخت به merchant ID معتبر و آماده‌شدن میزبانی به DNS wildcard، TLS و زیرساخت Press نیاز دارد.
-- [ ] **گام ۶.۸: وضعیت نهایی را گزارش کن.** commitها، خروجی هر آزمون، URLهای smoke test، مقدار بازیابی‌شدهٔ seed، نتیجهٔ snapshot بدون سفارش و هر پیش‌نیاز بیرونی باقی‌مانده را فارسی گزارش کن.
+- [x] **گام ۶.۱: بررسی اختلاف‌ها و تاریخچه را انجام بده.** تاریخچه شامل commitهای مراحل پیشین است؛ `git diff --check` پاک بود و تنها تغییر تولیدیِ باقی‌مانده پس از build، referenceهای تازهٔ shell آسومی در `press/www/asumi.html` بود.
+- [x] **گام ۶.۲: آزمون Python را اجرا کن.** ۱۸ آزمون منطق خالص و seed با `python3 -m unittest press.saas.commerce.test_service_pricing press.saas.commerce.test_service_requests press.saas.commerce.test_service_pricing_api -v` موفق شد. suite endpoint با ۱۰ آزمون mock در Frappe Console نیز هنگام اجرا موفق شد؛ این suite نوشتن واقعی در سایت ندارد.
+- [x] **گام ۶.۳: آزمون و build هر دو رابط را اجرا کن.** `dashboard/asumi`: typecheck و ۶۸ آزمون Vitest موفق؛ Press Dashboard: ۴۴ آزمون Vitest موفق؛ `yarn build` در ریشهٔ Press موفق و هر دو رابط، CSS و shell را ساخت.
+- [x] **گام ۶.۴: نسخه و منابع را پیش از انتشار ثبت کن.** پشتیبان کامل دیتابیس و فایل‌های عمومی/خصوصی Asumi ساخته و صحت gzip/tar و JSON بررسی شد. در زمان انتشار حدود ۹٫۷ گیگابایت فضای آزاد ثبت شد.
+- [x] **گام ۶.۵: migration و دارایی‌ها را منتشر کن.** patch `seed_asumi_service_pricing` روی سایت اجرا شد؛ workerهای وب با HUP نرم فعال شدند. پس از آن `dehati.ir`، `denroom.ir` و `veederakht.ir` با HTTP 200 بررسی شدند. `boller.ir` هنوز دامنهٔ ثبت‌شده/قابل resolve نیست.
+- [x] **گام ۶.۶: smoke test زنده بگیر.** صفحهٔ اصلی و `/dashboard/orders` و assetهای build با HTTP 200 پاسخ دادند. API عمومی HTTP 200 داد و هر ۲۱ مقدار آن دقیقاً با seed اولیه برابر بود. API مدیریت بدون نشست HTTP 403 داد. chunk پنل شامل endpointهای خواندن و ذخیرهٔ تعرفه بود؛ Playwright قبلاً نمایش قیمت و انتخاب/انتقال درخواست را در صفحهٔ قیمت تأیید کرد. ذخیرهٔ واقعی از نشست مدیر و درج Lead تولیدی اجرا نشد؛ مسیر ذخیره و snapshot به‌صورت mock آزمون شده‌اند تا دادهٔ واقعی مشتری ساخته نشود.
+- [x] **گام ۶.۷: محدودیت پرداخت را ثبت کن.** پرداخت آزمایشی انجام نشد. این صفحه فقط درخواست سرنخ با برآورد سمت سرور ثبت می‌کند و پرداخت، سفارش یا اشتراک نمی‌سازد؛ فعال‌سازی پرداخت همچنان به شناسهٔ پذیرنده و اتصال درگاه نیاز دارد.
+- [x] **گام ۶.۸: وضعیت نهایی را ثبت کن.** پیاده‌سازی، آزمون‌ها، build، migration و بررسی‌های زنده تکمیل شد. ذخیرهٔ واقعی تنظیمات از نشست مدیر و ثبت Lead آزمایشی روی دادهٔ تولیدی انجام نشده است؛ دسترسی و رفتار آن‌ها با آزمون endpoint ایزوله پوشش داده شد.
+
+### ثبت نهایی انتشار — ۲۰۲۶-۱۰-۱۳
+
+- قیمت‌های تولیدی بدون تغییر ماندند و با seed قبلی تطبیق دقیق دارند.
+- build نهایی، `press/www/asumi.html` را به assetهای تازهٔ سایت و پنل متصل کرد.
+- بررسی مجدد زنده: `https://asumi.ir/`, `https://asumi.ir/dashboard/orders` و API عمومی قیمت پاسخ موفق دادند؛ درخواست بدون نشست به API مدیر رد شد.
+- قیمت‌گذاری درگاه پرداخت ایجاد یا فعال نمی‌کند؛ مشتری از پنل قیمت را کنترل می‌کند و کاربر از همان صفحهٔ اصلی آسومی درخواست می‌فرستد.
 
 ---
 
