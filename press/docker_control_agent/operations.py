@@ -51,6 +51,14 @@ class OperationError(Exception):
 	pass
 
 
+class MarketplaceInstallFailure(OperationError):
+	"""A failed install after backup, retaining the verified backup for recovery."""
+
+	def __init__(self, message: str, backup: dict):
+		self.result = {"error": sanitize_text(message, 500), "backup": backup}
+		super().__init__(self.result["error"])
+
+
 def write_site_subscription_key(
 	sites_root: Path,
 	site: str,
@@ -457,9 +465,17 @@ def _install_marketplace_app(
 		return {"site": site, "app": app, "installed": True, "already_installed": True, "backup": None}
 
 	backup = _create_backup(config, connection, site)
-	_bench(config, site, "install-app", app, timeout=7200)
-	if app not in _installed_apps(config, site):
-		raise OperationError("Bench did not confirm the marketplace app installation")
+	try:
+		_bench(config, site, "install-app", app, timeout=7200)
+		if app not in _installed_apps(config, site):
+			raise OperationError("Bench did not confirm the marketplace app installation")
+	except Exception as error:
+		message = (
+			str(error)
+			if isinstance(error, OperationError)
+			else "Marketplace installation failed; inspect the host service journal"
+		)
+		raise MarketplaceInstallFailure(message, backup) from error
 	return {
 		"site": site,
 		"app": app,
@@ -767,7 +783,15 @@ class OperationManager:
 				if isinstance(error, OperationError)
 				else "Operation failed; inspect the host service journal"
 			)
-			self._update(operation_id, "Failure", message, {"error": sanitize_text(message, 500)})
+			failure_result = getattr(error, "result", None)
+			if not isinstance(failure_result, dict):
+				failure_result = {"error": sanitize_text(message, 500)}
+			else:
+				failure_result = {
+					**failure_result,
+					"error": sanitize_text(str(failure_result.get("error") or message), 500),
+				}
+			self._update(operation_id, "Failure", message, failure_result)
 
 	@staticmethod
 	def _serialize(row: sqlite3.Row) -> dict:

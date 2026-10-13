@@ -37,6 +37,12 @@ MARKETPLACE_INSTALL_TIMEOUT_SECONDS = 12600
 SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 
 
+class DockerAgentOperationFailure(DockerControlError):
+	def __init__(self, message: str, result: dict):
+		super().__init__(message)
+		self.result = result
+
+
 def _host_doc():
 	hosts = frappe.get_all("Docker Control Host", pluck="name")
 	if len(hosts) != 1:
@@ -540,15 +546,28 @@ def prepare_operation(action: str, target: str | None = None, arguments=None) ->
 	return response
 
 
-def _set_failure(operation, message: str) -> None:
+def _set_failure(operation, message: str, result: dict | None = None) -> None:
+	result_payload = {"error": message[:500]}
+	if isinstance(result, dict):
+		result_payload.update(result)
+		result_payload["error"] = message[:500]
 	_set_operation(
 		operation,
 		status="Failure",
 		progress=message[:500],
-		result=json.dumps({"error": message[:500]}, ensure_ascii=False),
+		result=json.dumps(result_payload, ensure_ascii=False),
 		ended_at=now_datetime(),
 		confirmation_token_hash=None,
 	)
+
+
+def _marketplace_install_failure_metadata(error, agent_result) -> tuple[dict | None, str | None]:
+	failure_result = getattr(error, "result", None)
+	if not isinstance(failure_result, dict):
+		failure_result = agent_result if isinstance(agent_result, dict) else None
+	backup = failure_result.get("backup") if failure_result else None
+	backup_id = backup.get("backup_id") if isinstance(backup, dict) else None
+	return failure_result, backup_id[:140] if isinstance(backup_id, str) and backup_id else None
 
 
 def _run_agent(
@@ -579,9 +598,11 @@ def _run_agent(
 		if status == "Success":
 			return result.get("result") or {}
 		if status == "Failure":
-			raise DockerControlError(
-				str((result.get("result") or {}).get("error") or "عامل عملیات را ناموفق گزارش کرد.")
-			)
+			failure_result = result.get("result") or {}
+			if not isinstance(failure_result, dict):
+				failure_result = {}
+			message = str(failure_result.get("error") or "عامل عملیات را ناموفق گزارش کرد.")
+			raise DockerAgentOperationFailure(message, failure_result)
 		time.sleep(POLL_INTERVAL_SECONDS)
 	raise DockerControlError("زمان عملیات به پایان رسید؛ وضعیت را در تاریخچه بررسی کنید.")
 
@@ -617,6 +638,7 @@ def execute_marketplace_app_install(order, app: str) -> dict:
 		).insert(ignore_permissions=True)
 		order.db_set("install_operation", operation.name)
 		frappe.db.commit()
+		agent_result = None
 		try:
 			result = _run_agent(
 				operation,
@@ -625,6 +647,7 @@ def execute_marketplace_app_install(order, app: str) -> dict:
 				{"app": app},
 				timeout=MARKETPLACE_INSTALL_TIMEOUT_SECONDS,
 			)
+			agent_result = result
 			if result.get("site") != target or result.get("app") != app or not result.get("installed"):
 				raise DockerControlError("عامل نصب برنامه را تأیید نکرد.")
 			operation.reload()
@@ -647,7 +670,14 @@ def execute_marketplace_app_install(order, app: str) -> dict:
 			return {**result, "operation": operation.name}
 		except Exception as error:
 			operation.reload()
-			_set_failure(operation, str(error)[:500] or "اجرای نصب برنامه ناموفق شد.")
+			failure_result, backup_id = _marketplace_install_failure_metadata(error, agent_result)
+			if backup_id:
+				order.db_set("install_backup_id", backup_id)
+			_set_failure(
+				operation,
+				str(error)[:500] or "اجرای نصب برنامه ناموفق شد.",
+				result=failure_result if isinstance(failure_result, dict) else None,
+			)
 			raise
 	finally:
 		frappe.set_user(previous_user)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -56,16 +57,59 @@ class TestReadSiteLogs(unittest.TestCase):
 		with (
 			patch.object(operations, "_available_bench_apps", create=True, return_value={"accounts"}),
 			patch.object(operations, "_create_backup") as create_backup,
+			self.assertRaisesRegex(operations.OperationError, "available on this Bench"),
 		):
-			with self.assertRaisesRegex(operations.OperationError, "available on this Bench"):
-				operations._run_action(
-					config,
-					connection=None,
-					action="install_marketplace_app",
-					target="veederakht.ir",
-					arguments={"app": "restaurant"},
-				)
+			operations._run_action(
+				config,
+				connection=None,
+				action="install_marketplace_app",
+				target="veederakht.ir",
+				arguments={"app": "restaurant"},
+			)
 		create_backup.assert_not_called()
+
+	def test_failed_marketplace_install_preserves_verified_backup_details(self):
+		config = SimpleNamespace(backend_service="backend")
+		backup = {
+			"site": "veederakht.ir",
+			"backup_id": "20261013_120000-veederakht_ir-database.sql.gz",
+			"database": {"file": "db.sql.gz", "bytes": 10},
+			"public": {"file": "files.tgz", "bytes": 20},
+			"private": {"file": "private.tgz", "bytes": 30},
+		}
+		with (
+			patch.object(operations, "_available_bench_apps", create=True, return_value={"accounts"}),
+			patch.object(operations, "_installed_apps", return_value=[]),
+			patch.object(operations, "_create_backup", return_value=backup),
+			patch.object(operations, "_bench", side_effect=operations.OperationError("Migration failed")),
+			self.assertRaises(operations.OperationError) as raised,
+		):
+			operations._run_action(
+				config,
+				connection=None,
+				action="install_marketplace_app",
+				target="veederakht.ir",
+				arguments={"app": "accounts"},
+			)
+
+		self.assertEqual(getattr(raised.exception, "result", {}).get("backup"), backup)
+
+	def test_operation_manager_keeps_structured_backup_result_when_install_fails(self):
+		backup = {"backup_id": "20261013_120000-veederakht_ir-database.sql.gz"}
+		failure = operations.OperationError("Marketplace install failed")
+		failure.result = {"error": "Marketplace install failed", "backup": backup}
+		manager = operations.OperationManager.__new__(operations.OperationManager)
+		manager.config = SimpleNamespace()
+		updates = []
+
+		with (
+			patch.object(operations, "database", return_value=nullcontext(None)),
+			patch.object(operations, "_run_action", side_effect=failure),
+			patch.object(manager, "_update", side_effect=lambda *args: updates.append(args)),
+		):
+			manager._run("operation-id", "install_marketplace_app", "veederakht.ir", {"app": "accounts"})
+
+		self.assertEqual(updates[-1][3], failure.result)
 
 	def test_skips_backup_and_install_when_marketplace_app_is_already_installed(self):
 		config = SimpleNamespace(backend_service="backend")
