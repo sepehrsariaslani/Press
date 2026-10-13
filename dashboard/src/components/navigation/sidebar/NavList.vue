@@ -25,6 +25,7 @@ import { getTeam } from '@/data/team';
 import { session } from '@/data/session';
 import { privateSourceOnly } from '@/data/security';
 import { canAccessSellerDashboard } from '@/data/sellerAccess';
+import { isAsumiCommerceHost } from '@/utils/asumiCommerceHost';
 import { useRoute } from 'vue-router';
 
 const $route = useRoute();
@@ -192,7 +193,9 @@ const navigation = computed(() => {
 			icon: WalletCards,
 			route: '/billing',
 			isActive: routeName.startsWith('Billing'),
-			condition: $team.doc?.is_desk_user || $session.hasBillingAccess,
+			condition:
+				!isAsumiCommerceHost(window.location.hostname) &&
+				($team.doc?.is_desk_user || $session.hasBillingAccess),
 			disabled: enforce2FA,
 		},
 		{

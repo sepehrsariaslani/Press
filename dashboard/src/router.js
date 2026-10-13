@@ -6,6 +6,7 @@ import { privateSourceOnly } from './data/security';
 import { canAccessSellerDashboard } from './data/sellerAccess';
 import { canAccessDockerControl, isDockerControlOnlyUser } from './data/dockerControlAccess';
 import { getProtectedRouteRedirect } from './utils/authRouting';
+import { getAsumiBillingRedirect } from './utils/asumiCommerceHost';
 
 async function ensureSellerOwnerAccess(to, from, next) {
 	if (!session.isLoggedIn) {
@@ -601,6 +602,15 @@ let router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+	const asumiBillingRedirect = getAsumiBillingRedirect(
+		window.location.hostname,
+		to.path,
+	);
+	if (asumiBillingRedirect) {
+		next(asumiBillingRedirect);
+		return;
+	}
+
 	let isLoggedIn =
 		document.cookie.includes('user_id') &&
 		!document.cookie.includes('user_id=Guest');
