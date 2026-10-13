@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from press.saas.commerce.hosting_readiness import (
 	build_hosting_readiness,
+	hosting_capacity_reservations,
 	hosting_plan_fits_capacity,
 	normalize_capacity_reserve,
 	resolve_ipv4,
@@ -144,6 +145,54 @@ class HostingReadinessTest(unittest.TestCase):
 				reserve_memory_gb=1,
 			)
 		)
+
+	def test_capacity_counts_existing_hosting_reservations_before_accepting_another_site(self):
+		plan = {"max_storage_usage": 1024, "memory": 1024}
+		resources = {
+			"disk_free_bytes": 5 * 1024 * 1024 * 1024,
+			"memory_available_bytes": 5 * 1024 * 1024 * 1024,
+		}
+
+		self.assertFalse(
+			hosting_plan_fits_capacity(
+				plan,
+				resources,
+				reserve_disk_gb=1,
+				reserve_memory_gb=1,
+				reserved_disk_mib=3073,
+				reserved_memory_mib=3073,
+			)
+		)
+
+	def test_capacity_reservations_deduplicate_renewals_for_each_hosted_site(self):
+		reservations = hosting_capacity_reservations(
+			[
+				{"reservation_key": "one.asumi.ir", "plan": "small"},
+				{"reservation_key": "one.asumi.ir", "plan": "small"},
+				{"reservation_key": "two.asumi.ir", "plan": "large"},
+			],
+			{
+				"small": {"max_storage_usage": 1024, "memory": 512},
+				"large": {"max_storage_usage": 2048, "memory": 1024},
+			},
+		)
+
+		self.assertEqual(
+			reservations,
+			{"sites": 2, "reserved_disk_mib": 3072, "reserved_memory_mib": 1536},
+		)
+
+	def test_capacity_reservations_fail_closed_when_site_or_plan_limits_are_missing(self):
+		for orders, plans in (
+			([{"plan": "small"}], {"small": {"max_storage_usage": 1024, "memory": 512}}),
+			([{"reservation_key": "one.asumi.ir", "plan": "missing"}], {}),
+			(
+				[{"reservation_key": "one.asumi.ir", "plan": "small"}],
+				{"small": {"max_storage_usage": 0, "memory": 512}},
+			),
+		):
+			with self.subTest(orders=orders, plans=plans), self.assertRaises(ValueError):
+				hosting_capacity_reservations(orders, plans)
 
 
 if __name__ == "__main__":

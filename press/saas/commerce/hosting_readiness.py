@@ -52,13 +52,61 @@ def wildcard_dns_guidance(ready, root_addresses):
 	)
 
 
-def hosting_plan_fits_capacity(plan, resources, reserve_disk_gb, reserve_memory_gb):
-	"""Require each site's configured resource cap plus explicit host reserves."""
+def hosting_capacity_reservations(order_rows, plans_by_name):
+	"""Sum per-site resource reservations, counting renewals only once per site."""
+	if not isinstance(plans_by_name, dict):
+		raise ValueError("اطلاعات پلن‌های رزروشده معتبر نیست.")
+
+	per_site = {}
+	for order in order_rows:
+		if not isinstance(order, dict):
+			raise ValueError("اطلاعات سفارش رزروشده معتبر نیست.")
+		reservation_key = (
+			order.get("reservation_key") or order.get("docker_site") or order.get("site") or order.get("subdomain")
+		)
+		plan_name = order.get("plan")
+		if not isinstance(reservation_key, str) or not reservation_key.strip():
+			raise ValueError("سایت سفارش رزروشده مشخص نیست.")
+		if not isinstance(plan_name, str) or not plan_name.strip():
+			raise ValueError("پلن سفارش رزروشده مشخص نیست.")
+		plan = plans_by_name.get(plan_name)
+		if not isinstance(plan, dict):
+			raise ValueError("پلن سفارش رزروشده پیدا نشد.")
+		try:
+			storage_mib = int(plan.get("max_storage_usage"))
+			memory_mib = int(plan.get("memory"))
+		except (TypeError, ValueError, OverflowError) as error:
+			raise ValueError("سقف منابع پلن رزروشده معتبر نیست.") from error
+		if storage_mib <= 0 or memory_mib <= 0:
+			raise ValueError("سقف منابع پلن رزروشده معتبر نیست.")
+
+		key = reservation_key.strip()
+		previous = per_site.get(key, (0, 0))
+		per_site[key] = (max(previous[0], storage_mib), max(previous[1], memory_mib))
+
+	return {
+		"sites": len(per_site),
+		"reserved_disk_mib": sum(limits[0] for limits in per_site.values()),
+		"reserved_memory_mib": sum(limits[1] for limits in per_site.values()),
+	}
+
+
+def hosting_plan_fits_capacity(
+	plan,
+	resources,
+	reserve_disk_gb,
+	reserve_memory_gb,
+	reserved_disk_mib=0,
+	reserved_memory_mib=0,
+):
+	"""Require this site's cap, existing site reservations, and host reserves."""
 	if not isinstance(plan, dict) or not isinstance(resources, dict):
 		return False
 	try:
 		storage_mib = int(plan.get("max_storage_usage"))
 		memory_mib = int(plan.get("memory"))
+		reserved_disk_mib = int(reserved_disk_mib)
+		reserved_memory_mib = int(reserved_memory_mib)
 		free_disk = resources.get("disk_free_bytes")
 		free_memory = resources.get("memory_available_bytes")
 		reserve_disk = normalize_capacity_reserve(reserve_disk_gb)
@@ -68,6 +116,8 @@ def hosting_plan_fits_capacity(plan, resources, reserve_disk_gb, reserve_memory_
 	if (
 		storage_mib <= 0
 		or memory_mib <= 0
+		or reserved_disk_mib < 0
+		or reserved_memory_mib < 0
 		or not isinstance(free_disk, int)
 		or isinstance(free_disk, bool)
 		or not isinstance(free_memory, int)
@@ -77,8 +127,8 @@ def hosting_plan_fits_capacity(plan, resources, reserve_disk_gb, reserve_memory_
 
 	bytes_per_mib = 1024 * 1024
 	bytes_per_gib = 1024 * bytes_per_mib
-	required_disk = storage_mib * bytes_per_mib + math.ceil(reserve_disk * bytes_per_gib)
-	required_memory = memory_mib * bytes_per_mib + math.ceil(reserve_memory * bytes_per_gib)
+	required_disk = (storage_mib + reserved_disk_mib) * bytes_per_mib + math.ceil(reserve_disk * bytes_per_gib)
+	required_memory = (memory_mib + reserved_memory_mib) * bytes_per_mib + math.ceil(reserve_memory * bytes_per_gib)
 	return free_disk >= required_disk and free_memory >= required_memory
 
 

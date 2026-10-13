@@ -25,6 +25,7 @@ from press.saas.commerce.periods import period_end
 from press.saas.commerce.provisioning_recovery import subscription_recovery_state
 from press.saas.commerce.hosting_readiness import (
 	build_hosting_readiness,
+	hosting_capacity_reservations,
 	hosting_plan_fits_capacity,
 	normalize_capacity_reserve,
 	resolve_ipv4,
@@ -68,6 +69,15 @@ from press.utils import get_current_team, has_role, is_user_part_of_team, valida
 from press.utils.dns import check_dns_a, check_dns_cname
 
 ASUMI_ROOT_DOMAIN = "asumi.ir"
+HOSTING_CAPACITY_ORDER_STATUSES = (
+	"Pending Payment",
+	"Paid",
+	"Provisioning",
+	"Provisioning Failed",
+	"Active",
+	"Expired",
+)
+HOSTING_CAPACITY_ORDER_LIMIT = 5000
 MARKETPLACE_INSTALL_TIMEOUT_SECONDS = 10800
 MARKETPLACE_INSTALL_POLL_SECONDS = 3
 MARKETPLACE_PROVISION_TIMEOUT_SECONDS = MARKETPLACE_INSTALL_TIMEOUT_SECONDS * 2 + 300
@@ -148,6 +158,12 @@ def _acquire_transaction_lock(lock_name: str, timeout: int = 10) -> bool:
 	db.after_commit.add(release_lock)
 	db.after_rollback.add(release_lock)
 	return True
+
+
+def _acquire_hosting_capacity_lock() -> None:
+	"""Serialize new hosted-site orders while capacity and pending reservations are checked."""
+	if not _acquire_transaction_lock("asumi-hosting-capacity"):
+		frappe.throw(_("یک سفارش میزبانی دیگر در حال ثبت است؛ کمی بعد دوباره تلاش کنید."))
 
 
 def _require_commerce_admin():
@@ -262,6 +278,58 @@ def _live_docker_snapshot() -> dict:
 		return {"connected": False, "resources": {}}
 
 
+def _hosting_capacity_reservation_totals() -> dict:
+	"""Return fail-closed resource reservations for every pending or provisioned hosted site."""
+	orders = frappe.get_all(
+		"Commerce Order",
+		filters={
+			"order_type": "Hosting",
+			"service_delivery_mode": "Create New Site",
+			"status": ["in", list(HOSTING_CAPACITY_ORDER_STATUSES)],
+		},
+		fields=["site", "docker_site", "subdomain", "plan"],
+		limit_page_length=HOSTING_CAPACITY_ORDER_LIMIT + 1,
+		ignore_permissions=True,
+	)
+	if len(orders) > HOSTING_CAPACITY_ORDER_LIMIT:
+		raise ValueError("تعداد سفارش‌های میزبانی برای بررسی ظرفیت بیش از حد مجاز است.")
+	if not orders:
+		return {"sites": 0, "reserved_disk_mib": 0, "reserved_memory_mib": 0}
+
+	reservation_rows = []
+	plan_names = set()
+	for order in orders:
+		get_value = order.get if isinstance(order, dict) else lambda field: getattr(order, field, None)
+		plan_name = get_value("plan")
+		reservation_key = get_value("docker_site") or get_value("site")
+		if not reservation_key:
+			subdomain = get_value("subdomain")
+			if isinstance(subdomain, str) and subdomain.strip():
+				reservation_key = f"{subdomain.strip()}.{ASUMI_ROOT_DOMAIN}"
+		if not plan_name or not reservation_key:
+			raise ValueError("اطلاعات سایت یا پلن یکی از سفارش‌های میزبانی کامل نیست.")
+		reservation_rows.append({"reservation_key": reservation_key, "plan": plan_name})
+		plan_names.add(plan_name)
+
+	plan_rows = frappe.get_all(
+		"Site Plan",
+		filters={"name": ["in", sorted(plan_names)]},
+		fields=["name", "max_storage_usage", "memory"],
+		limit_page_length=len(plan_names),
+		ignore_permissions=True,
+	)
+	plans_by_name = {}
+	for plan in plan_rows:
+		if isinstance(plan, dict):
+			plan_values = dict(plan)
+		elif hasattr(plan, "as_dict"):
+			plan_values = plan.as_dict()
+		else:
+			plan_values = vars(plan)
+		plans_by_name[plan.name] = plan_values
+	return hosting_capacity_reservations(reservation_rows, plans_by_name)
+
+
 @frappe.whitelist()
 def admin_hosting_readiness() -> dict:
 	"""Return the current hosting prerequisites to Press system administrators."""
@@ -329,11 +397,26 @@ def admin_hosting_readiness() -> dict:
 		reserve_disk = reserve_memory = 0
 	disk_free = resources.get("disk_free_bytes")
 	memory_available = resources.get("memory_available_bytes")
+	try:
+		capacity_reservations = _hosting_capacity_reservation_totals()
+	except ValueError as error:
+		capacity_reservations = None
+		reservation_error = str(error)
+	else:
+		reservation_error = None
 	capacity_ready = bool(
 		reserve_disk > 0
 		and reserve_memory > 0
+		and capacity_reservations is not None
 		and any(
-			hosting_plan_fits_capacity(plan.as_dict(), resources, reserve_disk, reserve_memory)
+			hosting_plan_fits_capacity(
+				plan.as_dict(),
+				resources,
+				reserve_disk,
+				reserve_memory,
+				reserved_disk_mib=capacity_reservations["reserved_disk_mib"],
+				reserved_memory_mib=capacity_reservations["reserved_memory_mib"],
+			)
 			for plan in valid_plans
 		)
 	)
@@ -343,13 +426,17 @@ def admin_hosting_readiness() -> dict:
 		capacity_detail = "اطلاعات زندهٔ منابع Docker در دسترس نیست."
 	elif reserve_disk <= 0 or reserve_memory <= 0:
 		capacity_detail = "حداقل فضای آزاد دیسک و حافظه را در تنظیمات تعیین کنید؛ مقدار صفر یعنی ظرفیت تأیید نشده است."
+	elif capacity_reservations is None:
+		capacity_detail = f"رزرو منابع سایت‌های فعلی قابل تأیید نیست: {reservation_error}"
 	elif capacity_ready:
 		capacity_detail = (
+			f"{capacity_reservations['sites']} سایت میزبانی‌شده رزرو منابع دارند؛ "
 			f"فضای آزاد دیسک: {disk_free / 1024**3:.1f} گیگابایت؛ "
 			f"حافظهٔ در دسترس: {memory_available / 1024**3:.1f} گیگابایت؛ ذخیرهٔ تعریف‌شده رعایت می‌شود."
 		)
 	else:
 		capacity_detail = (
+			f"پس از احتساب {capacity_reservations['sites']} سایت میزبانی‌شده، "
 			f"فضای آزاد: دیسک {disk_free / 1024**3:.1f} و حافظه "
 			f"{memory_available / 1024**3:.1f} گیگابایت است؛ برای هیچ پلنی سقف منابع و ذخیرهٔ تعریف‌شده جا نمی‌شود."
 		)
@@ -608,8 +695,17 @@ def _new_site_plan_config(
 	except ValueError:
 		return None
 	docker_snapshot = docker_snapshot or _live_docker_snapshot()
+	try:
+		capacity_reservations = _hosting_capacity_reservation_totals()
+	except ValueError:
+		return None
 	if not docker_snapshot["connected"] or not hosting_plan_fits_capacity(
-		plan_doc.as_dict(), docker_snapshot["resources"], reserve_disk, reserve_memory
+		plan_doc.as_dict(),
+		docker_snapshot["resources"],
+		reserve_disk,
+		reserve_memory,
+		reserved_disk_mib=capacity_reservations["reserved_disk_mib"],
+		reserved_memory_mib=capacity_reservations["reserved_memory_mib"],
 	):
 		return None
 	if not frappe.db.exists("Root Domain", ASUMI_ROOT_DOMAIN):
@@ -1202,6 +1298,7 @@ def start_site_plan_purchase(
 			if selected_site.plan != plan_doc.name or selected_site.domain != ASUMI_ROOT_DOMAIN:
 				frappe.throw(_("فقط سایت آسومی ساخته‌شده با همین پلن قابل تمدید است."))
 		else:
+			_acquire_hosting_capacity_lock()
 			config = _new_site_plan_config(plan_doc, snapshot["subdomain"])
 			if not config:
 				frappe.throw(_("دامنه، گواهی یا ظرفیت ساخت سایت جدید هنوز آماده نیست؛ سفارش ثبت نشد."))
