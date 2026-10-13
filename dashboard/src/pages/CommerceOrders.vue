@@ -256,7 +256,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">تعرفهٔ برنامه‌های Marketplace</h2>
-					<p class="mt-1 text-sm text-gray-600">برای رایگان‌ماندن، مبلغ هر ارز را صفر نگه دارید. پرداخت ریالی زرین‌پال برای مبلغ‌های پولی از ۱۰٬۰۰۰ ریال شروع می‌شود. تغییر قیمت تعرفه‌ای با مشترک فعال رد می‌شود؛ تعرفهٔ تازه بسازید.</p>
+					<p class="mt-1 text-sm text-gray-600">برای رایگان‌ماندن، مبلغ هر ارز را صفر نگه دارید. پرداخت مستقیم آسومی فقط با قیمت ریالی حداقل ۱۰٬۰۰۰ ریال انجام می‌شود؛ تعرفهٔ تنها INR/USD در این سایت قابل خرید نیست. تغییر قیمت تعرفه‌ای با مشترک فعال رد می‌شود؛ تعرفهٔ تازه بسازید.</p>
 				</div>
 				<div class="flex gap-2">
 					<Button label="تعرفهٔ جدید" :disabled="!marketplacePlanOptions.data?.apps?.length" @click="showCreateMarketplacePlan = !showCreateMarketplacePlan" />

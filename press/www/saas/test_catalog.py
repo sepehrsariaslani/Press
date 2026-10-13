@@ -414,6 +414,69 @@ class MarketplaceCatalogTest(unittest.TestCase):
 			[("INR", 1250), ("USD", 12.5), ("IRR", 0)],
 		)
 
+	def test_public_catalog_marks_non_rial_paid_plans_as_unavailable_for_asumi_checkout(self):
+		catalog = build_marketplace_catalog(
+			[
+				{
+					"name": "app-paid",
+					"status": "Published",
+					"title": "Paid app",
+					"route": "marketplace/apps/app-paid",
+				}
+			],
+			[
+				{
+					"name": "paid-plan",
+					"app": "app-paid",
+					"title": "Monthly",
+					"interval": "Monthly",
+					"enabled": 1,
+					"price_inr": 1250,
+					"price_usd": 12.5,
+					"price_irr": 0,
+				}
+			],
+		)
+
+		self.assertFalse(catalog[0]["plans"][0]["asumi_checkout_supported"])
+
+	def test_public_catalog_marks_free_and_minimum_rial_plans_as_supported(self):
+		catalog = build_marketplace_catalog(
+			[
+				{
+					"name": "app-ready",
+					"status": "Published",
+					"title": "Ready",
+					"route": "marketplace/apps/app-ready",
+				}
+			],
+			[
+				{
+					"name": "free-plan",
+					"app": "app-ready",
+					"title": "Free",
+					"interval": "Monthly",
+					"enabled": 1,
+					"price_inr": 0,
+					"price_usd": 0,
+					"price_irr": 0,
+				},
+				{
+					"name": "rial-plan",
+					"app": "app-ready",
+					"title": "Paid",
+					"interval": "Yearly",
+					"enabled": 1,
+					"price_inr": 0,
+					"price_usd": 0,
+					"price_irr": 10000,
+				},
+			],
+		)
+
+		self.assertTrue(catalog[0]["plans"][0]["asumi_checkout_supported"])
+		self.assertTrue(catalog[0]["plans"][1]["asumi_checkout_supported"])
+
 	def test_plans_with_unknown_period_or_missing_prices_are_not_listed(self):
 		app = {
 			"name": "app-checkout",

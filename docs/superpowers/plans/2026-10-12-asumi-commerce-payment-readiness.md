@@ -152,6 +152,9 @@
 
 - [x] Add six mock-isolated API tests for free marketplace purchase, duplicate-free-order idempotency, paid-order rejection without a configured Merchant ID, callback cancellation, server-owned amount verification, failed verification, and retry of an already-paid order.
 - [x] Run the tests through the initialized Bench context and compile the test module; all six tests pass without writing live orders or calling ZarinPal.
+- [x] Add per-plan Asumi checkout capability to the public catalog. The homepage now explains when a listed currency price cannot be paid through Asumi and omits the purchase link when an app has no free or Rial-priced plan. The administrator price panel explains the Rial requirement.
+- [x] Run 20 public-catalog Python tests, 33 Asumi homepage tests, 13 dashboard commerce tests, six checkout API mocks, and 13 install/provisioning mocks. Both production builds succeeded.
+- [x] Publish the built assets and reload the six Gunicorn workers. A live browser check found 24 app cards, 48 plan entries, valid checkout-capability data, a guest purchase redirect that preserves the selected app, and no JS, console, or asset-loading errors.
 - [ ] Live paid checkout remains unverified until the Press administrator configures the real Merchant ID; hosting prerequisites remain listed below.
 
 ## Known external completion conditions

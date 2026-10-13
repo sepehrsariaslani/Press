@@ -63,6 +63,7 @@ test('shows published marketplace apps and their live prices inside the homepage
         price_usd: 0,
         price_inr: 0,
         is_free: false,
+        asumi_checkout_supported: true,
         prices: [{ currency: 'IRR', symbol: 'ریال', amount: 35000 }],
       }],
     },
@@ -79,6 +80,34 @@ test('shows published marketplace apps and their live prices inside the homepage
   expect(purchaseUrl.searchParams.get('asumi_app_title')).toBe('اپ نمونه');
   expect(within(section).getByRole('link', { name: /مدیریت اپ‌ها و قیمت‌ها/ })).toHaveAttribute('href', '/dashboard/seller/apps');
   expect(within(section).queryByRole('link', { name: /همهٔ اپلیکیشن‌ها/ })).not.toBeInTheDocument();
+});
+
+test('does not send customers to checkout for a paid plan without an Asumi-supported Rial price', () => {
+  render(<AsumiApp marketplaceApps={[
+    {
+      id: 'non-rial-app',
+      title: 'اپ با تعرفهٔ ارزی',
+      description: 'برای آزمودن محدودیت پرداخت مستقیم',
+      route: '/marketplace/apps/non-rial-app',
+      plans: [{
+        id: 'usd-monthly',
+        title: 'پلن ارزی',
+        interval: 'Monthly',
+        interval_label: 'ماهانه',
+        price_irr: 0,
+        price_usd: 12.5,
+        price_inr: 0,
+        is_free: false,
+        asumi_checkout_supported: false,
+        prices: [{ currency: 'USD', symbol: '$', amount: 12.5 }],
+      }],
+    },
+  ]} />);
+
+  const section = screen.getByRole('region', { name: /ابزارهای بیشتر/ });
+  expect(within(section).getByText(/پرداخت مستقیم آسومی فقط با ریال/)).toBeInTheDocument();
+  expect(within(section).queryByRole('link', { name: /انتخاب سایت و ادامه خرید/ })).not.toBeInTheDocument();
+  expect(within(section).getByText(/قیمت ریالی حداقل ۱۰٬۰۰۰ ریال لازم است/)).toBeInTheDocument();
 });
 
 test('keeps the homepage app section useful when no published marketplace plans are available', () => {

@@ -42,7 +42,9 @@
 .marketplace-plan-prices p { display: flex; align-items: baseline; gap: 5px; margin: 0; color: var(--product-muted); font-size: 10px; }
 .marketplace-plan-prices p span { color: #938a80; }
 .marketplace-plan-prices p strong { color: var(--product-ink); font-size: 11px; font-weight: 650; }
+.marketplace-plan-checkout-note { margin: 7px 0 0; color: #8c3d17; font-size: 10px; line-height: 1.8; }
 .marketplace-app-details { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 10px; color: var(--product-red); font-size: 11px; font-weight: 650; }
+.marketplace-app-checkout-unavailable { margin: auto 0 0; padding-top: 10px; color: var(--product-muted); font-size: 10px; line-height: 1.8; }
 .marketplace-app-details span { font-size: 16px; transition: transform .2s ease; }
 .marketplace-app-card:hover .marketplace-app-details span { transform: translateX(-3px); }
 .marketplace-app-empty { display: flex; align-items: flex-start; gap: 12px; padding: 22px; border: 1px solid var(--product-line); background: var(--product-card); }

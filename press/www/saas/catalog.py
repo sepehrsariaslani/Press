@@ -1,5 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
+from press.saas.commerce.pricing import marketplace_plan_supported_by_asumi_checkout
+
 
 INTERVAL_LABELS = {
 	"Daily": "روزانه",
@@ -96,11 +98,16 @@ def build_marketplace_catalog(app_rows, plan_rows):
 		prices = format_plan_prices(plan)
 		if prices is None:
 			continue
+		try:
+			asumi_checkout_supported = marketplace_plan_supported_by_asumi_checkout(prices)
+		except ValueError:
+			asumi_checkout_supported = False
 
 		app["plans"].append(
 			{
 				"id": plan.get("name"),
 				"title": plan.get("title") or prices["interval_label"],
+				"asumi_checkout_supported": asumi_checkout_supported,
 				**prices,
 			}
 		)
