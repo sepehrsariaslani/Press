@@ -148,6 +148,12 @@
 - [x] Keep an old plan enabled or disable it only when the administrator chooses; never move existing subscribers automatically.
 - [x] Verify the full commerce suite (71 tests), Python syntax, dashboard commerce-access test, production build, and the live catalog summary (24 published apps, 48 existing plans, all still free).
 
+### Supplemental checkout API verification
+
+- [x] Add six mock-isolated API tests for free marketplace purchase, duplicate-free-order idempotency, paid-order rejection without a configured Merchant ID, callback cancellation, server-owned amount verification, failed verification, and retry of an already-paid order.
+- [x] Run the tests through the initialized Bench context and compile the test module; all six tests pass without writing live orders or calling ZarinPal.
+- [ ] Live paid checkout remains unverified until the Press administrator configures the real Merchant ID; hosting prerequisites remain listed below.
+
 ## Known external completion conditions
 
 - Live payment cannot be enabled or fully exercised until the administrator enters the real Merchant ID through `/dashboard/orders`; this plan never invents or embeds one.
