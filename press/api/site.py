@@ -469,6 +469,7 @@ def create_site_on_private_bench(
 	localisation_country: str | None = None,
 	server: str = "",
 	selected_app_plans: dict | None = None,
+	commerce_order: str | None = None,
 ) -> dict:
 	team = get_current_team()
 	selected_app_plans = selected_app_plans or {}
@@ -541,6 +542,7 @@ def create_site_on_private_bench(
 			"team": team,
 			"provider": provider,
 			"server": server,
+			"commerce_order": commerce_order,
 		}
 	).insert(ignore_permissions=True)
 

@@ -12,6 +12,12 @@
   "plan",
   "interval",
   "service_delivery_mode",
+  "hostiran_product_code_snapshot",
+  "hostiran_monthly_cost_irr_snapshot",
+  "hostiran_fulfillment_status",
+  "hostiran_order_reference",
+  "hostiran_server",
+  "hostiran_site_group_deploy",
   "marketplace_app",
   "app",
   "site",
@@ -94,6 +100,47 @@
    "options": "plan_type",
    "read_only": 1,
    "reqd": 0
+  },
+  {
+   "fieldname": "hostiran_product_code_snapshot",
+   "fieldtype": "Data",
+   "label": "HostIran Product Code Snapshot",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hostiran_monthly_cost_irr_snapshot",
+   "fieldtype": "Currency",
+   "label": "HostIran Monthly Cost Snapshot (IRR)",
+   "options": "IRR",
+   "read_only": 1
+  },
+  {
+   "default": "Not Applicable",
+   "fieldname": "hostiran_fulfillment_status",
+   "fieldtype": "Select",
+   "label": "HostIran VPS Fulfillment Status",
+   "options": "Not Applicable\nAwaiting VPS\nVPS Ready\nDeploying Bench\nCreating Site\nActive\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hostiran_order_reference",
+   "fieldtype": "Data",
+   "label": "HostIran Purchase Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hostiran_server",
+   "fieldtype": "Link",
+   "label": "Dedicated HostIran Server",
+   "options": "Server",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hostiran_site_group_deploy",
+   "fieldtype": "Link",
+   "label": "Private Bench Deployment",
+   "options": "Site Group Deploy",
+   "read_only": 1
   },
   {
    "fieldname": "subdomain",

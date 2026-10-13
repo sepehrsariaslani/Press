@@ -12,9 +12,8 @@ READINESS_CHECKS = (
 	("root_domain", "دامنهٔ اصلی آسومی"),
 	("wildcard_dns", "DNS زیردامنه‌ها"),
 	("wildcard_tls", "گواهی HTTPS زیردامنه‌ها"),
-	("press_infrastructure", "بنچ مشترک Docker"),
-	("capacity", "ظرفیت مطابق پلن"),
-	("docker_agent", "اتصال میزبان Docker"),
+	("press_infrastructure", "راه‌اندازی بنچ خصوصی Press"),
+	("capacity", "SKU و منابع VPS هاست‌ایران"),
 	("access_email", "ایمیل تحویل دسترسی سایت"),
 )
 

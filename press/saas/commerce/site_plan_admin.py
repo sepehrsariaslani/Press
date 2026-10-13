@@ -11,10 +11,13 @@ from press.saas.commerce.service_delivery import normalize_site_plan_delivery_mo
 
 SITE_PLAN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{1,79}$")
 SITE_PLAN_INTERVALS = {"Daily", "Monthly", "Annually"}
+HOSTIRAN_PRODUCT_CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$")
 SITE_PLAN_LIMITS = (
 	"max_database_usage",
 	"max_storage_usage",
 	"memory",
+	"vcpu",
+	"disk",
 	"cpu_time_per_day",
 )
 SITE_PLAN_MATERIAL_FIELDS = (
@@ -24,11 +27,15 @@ SITE_PLAN_MATERIAL_FIELDS = (
 	"interval",
 	"enabled",
 	"commerce_delivery_mode",
+	"dedicated_server_plan",
+	"private_bench_support",
+	"hostiran_product_code",
+	"hostiran_monthly_cost_irr",
 	*SITE_PLAN_LIMITS,
 	"release_groups",
 	"allowed_apps",
 )
-DOCKER_SHARED_BENCH = "__asumi_docker_shared_bench__"
+HOSTIRAN_DEDICATED_VPS = "__asumi_hostiran_dedicated_vps__"
 
 
 def _text(value, field: str, max_length: int, *, required: bool = False) -> str:
@@ -60,14 +67,16 @@ def _unique_names(values, field: str) -> list[str]:
 
 
 def _normalize_app_selection(
-	release_groups, allowed_apps, available_apps_by_group, *, default_docker=False
+	release_groups, allowed_apps, available_apps_by_group, *, default_hostiran=False
 ):
 	groups = _unique_names(release_groups, "گروه‌های انتشار")
 	apps = _unique_names(allowed_apps, "برنامه‌های مجاز")
 	if not isinstance(available_apps_by_group, dict):
 		raise ValueError("فهرست گروه‌های انتشار معتبر نیست.")
-	if not groups and default_docker and DOCKER_SHARED_BENCH in available_apps_by_group:
-		groups = [DOCKER_SHARED_BENCH]
+	if HOSTIRAN_DEDICATED_VPS in groups and groups != [HOSTIRAN_DEDICATED_VPS]:
+		raise ValueError("برای سایت جدید فقط VPS اختصاصی هاست‌ایران انتخاب می‌شود.")
+	if not groups and default_hostiran and HOSTIRAN_DEDICATED_VPS in available_apps_by_group:
+		groups = [HOSTIRAN_DEDICATED_VPS]
 	if any(group not in available_apps_by_group for group in groups):
 		raise ValueError("یکی از گروه‌های انتشار دیگر فعال یا در دسترس نیست.")
 	app_groups = groups or list(available_apps_by_group)
@@ -82,7 +91,7 @@ def _normalize_app_selection(
 		raise ValueError("برنامهٔ پایهٔ Frappe در گروه انتشار این پلن آماده نیست.")
 	if apps and "frappe" not in apps:
 		apps.insert(0, "frappe")
-	return ([] if groups == [DOCKER_SHARED_BENCH] else groups), apps
+	return ([] if groups == [HOSTIRAN_DEDICATED_VPS] else groups), apps
 
 
 def _nonnegative_int(value, field: str) -> int:
@@ -137,13 +146,17 @@ def build_site_plan_draft(
 	if interval not in SITE_PLAN_INTERVALS:
 		raise ValueError("دورهٔ پلن میزبانی معتبر نیست.")
 	mode = normalize_site_plan_delivery_mode(delivery_mode)
-	if mode != "Create New Site" and DOCKER_SHARED_BENCH in (release_groups or []):
-		raise ValueError("بنچ مشترک آسومی فقط برای پلن ساخت سایت جدید است.")
+	if mode == "Create New Site" and interval not in {"Monthly", "Annually"}:
+		raise ValueError("پلن VPS اختصاصی فقط می‌تواند ماهانه یا سالانه باشد.")
+	if mode != "Create New Site" and HOSTIRAN_DEDICATED_VPS in (release_groups or []):
+		raise ValueError("VPS اختصاصی هاست‌ایران فقط برای پلن ساخت سایت جدید است.")
+	if mode == "Create New Site" and release_groups and release_groups != [HOSTIRAN_DEDICATED_VPS]:
+		raise ValueError("پلن ساخت سایت جدید باید روی VPS اختصاصی هاست‌ایران باشد.")
 	groups, apps = _normalize_app_selection(
 		release_groups,
 		allowed_apps,
 		available_apps_by_group,
-		default_docker=mode == "Create New Site",
+		default_hostiran=mode == "Create New Site",
 	)
 
 	return {
@@ -164,9 +177,12 @@ def build_site_plan_draft(
 		"disk": 0,
 		"vcpu": 0,
 		"instance_type": "",
+		"dedicated_server_plan": int(mode == "Create New Site"),
+		"hostiran_product_code": "",
+		"hostiran_monthly_cost_irr": 0,
 		"is_trial_plan": 0,
 		"legacy_plan": 0,
-		"private_bench_support": 0,
+		"private_bench_support": int(mode == "Create New Site"),
 		"allow_downgrading_from_other_plan": 1,
 		"release_groups": [{"release_group": group} for group in groups],
 		"allowed_apps": [{"app": app} for app in apps],
@@ -195,6 +211,12 @@ def normalize_site_plan_admin_update(
 	mode = normalize_site_plan_delivery_mode(
 		value("delivery_mode", current.get("commerce_delivery_mode"))
 	)
+	if mode == "Create New Site" and interval not in {"Monthly", "Annually"}:
+		raise ValueError("پلن VPS اختصاصی فقط می‌تواند ماهانه یا سالانه باشد.")
+	product_code = _text(value("hostiran_product_code", ""), "شناسهٔ محصول هاست‌ایران", 40)
+	if product_code and not HOSTIRAN_PRODUCT_CODE_RE.fullmatch(product_code):
+		raise ValueError("شناسهٔ محصول هاست‌ایران معتبر نیست.")
+	provider_cost = _nonnegative_int(value("hostiran_monthly_cost_irr", 0), "هزینهٔ ماهانهٔ VPS")
 	values = {
 		"price_inr": normalize_price(value("price_inr", 0), "INR"),
 		"price_usd": normalize_price(value("price_usd", 0), "USD"),
@@ -202,16 +224,32 @@ def normalize_site_plan_admin_update(
 		"interval": interval,
 		"enabled": _boolean(value("enabled", 0), "فعال‌بودن پلن"),
 		"commerce_delivery_mode": mode,
+		"hostiran_product_code": product_code if mode == "Create New Site" else "",
+		"hostiran_monthly_cost_irr": provider_cost if mode == "Create New Site" else 0,
+		"dedicated_server_plan": (
+			1 if mode == "Create New Site" else _boolean(current.get("dedicated_server_plan", 0) or 0, "پلن سرور اختصاصی")
+		),
+		"private_bench_support": (
+			1 if mode == "Create New Site" else _boolean(current.get("private_bench_support", 0) or 0, "بنچ خصوصی")
+		),
 		"max_database_usage": _nonnegative_int(value("max_database_usage", 0), "سقف پایگاه داده"),
 		"max_storage_usage": _nonnegative_int(value("max_storage_usage", 0), "سقف فضا"),
 		"memory": _nonnegative_int(value("memory", 0), "سقف حافظه"),
+		"vcpu": _nonnegative_int(value("vcpu", 0), "پردازندهٔ VPS"),
+		"disk": _nonnegative_int(value("disk", 0), "فضای VPS"),
 		"cpu_time_per_day": _nonnegative_float(value("cpu_time_per_day", 0), "سقف پردازنده"),
 	}
-	if "release_groups" in payload or "allowed_apps" in payload:
+	if "release_groups" in payload or "allowed_apps" in payload or mode != current.get("commerce_delivery_mode"):
 		requested_groups = _unique_names(payload.get("release_groups", current.get("release_groups", [])), "گروه‌های انتشار")
 		requested_apps = _unique_names(payload.get("allowed_apps", current.get("allowed_apps", [])), "برنامه‌های مجاز")
-		if mode != "Create New Site" and DOCKER_SHARED_BENCH in requested_groups:
-			raise ValueError("بنچ مشترک آسومی فقط برای پلن ساخت سایت جدید است.")
+		if mode != "Create New Site" and HOSTIRAN_DEDICATED_VPS in requested_groups:
+			raise ValueError("VPS اختصاصی هاست‌ایران فقط برای پلن ساخت سایت جدید است.")
+		if mode == "Create New Site":
+			if requested_groups and requested_groups != [HOSTIRAN_DEDICATED_VPS]:
+				if mode != current.get("commerce_delivery_mode"):
+					requested_groups = [HOSTIRAN_DEDICATED_VPS]
+				else:
+					raise ValueError("پلن ساخت سایت جدید باید روی VPS اختصاصی هاست‌ایران باشد.")
 		current_groups = _unique_names(current.get("release_groups", []), "گروه‌های انتشار")
 		current_apps = _unique_names(current.get("allowed_apps", []), "برنامه‌های مجاز")
 		if requested_groups != current_groups or requested_apps != current_apps:
@@ -219,7 +257,7 @@ def normalize_site_plan_admin_update(
 				requested_groups,
 				requested_apps,
 				available_apps_by_group,
-				default_docker=mode == "Create New Site",
+				default_hostiran=mode == "Create New Site",
 			)
 			values["release_groups"] = groups
 			values["allowed_apps"] = apps
@@ -233,10 +271,22 @@ def normalize_site_plan_admin_update(
 			or values["memory"] <= 0
 		):
 			raise ValueError("برای فعال‌کردن پلن، سقف پایگاه داده، فضای ذخیره‌سازی و حافظه را بیشتر از صفر تنظیم کنید.")
+		if mode == "Create New Site" and (
+			not product_code
+			or provider_cost <= 0
+			or values["memory"] <= 0
+			or values["disk"] <= 0
+			or values["vcpu"] <= 0
+		):
+			raise ValueError("برای فعال‌کردن پلن ساخت سایت، SKU، هزینهٔ واقعی ماهانه و منابع VPS را ثبت کنید.")
+
+	def normalized_current(field):
+		fallback = "Upgrade Existing Site" if field == "commerce_delivery_mode" else ("" if field == "hostiran_product_code" else 0)
+		current_value = current.get(field, fallback)
+		return fallback if current_value is None else current_value
 
 	material_change = any(
-		values.get(field, current.get(field, 0 if field != "commerce_delivery_mode" else "Upgrade Existing Site"))
-		!= current.get(field, 0 if field != "commerce_delivery_mode" else "Upgrade Existing Site")
+		values.get(field, normalized_current(field)) != normalized_current(field)
 		for field in SITE_PLAN_MATERIAL_FIELDS
 	)
 	if has_orders and material_change:

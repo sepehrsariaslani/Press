@@ -209,6 +209,9 @@ doc_events = {
 		"after_insert": "press.press.doctype.press_role.press_role.create_user_resource",
 		"on_update": "press.saas.commerce.api.activate_new_site_commerce_orders",
 	},
+	"Site Group Deploy": {
+		"on_update": "press.saas.commerce.api.update_hostiran_order_from_site_group_deploy",
+	},
 	"Marketplace App Subscription": {
 		"on_update": "press.press.doctype.storage_integration_subscription.storage_integration_subscription.create_after_insert",
 	},

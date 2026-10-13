@@ -7,33 +7,24 @@ from press.saas.commerce.site_plan_admin import (
 
 
 class SitePlanAdminTest(unittest.TestCase):
-	def test_new_site_plan_can_select_the_fixed_docker_shared_bench(self):
+	def test_new_site_plan_targets_a_private_dedicated_bench_on_hostiran(self):
 		plan = build_site_plan_draft(
-			name="asumi_docker_basic",
-			title="پایه Docker",
+			name="asumi_hostiran_basic",
+			title="پایهٔ VPS",
 			description="",
 			interval="Monthly",
 			delivery_mode="Create New Site",
-			release_groups=["__asumi_docker_shared_bench__"],
+			release_groups=[],
 			allowed_apps=["accounts"],
-			available_apps_by_group={"__asumi_docker_shared_bench__": ["frappe", "accounts"]},
+			available_apps_by_group={
+				"__asumi_hostiran_dedicated_vps__": ["frappe", "accounts", "restaurant"]
+			},
 		)
 
 		self.assertEqual(plan["release_groups"], [])
 		self.assertEqual(plan["allowed_apps"], [{"app": "frappe"}, {"app": "accounts"}])
-
-	def test_docker_shared_bench_cannot_be_used_for_existing_site_upgrade_plans(self):
-		with self.assertRaisesRegex(ValueError, "فقط برای پلن ساخت سایت جدید"):
-			build_site_plan_draft(
-				name="asumi_upgrade",
-				title="ارتقا",
-				description="",
-				interval="Monthly",
-				delivery_mode="Upgrade Existing Site",
-				release_groups=["__asumi_docker_shared_bench__"],
-				allowed_apps=[],
-				available_apps_by_group={"__asumi_docker_shared_bench__": ["frappe", "accounts"]},
-			)
+		self.assertEqual(plan["dedicated_server_plan"], 1)
+		self.assertEqual(plan["private_bench_support"], 1)
 
 	def test_new_site_plan_is_a_disabled_zero_price_draft(self):
 		plan = build_site_plan_draft(
@@ -60,7 +51,7 @@ class SitePlanAdminTest(unittest.TestCase):
 		self.assertEqual(plan["release_groups"], [])
 		self.assertEqual(plan["allowed_apps"], [])
 
-	def test_new_site_plan_only_accepts_apps_in_selected_release_groups(self):
+	def test_new_site_plan_rejects_a_shared_press_release_group(self):
 		with self.assertRaises(ValueError):
 			build_site_plan_draft(
 				name="asumi_basic",
@@ -73,20 +64,28 @@ class SitePlanAdminTest(unittest.TestCase):
 				available_apps_by_group={"release-v16": ["frappe", "accounts"]},
 			)
 
-	def test_new_site_plan_records_selected_release_groups_and_keeps_frappe_first(self):
-		plan = build_site_plan_draft(
-			name="asumi_basic",
-			title="پایه",
-			description="",
-			interval="Monthly",
-			delivery_mode="Create New Site",
-			release_groups=["release-v16"],
-			allowed_apps=["accounts", "restaurant"],
-			available_apps_by_group={"release-v16": ["frappe", "accounts", "restaurant"]},
-		)
-
-		self.assertEqual(plan["release_groups"], [{"release_group": "release-v16"}])
-		self.assertEqual(plan["allowed_apps"], [{"app": "frappe"}, {"app": "accounts"}, {"app": "restaurant"}])
+	def test_new_site_plan_is_not_ready_to_sell_until_provider_sku_and_cost_are_recorded(self):
+		current = {
+			"price_inr": 0, "price_usd": 0, "price_irr": 10_000, "interval": "Monthly",
+			"enabled": 0, "commerce_delivery_mode": "Create New Site", "dedicated_server_plan": 1,
+			"max_database_usage": 1024, "max_storage_usage": 4096, "memory": 4096,
+			"cpu_time_per_day": 1, "release_groups": [], "allowed_apps": ["frappe", "accounts"],
+			"hostiran_product_code": "", "hostiran_monthly_cost_irr": 0,
+		}
+		for payload in (
+			{"enabled": True, "hostiran_product_code": "", "hostiran_monthly_cost_irr": 0},
+			{"enabled": True, "hostiran_product_code": "VPS-3-IR", "hostiran_monthly_cost_irr": 0},
+		):
+			with self.subTest(payload=payload), self.assertRaises(ValueError):
+				normalize_site_plan_admin_update(
+					{
+						"price_irr": 10_000, "price_inr": 0, "price_usd": 0, "interval": "Monthly",
+						"delivery_mode": "Create New Site", "enabled": True,
+						"max_database_usage": 1024, "max_storage_usage": 4096, "memory": 4096,
+						"cpu_time_per_day": 1, **payload,
+					},
+					current=current,
+				)
 
 	def test_plan_draft_rejects_invalid_name_interval_and_delivery_mode(self):
 		base = {
@@ -150,21 +149,27 @@ class SitePlanAdminTest(unittest.TestCase):
 			"interval": "Monthly",
 			"enabled": 0,
 			"commerce_delivery_mode": "Create New Site",
+			"dedicated_server_plan": 1,
+			"private_bench_support": 1,
 			"max_database_usage": 0,
 			"max_storage_usage": 0,
 			"memory": 0,
+			"vcpu": 0,
+			"disk": 0,
+			"hostiran_product_code": "",
+			"hostiran_monthly_cost_irr": 0,
 			"cpu_time_per_day": 0,
 			"release_groups": [],
 			"allowed_apps": [],
 		}
 		changes = normalize_site_plan_admin_update(
-			{**current, "release_groups": ["release-v16"], "allowed_apps": ["accounts"]},
+			{**current, "release_groups": [], "allowed_apps": ["accounts"]},
 			current=current,
-			available_apps_by_group={"release-v16": ["frappe", "accounts"]},
+			available_apps_by_group={"__asumi_hostiran_dedicated_vps__": ["frappe", "accounts"]},
 		)
 
 		self.assertTrue(changes["material_change"])
-		self.assertEqual(changes["values"]["release_groups"], ["release-v16"])
+		self.assertEqual(changes["values"]["release_groups"], [])
 		self.assertEqual(changes["values"]["allowed_apps"], ["frappe", "accounts"])
 
 	def test_admin_rejects_unavailable_release_groups_and_apps(self):
@@ -264,9 +269,15 @@ class SitePlanAdminTest(unittest.TestCase):
 			"interval": "Monthly",
 			"enabled": 0,
 			"commerce_delivery_mode": "Create New Site",
+			"dedicated_server_plan": 1,
+			"private_bench_support": 1,
 			"max_database_usage": 0,
 			"max_storage_usage": 0,
 			"memory": 0,
+			"vcpu": 0,
+			"disk": 0,
+			"hostiran_product_code": "",
+			"hostiran_monthly_cost_irr": 0,
 			"cpu_time_per_day": 0,
 		}
 		valid = {
@@ -279,6 +290,10 @@ class SitePlanAdminTest(unittest.TestCase):
 			"max_database_usage": 2048,
 			"max_storage_usage": 8192,
 			"memory": 1024,
+			"vcpu": 2,
+			"disk": 60,
+			"hostiran_product_code": "VPS-3-IR",
+			"hostiran_monthly_cost_irr": 24_900_000,
 			"cpu_time_per_day": 0,
 		}
 		self.assertTrue(normalize_site_plan_admin_update(valid, current=current)["values"]["enabled"])

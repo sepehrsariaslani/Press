@@ -21,6 +21,7 @@ class SiteGroupDeploy(Document):
 		auto_provision_bench: DF.Check
 		bench: DF.Link | None
 		cluster: DF.Link
+		commerce_order: DF.Link | None
 		provider: DF.Link | None
 		release_group: DF.Link | None
 		server: DF.Link | None
@@ -65,6 +66,14 @@ class SiteGroupDeploy(Document):
 		self.version = frappe.db.get_value("Frappe Version", {"status": "stable"}, order_by="number desc")
 
 	def check_if_team_can_create_site(self):
+		if self.commerce_order:
+			from press.saas.commerce.dedicated_hosting import is_verified_hostiran_deployment
+
+			order = frappe.get_doc("Commerce Order", self.commerce_order)
+			if not is_verified_hostiran_deployment(order, self):
+				frappe.throw("This dedicated VPS deployment is not authorized by a verified Asumi hosting order")
+			return
+
 		team = frappe.get_doc("Team", self.team)
 		[allow_creation, why] = team.can_create_site()
 		if not allow_creation:

@@ -89,12 +89,12 @@
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">میزبانی سایت</h2>
-					<p class="mt-1 text-sm leading-6 text-gray-600">پلن‌های آماده را بخرید. بسته به تنظیمات هر پلن، آن را روی سایت فعال شما اعمال می‌کنیم یا سایت تازه‌ای زیر دامنهٔ آسومی می‌سازیم.</p>
+					<p class="mt-1 text-sm leading-6 text-gray-600">ارتقای سایت روی همان سرور فعلی انجام می‌شود. برای سایت تازه، پس از پرداخت یک VPS جداگانه از هاست‌ایران تهیه و برای همان مشتری آماده می‌کنیم؛ خرید و آماده‌سازی سرور دستی است.</p>
 				</div>
 				<Button label="دریافت پلن‌ها" :loading="hostingOffers.loading" @click="hostingOffers.fetch()" />
 			</div>
 			<div v-if="hostingOffers.loading" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">در حال بررسی پلن‌ها و ظرفیت سایت…</div>
-			<div v-else-if="!(hostingOffers.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm leading-6 text-gray-600">هنوز پلن میزبانی برای خرید آماده نشده است. مدیر آسومی باید پلن، دامنهٔ ریشه و بنچ مشترک را تنظیم کند.</div>
+			<div v-else-if="!(hostingOffers.data?.plans?.length)" class="mt-5 rounded-xl bg-gray-50 px-4 py-8 text-center text-sm leading-6 text-gray-600">هنوز پلن میزبانی برای خرید آماده نشده است. مدیر آسومی باید پلن VPS و دامنهٔ آسومی را تنظیم کند.</div>
 			<div v-else class="mt-5 grid gap-4 lg:grid-cols-2">
 				<article v-for="plan in hostingOffers.data.plans" :key="plan.name" class="rounded-xl border border-gray-200 p-5">
 					<div class="flex items-start justify-between gap-3">
@@ -127,13 +127,13 @@
 									<span class="shrink-0 text-xs text-gray-500">.{{ plan.domain || 'asumi.ir' }}</span>
 								</div>
 							</label>
-							<div v-if="plan.apps?.length" class="mt-3">
-								<p class="text-xs text-gray-600">برنامه‌های قابل نصب روی بنچ (اختیاری)</p>
+							<div v-if="plan.apps?.filter(app => app !== 'frappe').length" class="mt-3">
+								<p class="text-xs text-gray-600">برنامه‌هایی که پس از تهیهٔ VPS روی سایت نصب شوند (اختیاری)</p>
 								<div class="mt-2 flex flex-wrap gap-2">
-									<label v-for="app in plan.apps" :key="app" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-700"><input type="checkbox" :checked="isHostingAppSelected(plan.name, app)" @change="toggleHostingApp(plan.name, app, $event.target.checked)" />{{ app }}</label>
+									<label v-for="app in plan.apps.filter(app => app !== 'frappe')" :key="app" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-700"><input type="checkbox" :checked="isHostingAppSelected(plan.name, app)" @change="toggleHostingApp(plan.name, app, $event.target.checked)" />{{ app }}</label>
 								</div>
 							</div>
-							<p v-else class="mt-2 text-xs leading-5 text-gray-500">سایت پایه ساخته می‌شود و می‌توانید بعداً برنامه‌ها را نصب کنید.</p>
+							<p v-else class="mt-2 text-xs leading-5 text-gray-500">برای این سفارش یک VPS جداگانه تهیه می‌شود؛ سایت پایه روی همان VPS راه‌اندازی خواهد شد.</p>
 						</template>
 						<p v-else class="mt-2 text-xs leading-5 text-gray-500">پس از تأیید پرداخت، همین سایت دوباره فعال می‌شود.</p>
 					</div>
@@ -159,6 +159,7 @@
 						<p class="font-medium text-gray-950">{{ getAsumiServiceOrderTitle(order) }}<span v-if="order.site_label"> · {{ order.site_label }}</span></p>
 						<p v-if="order.order_type === 'Asumi Service' && getAsumiServiceOrderLines(order).length" class="mt-1 text-xs text-gray-600">{{ getAsumiServiceOrderLines(order).join(' · ') }}</p>
 						<p class="mt-1 text-xs text-gray-500">{{ order.name }} · {{ dateLabel(order.creation) }}<span v-if="order.service_ends_at"> · پایان دوره: {{ dateLabel(order.service_ends_at) }}</span></p>
+						<p v-if="isHostiranNewSiteOrder(order) && order.hostiran_fulfillment_status" class="mt-1 text-xs font-medium text-indigo-700">وضعیت سرور و راه‌اندازی: {{ hostiranFulfillmentLabel(order.hostiran_fulfillment_status) }}</p>
 						<p v-if="order.provisioning_error || order.payment_error" class="mt-1 text-sm text-rose-700">{{ order.provisioning_error || order.payment_error }}</p>
 					</div>
 					<div class="flex items-center gap-3">
@@ -187,21 +188,13 @@
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_site_plan_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش پلن میزبانی</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.allow_service_sales" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> فروش خدمات ماژولی آسومی</label>
 				<label class="flex items-center gap-3 rounded-xl border border-gray-800 p-4 text-sm"><input v-model="settingsForm.sandbox_mode" type="checkbox" class="rounded border-gray-600 text-rose-600 focus:ring-rose-500" /> حالت آزمایشی زرین‌پال</label>
-				<label class="text-sm">حداقل فضای آزاد دیسک پس از ساخت سایت (گیگابایت)
-					<input v-model.number="settingsForm.hosting_min_free_disk_gb" type="number" min="0" max="1000000" step="0.1" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white" />
-					<span class="mt-1 block text-xs text-gray-400">صفر یعنی ظرفیت دیسک تأیید نشده و ساخت سایت غیرفعال می‌ماند.</span>
-				</label>
-				<label class="text-sm">حداقل حافظهٔ آزاد پس از ساخت سایت (گیگابایت)
-					<input v-model.number="settingsForm.hosting_min_free_memory_gb" type="number" min="0" max="1000000" step="0.1" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white" />
-					<span class="mt-1 block text-xs text-gray-400">صفر یعنی ظرفیت حافظه تأیید نشده و ساخت سایت غیرفعال می‌ماند.</span>
-				</label>
 				<label class="text-sm">شناسهٔ پذیرندهٔ زرین‌پال
 					<input v-model="merchantId" type="password" autocomplete="new-password" class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white placeholder:text-gray-500" placeholder="برای حفظ مقدار فعلی خالی بگذارید" />
 					<span class="mt-1 block text-xs text-gray-400">{{ settings.data.merchant_id_configured ? 'شناسه قبلاً ثبت شده است.' : 'هنوز شناسه‌ای ثبت نشده است.' }}</span>
 				</label>
 			</div>
 			<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-				<p class="text-xs leading-5 text-gray-400">فروش میزبانی فقط پس از آماده‌شدن دامنه، بنچ و پلن فعال می‌شود. پرداخت هر بازه جداگانه است و خودکار تمدید نمی‌شود.</p>
+				<p class="text-xs leading-5 text-gray-400">برای هر سفارش سایت جدید، VPS جداگانه از هاست‌ایران تهیه و دستی به تیم مشتری متصل می‌شود. پرداخت هر بازه جداگانه است و خودکار تمدید نمی‌شود.</p>
 				<Button variant="solid" label="ذخیره تنظیمات پرداخت" :loading="savingSettings" @click="saveSettings" />
 			</div>
 		</section>
@@ -287,19 +280,14 @@
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">آمادگی فروش پلن ساخت سایت</h2>
-					<p class="mt-1 text-sm leading-6 text-gray-600">وضعیت زندهٔ پرداخت، زیردامنهٔ آسومی، بنچ و ظرفیت میزبان را بررسی می‌کند.</p>
+					<p class="mt-1 text-sm leading-6 text-gray-600">پیش‌نیازهای فروش و راه‌اندازی سایت روی VPS اختصاصی هر مشتری را بررسی می‌کند.</p>
 				</div>
 				<div class="flex items-center gap-3">
 					<span v-if="hostingReadiness.data" class="rounded-full px-3 py-1 text-xs font-medium" :class="hostingReadiness.data.ready ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">{{ hostingReadiness.data.ready ? 'آمادهٔ فروش' : 'فروش فعلاً غیرفعال' }}</span>
 					<Button label="بررسی دوباره" :loading="hostingReadiness.loading" @click="hostingReadiness.fetch()" />
 				</div>
 			</div>
-			<div v-if="hostingReadiness.data?.resources" class="mt-4 flex flex-wrap gap-x-6 gap-y-2 rounded-xl bg-gray-50 px-4 py-3 text-xs text-gray-600">
-				<span>دیسک آزاد میزبان: {{ gib(hostingReadiness.data.resources.disk_free_bytes) }} گیگابایت</span>
-				<span>حافظهٔ در دسترس: {{ gib(hostingReadiness.data.resources.memory_available_bytes) }} گیگابایت</span>
-				<span>ذخیرهٔ دیسک: {{ settingsForm.hosting_min_free_disk_gb || 0 }} گیگابایت</span>
-				<span>ذخیرهٔ حافظه: {{ settingsForm.hosting_min_free_memory_gb || 0 }} گیگابایت</span>
-			</div>
+			<div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-xs leading-5 text-indigo-900">این پنل از سرور مشترک برای سفارش جدید استفاده نمی‌کند. پس از پرداخت، VPS همان مشتری را در هاست‌ایران تهیه کن، در Press به تیم مشتری اختصاص بده و آماده‌سازی‌اش را کامل کن؛ سپس از بخش سفارش‌ها آن را به سفارش وصل کن.</div>
 			<div v-if="hostingReadiness.data?.checks?.length" class="mt-4 grid gap-3 md:grid-cols-2">
 				<article v-for="check in hostingReadiness.data.checks" :key="check.key" class="rounded-xl border px-4 py-3" :class="check.ready ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'">
 					<div class="flex items-center justify-between gap-3">
@@ -389,23 +377,21 @@
 					</label>
 				</div>
 				<div v-if="newSitePlan.delivery_mode === 'Create New Site'" class="mt-4 grid gap-4 lg:grid-cols-2">
-					<div class="rounded-lg border border-gray-200 bg-white p-3">
-						<p class="text-sm font-medium text-gray-800">گروه انتشار سایت</p>
-						<div v-if="sitePlanOptions.data?.release_groups?.length" class="mt-2 flex flex-wrap gap-2">
-							<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="newSitePlan.release_groups.includes(group.name)" @change="toggleNewPlanGroup(group.name, $event.target.checked)" />{{ group.title || group.name }}</label>
-						</div>
-						<p v-else class="mt-2 text-xs leading-5 text-amber-800">هنوز گروه انتشار عمومی با بنچ فعال ثبت نشده است؛ این پیش‌نویس تا آماده‌شدن زیرساخت قابل فروش نمی‌شود.</p>
+					<div class="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-sm leading-6 text-indigo-950">
+						<p class="font-medium">VPS اختصاصی برای هر سفارش</p>
+						<p class="mt-1 text-xs">پس از پرداخت مشتری، مدیر آسومی VPS درج‌شده در پلن را جداگانه از هاست‌ایران تهیه می‌کند. سپس VPS به تیم مشتری وصل و بنچ خصوصی روی همان سرور راه‌اندازی می‌شود؛ این مرحله خرید خودکار ندارد.</p>
 					</div>
 					<div class="rounded-lg border border-gray-200 bg-white p-3">
 						<p class="text-sm font-medium text-gray-800">برنامه‌های قابل نصب <span class="font-normal text-gray-500">(اختیاری)</span></p>
 						<div v-if="newPlanApps.length" class="mt-2 flex flex-wrap gap-2">
-						<label v-for="app in newPlanApps" :key="app" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="newSitePlan.allowed_apps.includes(app)" @change="toggleNewPlanApp(app, $event.target.checked)" />{{ app }}</label>
+							<label v-for="app in newPlanApps" :key="app" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="isNewPlanAppSelected(app)" :disabled="app === 'frappe'" @change="toggleNewPlanApp(app, $event.target.checked)" />{{ app }}</label>
 						</div>
-						<p v-else class="mt-2 text-xs leading-5 text-gray-500">بعد از آماده‌شدن گروه‌های انتشار عمومی، برنامه‌های نصب‌شده اینجا نمایش داده می‌شوند.</p>
+						<p v-else class="mt-2 text-xs leading-5 text-amber-800">نسخهٔ پایدار Frappe و برنامه‌های منتشرشده برای نصب پیدا نشد.</p>
+						<p v-if="newPlanApps.length" class="mt-2 text-xs leading-5 text-gray-500">همهٔ برنامه‌ها در حالت پیش‌فرض مجازند؛ برای محدودکردن انتخاب مشتری، تیک مواردی را که نباید نصب شوند بردار.</p>
 					</div>
 				</div>
 				<div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-					<p class="text-xs leading-5 text-gray-600">اگر گروهی انتخاب نکنی، پلن روی همهٔ گروه‌های انتشار عمومی اعمال می‌شود. پلن با قیمت و سقف منابع صفر و وضعیت غیرفعال ساخته می‌شود.</p>
+					<p class="text-xs leading-5 text-gray-600">پلن تازه با قیمت و منابع صفر و وضعیت غیرفعال ساخته می‌شود. SKU، هزینهٔ VPS و منابع سرور را پس از ساخت در جزئیات پلن وارد کن.</p>
 					<div class="flex gap-2"><Button type="button" label="انصراف" @click="showCreateSitePlan = false" /><Button type="submit" variant="solid" :loading="creatingSitePlan" label="ساخت پیش‌نویس" /></div>
 				</div>
 			</form>
@@ -431,23 +417,40 @@
 						<tr>
 							<td colspan="12" class="pb-3">
 								<details class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-									<summary class="cursor-pointer text-xs font-medium text-gray-700">تنظیم گروه‌های انتشار و برنامه‌های مجاز</summary>
+									<summary class="cursor-pointer text-xs font-medium text-gray-700">تنظیم VPS و برنامه‌های قابل نصب</summary>
 									<div class="mt-3 grid gap-3 lg:grid-cols-2">
-										<div class="rounded-lg border border-gray-200 bg-white p-3">
+										<div v-if="row.commerce_delivery_mode === 'Create New Site'" class="rounded-lg border border-gray-200 bg-white p-3 lg:col-span-2">
+											<p class="text-xs font-medium text-gray-800">مشخصات VPS اختصاصی هاست‌ایران</p>
+											<p class="mt-1 text-xs leading-5 text-gray-500">شناسهٔ محصول و هزینهٔ واقعی ماهانه را از سفارش خرید هاست‌ایران وارد کن؛ این هزینه به مشتری نمایش داده نمی‌شود.</p>
+											<div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+												<label class="text-xs text-gray-700">SKU هاست‌ایران<input v-model="row.hostiran_product_code" maxlength="40" class="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5" placeholder="VPS-3-IR" /></label>
+												<label class="text-xs text-gray-700">هزینهٔ ماهانه (ریال)<input v-model.number="row.hostiran_monthly_cost_irr" type="number" min="0" step="1" class="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5" /></label>
+												<label class="text-xs text-gray-700">vCPU<input v-model.number="row.vcpu" type="number" min="0" step="1" class="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5" /></label>
+												<label class="text-xs text-gray-700">RAM (MiB)<input v-model.number="row.memory" type="number" min="0" step="1" class="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5" /></label>
+												<label class="text-xs text-gray-700">دیسک VPS (GB)<input v-model.number="row.disk" type="number" min="0" step="1" class="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5" /></label>
+											</div>
+										</div>
+										<div v-if="row.commerce_delivery_mode === 'Create New Site'" class="rounded-lg border border-gray-200 bg-white p-3">
+											<p class="text-xs font-medium text-gray-800">برنامه‌های مجاز</p>
+											<div v-if="sitePlanApps(row).length" class="mt-2 flex flex-wrap gap-2">
+												<label v-for="app in sitePlanApps(row)" :key="app" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="isSitePlanAppSelected(row, app)" :disabled="app === 'frappe'" @change="toggleSitePlanApp(row, app, $event.target.checked)" />{{ app }}</label>
+											</div>
+											<p v-else class="mt-2 text-xs leading-5 text-gray-500">برنامهٔ منتشرشده‌ای برای نصب در دسترس نیست.</p>
+											<p class="mt-2 text-xs text-gray-500">همهٔ برنامه‌ها در حالت پیش‌فرض مجازند؛ برای محدودکردن انتخاب مشتری، تیک موارد را بردار.</p>
+										</div>
+										<div v-else class="rounded-lg border border-gray-200 bg-white p-3">
 											<p class="text-xs font-medium text-gray-800">گروه‌های انتشار</p>
 											<div v-if="sitePlanOptions.data?.release_groups?.length" class="mt-2 flex flex-wrap gap-2">
-												<label v-for="group in sitePlanOptions.data.release_groups" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="(row.release_groups || []).includes(group.name)" @change="toggleSitePlanGroup(row, group.name, $event.target.checked)" />{{ group.title || group.name }}</label>
+												<label v-for="group in sitePlanOptions.data.release_groups.filter(group => group.name !== '__asumi_hostiran_dedicated_vps__')" :key="group.name" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="(row.release_groups || []).includes(group.name)" @change="toggleSitePlanGroup(row, group.name, $event.target.checked)" />{{ group.title || group.name }}</label>
 											</div>
 											<p v-else class="mt-2 text-xs leading-5 text-amber-800">گروه انتشار عمومی و بنچ فعال هنوز آماده نیست.</p>
 											<p class="mt-2 text-xs text-gray-500">خالی‌گذاشتن این فهرست به معنی اجازهٔ استفاده از همهٔ گروه‌های انتشار عمومی است.</p>
-										</div>
-										<div class="rounded-lg border border-gray-200 bg-white p-3">
-											<p class="text-xs font-medium text-gray-800">برنامه‌های مجاز</p>
+											<p class="mt-4 text-xs font-medium text-gray-800">برنامه‌های مجاز</p>
 											<div v-if="sitePlanApps(row).length" class="mt-2 flex flex-wrap gap-2">
-												<label v-for="app in sitePlanApps(row)" :key="app" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="(row.allowed_apps || []).includes(app)" @change="toggleSitePlanApp(row, app, $event.target.checked)" />{{ app }}</label>
+												<label v-for="app in sitePlanApps(row)" :key="app" class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs"><input type="checkbox" :checked="isSitePlanAppSelected(row, app)" :disabled="app === 'frappe'" @change="toggleSitePlanApp(row, app, $event.target.checked)" />{{ app }}</label>
 											</div>
 											<p v-else class="mt-2 text-xs leading-5 text-gray-500">برنامه‌ای برای گروه انتخاب‌شده پیدا نشد.</p>
-											<p class="mt-2 text-xs text-gray-500">خالی‌گذاشتن این فهرست اجازهٔ نصب همهٔ برنامه‌های در دسترس را می‌دهد.</p>
+											<p class="mt-2 text-xs text-gray-500">همهٔ برنامه‌های گروه در حالت پیش‌فرض مجازند؛ برای محدودکردن انتخاب مشتری، تیک موارد را بردار.</p>
 										</div>
 									</div>
 								</details>
@@ -464,12 +467,12 @@
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<div>
 					<h2 class="text-lg font-semibold text-gray-950">مدیریت سفارش‌ها</h2>
-					<p class="mt-1 text-sm text-gray-600">برای خدمات آسومی، مرحلهٔ تحویل را پس از بررسی دستی ثبت کنید. بازپرداخت باید ابتدا در درگاه انجام شود؛ سفارش نصب برنامه نیز از همین‌جا قابل پیگیری است.</p>
+					<p class="mt-1 text-sm leading-6 text-gray-600">برای سایت تازه، پس از خرید دستی VPS از هاست‌ایران، سرور آمادهٔ همان مشتری را انتخاب و راه‌اندازی را شروع کن. ارتقای سایت موجود روی سرور خودش انجام می‌شود؛ بازپرداخت را ابتدا در زرین‌پال انجام بده.</p>
 				</div>
 				<Button label="دریافت سفارش‌ها" :loading="adminOrders.loading" @click="adminOrders.fetch()" />
 			</div>
 			<div v-if="adminOrders.data?.length" class="mt-4 overflow-x-auto">
-				<table class="w-full min-w-[1100px] text-sm">
+				<table class="w-full min-w-[1450px] text-sm">
 					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">سفارش</th><th>مشتری / تیم</th><th>مبلغ</th><th>وضعیت</th><th>پشتیبان / عملیات نصب</th><th>خطای تحویل</th><th></th></tr></thead>
 					<tbody class="divide-y divide-gray-100">
 						<tr v-for="order in adminOrders.data" :key="order.name">
@@ -477,10 +480,22 @@
 							<td>{{ order.customer }}<span class="block text-xs text-gray-500">{{ order.team }}</span><span v-if="order.service_contact_name" class="mt-1 block text-xs">{{ order.service_contact_name }} · {{ order.service_contact_phone }}</span><span v-if="order.service_company" class="block text-xs text-gray-500">{{ order.service_company }}</span></td>
 							<td>{{ order.order_type === 'Asumi Service' ? `${money(getAsumiServiceOrderTomanAmount(order) ?? 0)} تومان / ماه` : `${money(order.amount)} ${order.currency}` }}</td>
 							<td>{{ statusLabel(order.status) }}<span v-if="order.refund_reference" class="block text-xs text-gray-500">مرجع بازپرداخت: {{ order.refund_reference }}</span></td>
-							<td class="text-xs text-gray-600"><span v-if="order.install_backup" class="block">پشتیبان: {{ order.install_backup }}</span><span v-if="order.install_backup_id" class="block">پشتیبان Docker: {{ order.install_backup_id }}</span><span v-if="order.agent_job" class="block">کار نصب: {{ order.agent_job }}</span><span v-if="order.install_operation" class="block">عملیات: {{ order.install_operation }}</span></td>
+							<td class="text-xs text-gray-600"><span v-if="order.install_backup" class="block">پشتیبان: {{ order.install_backup }}</span><span v-if="order.install_backup_id" class="block">پشتیبان Docker: {{ order.install_backup_id }}</span><span v-if="order.agent_job" class="block">کار نصب: {{ order.agent_job }}</span><span v-if="order.install_operation" class="block">عملیات: {{ order.install_operation }}</span><template v-if="isHostiranNewSiteOrder(order)"><span class="mt-1 block font-medium text-indigo-700">{{ hostiranFulfillmentLabel(order.hostiran_fulfillment_status) }}</span><span v-if="order.hostiran_product_code_snapshot" class="block">SKU: {{ order.hostiran_product_code_snapshot }} · هزینهٔ VPS: {{ money(order.hostiran_monthly_cost_irr_snapshot) }} ریال/ماه</span><span v-if="order.hostiran_server" class="block">سرور: {{ order.hostiran_server }} · مرجع خرید: {{ order.hostiran_order_reference || '—' }}</span><span v-if="order.hostiran_site_group_deploy" class="block">راه‌اندازی: {{ order.hostiran_site_group_deploy }}</span></template></td>
 							<td class="max-w-64 truncate text-rose-700">{{ order.provisioning_error || order.payment_error || '—' }}</td>
-							<td class="flex items-center gap-2 py-2">
+							<td class="flex flex-col items-start gap-2 py-2">
 								<Button v-if="order.order_type === 'Asumi Service' && nextAsumiServiceDeliveryStatus(order)" :label="nextAsumiServiceDeliveryStatus(order) === 'Provisioning' ? 'شروع تحویل' : 'ثبت فعال‌سازی'" :loading="updatingServiceOrder === order.name" @click="updateServiceOrderStatus(order, nextAsumiServiceDeliveryStatus(order))" />
+								<template v-else-if="canPrepareHostiranSite(order)">
+									<Button :label="order.hostiran_fulfillment_status === 'Failed' ? 'بررسی VPS و تلاش دوباره' : 'انتخاب VPS برای راه‌اندازی'" :loading="hostiranOptionsLoading === order.name" @click="loadHostiranServers(order)" />
+									<div v-if="hostiranOptionsByOrder[order.name]" class="mt-2 min-w-64 space-y-2 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+										<p class="text-xs leading-5 text-indigo-950">پس از خرید VPS در هاست‌ایران، همان سرور را به تیم مشتری متصل و در Press به‌صورت سرور خصوصی آماده کن. انتخاب اینجا بنچ را روی آن VPS راه‌اندازی می‌کند.</p>
+										<p v-if="hostiranOptionsByOrder[order.name].message" class="text-xs leading-5 text-amber-800">{{ hostiranOptionsByOrder[order.name].message }}</p>
+										<template v-if="hostiranOptionsByOrder[order.name].servers?.length">
+											<select v-model="hostiranServerByOrder[order.name]" class="block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs" :aria-label="`VPS سفارش ${order.name}`"><option value="">انتخاب VPS آماده</option><option v-for="server in hostiranOptionsByOrder[order.name].servers" :key="server.name" :value="server.name">{{ server.title }} · {{ server.ip }} · {{ server.provider || 'HostIran' }}</option></select>
+											<input v-model="hostiranReferenceByOrder[order.name]" maxlength="120" class="block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs" placeholder="شمارهٔ سفارش خرید هاست‌ایران" :aria-label="`شمارهٔ خرید هاست‌ایران برای ${order.name}`" />
+											<Button class="w-full" label="اتصال VPS و شروع راه‌اندازی" :disabled="!hostiranServerByOrder[order.name] || !hostiranReferenceByOrder[order.name]?.trim()" :loading="preparingHostiranOrder === order.name" @click="prepareHostiranSite(order)" />
+										</template>
+									</div>
+								</template>
 								<Button v-else-if="order.order_type !== 'Asumi Service' && order.status === 'Provisioning Failed'" label="تلاش مجدد تحویل" :loading="retrying === order.name" @click="retry(order)" />
 								<template v-if="order.provider !== 'Free' && ['Paid', 'Active', 'Provisioning Failed'].includes(order.status)">
 									<input v-model="refundReferences[order.name]" class="w-36 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900" placeholder="شمارهٔ پیگیری" :aria-label="`شمارهٔ بازپرداخت ${order.name}`" />
@@ -518,6 +533,11 @@ import {
 	emptyAsumiServicePricing,
 	validateAsumiServicePricing,
 } from '@/utils/asumiServicePricing';
+import {
+	canPrepareHostiranSite,
+	hostiranFulfillmentLabel,
+	isHostiranNewSiteOrder,
+} from '@/utils/hostiranHosting';
 
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const serviceRequest = ref(parseAsumiServiceRequest(window.location.search));
@@ -537,6 +557,11 @@ const hostingSiteByPlan = reactive({});
 const hostingRenewSiteByPlan = reactive({});
 const hostingSubdomains = reactive({});
 const hostingAppsByPlan = reactive({});
+const hostiranOptionsByOrder = reactive({});
+const hostiranServerByOrder = reactive({});
+const hostiranReferenceByOrder = reactive({});
+const hostiranOptionsLoading = ref('');
+const preparingHostiranOrder = ref('');
 const retrying = ref('');
 const refunding = ref('');
 const refundReferences = reactive({});
@@ -547,9 +572,9 @@ const showCreateMarketplacePlan = ref(false);
 const creatingMarketplacePlan = ref(false);
 const error = ref('');
 const notice = ref('');
-const newSitePlan = reactive({ name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', release_groups: [], allowed_apps: [] });
+const newSitePlan = reactive({ name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', allowed_apps: [] });
 const newMarketplacePlan = reactive({ app: '', title: '', interval: 'Monthly' });
-const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, allow_service_sales: false, sandbox_mode: true, hosting_min_free_disk_gb: 0, hosting_min_free_memory_gb: 0 });
+const settingsForm = reactive({ enabled: false, allow_marketplace_app_sales: false, allow_site_plan_sales: false, allow_service_sales: false, sandbox_mode: true });
 const servicePricingForm = reactive(emptyAsumiServicePricing());
 const servicePricingLoaded = ref(false);
 const savingServicePricing = ref(false);
@@ -573,7 +598,15 @@ const plans = createResource({ url: 'press.saas.commerce.api.available_app_plans
 const settings = createResource({
 	url: 'press.saas.commerce.api.admin_settings',
 	auto: isCommerceAdmin.value,
-	onSuccess(data) { Object.assign(settingsForm, data); },
+	onSuccess(data) {
+		Object.assign(settingsForm, {
+			enabled: data.enabled,
+			allow_marketplace_app_sales: data.allow_marketplace_app_sales,
+			allow_site_plan_sales: data.allow_site_plan_sales,
+			allow_service_sales: data.allow_service_sales,
+			sandbox_mode: data.sandbox_mode,
+		});
+	},
 });
 const adminServicePricing = createResource({
 	url: 'press.saas.commerce.api.admin_service_pricing',
@@ -588,6 +621,8 @@ const marketplacePlanOptions = createResource({ url: 'press.saas.commerce.api.ad
 const sitePlans = createResource({ url: 'press.saas.commerce.api.admin_site_plans', auto: isCommerceAdmin.value });
 const sitePlanOptions = createResource({ url: 'press.saas.commerce.api.admin_site_plan_options', auto: isCommerceAdmin.value });
 const adminOrders = createResource({ url: 'press.saas.commerce.api.admin_orders', auto: isCommerceAdmin.value });
+const hostiranServerOptionsResource = createResource({ url: 'press.saas.commerce.api.admin_hostiran_server_options' });
+const prepareHostiranSiteResource = createResource({ url: 'press.saas.commerce.api.admin_prepare_hostiran_site' });
 const adminServiceRequests = createResource({ url: 'press.saas.commerce.api.admin_service_requests', auto: isCommerceAdmin.value });
 const saveSettingsResource = createResource({ url: 'press.saas.commerce.api.save_admin_settings' });
 const saveAppPriceResource = createResource({ url: 'press.saas.commerce.api.save_marketplace_plan_prices' });
@@ -608,8 +643,7 @@ const updatingServiceOrder = ref('');
 const loading = computed(() => sites.loading || orders.loading || hostingOffers.loading);
 const busy = computed(() => Boolean(busyPlan.value));
 const newPlanApps = computed(() => {
-	const groups = sitePlanOptions.data?.release_groups || [];
-	return sharedSiteApps(groups.filter(group => !newSitePlan.release_groups.length || newSitePlan.release_groups.includes(group.name)));
+	return sitePlanOptions.data?.hostiran_apps || [];
 });
 
 watch(selectedSite, async (site) => {
@@ -779,10 +813,17 @@ async function saveSettings() {
 	error.value = '';
 	savingSettings.value = true;
 	try {
-		await saveSettingsResource.submit({ ...settingsForm, merchant_id: merchantId.value || undefined });
+		await saveSettingsResource.submit({
+			enabled: settingsForm.enabled,
+			allow_marketplace_app_sales: settingsForm.allow_marketplace_app_sales,
+			allow_site_plan_sales: settingsForm.allow_site_plan_sales,
+			allow_service_sales: settingsForm.allow_service_sales,
+			sandbox_mode: settingsForm.sandbox_mode,
+			merchant_id: merchantId.value || undefined,
+		});
 		merchantId.value = '';
 		await Promise.all([settings.fetch(), hostingReadiness.fetch()]);
-		notice.value = 'تنظیمات درگاه و ذخیرهٔ ظرفیت میزبان ذخیره شد. پرداخت فقط با شناسهٔ معتبر پذیرنده در حالت تولید قابل استفاده است.';
+		notice.value = 'تنظیمات درگاه ذخیره شد. برای هر سایت جدید، VPS جداگانه از هاست‌ایران تهیه می‌شود.';
 	} catch (failure) { showError(failure); } finally { savingSettings.value = false; }
 }
 
@@ -816,7 +857,11 @@ async function saveSitePrices(row) {
 			price_irr: row.price_irr, delivery_mode: row.commerce_delivery_mode, interval: row.interval,
 			enabled: row.enabled, max_database_usage: row.max_database_usage, max_storage_usage: row.max_storage_usage,
 			memory: row.memory, cpu_time_per_day: row.cpu_time_per_day,
-			release_groups: row.release_groups || [], allowed_apps: row.allowed_apps || [],
+			vcpu: row.vcpu, disk: row.disk,
+			hostiran_product_code: row.commerce_delivery_mode === 'Create New Site' ? row.hostiran_product_code || '' : '',
+			hostiran_monthly_cost_irr: row.commerce_delivery_mode === 'Create New Site' ? row.hostiran_monthly_cost_irr || 0 : 0,
+			release_groups: row.commerce_delivery_mode === 'Create New Site' ? [] : row.release_groups || [],
+			allowed_apps: row.allowed_apps || [],
 		});
 		await sitePlans.fetch();
 		notice.value = 'تنظیمات تعرفهٔ میزبانی ذخیره شد.';
@@ -824,6 +869,7 @@ async function saveSitePrices(row) {
 }
 
 function sitePlanApps(row) {
+	if (row.commerce_delivery_mode === 'Create New Site') return sitePlanOptions.data?.hostiran_apps || [];
 	const groups = sitePlanOptions.data?.release_groups || [];
 	const selectedGroups = row.release_groups || [];
 	return sharedSiteApps(groups.filter(group => !selectedGroups.length || selectedGroups.includes(group.name)));
@@ -845,23 +891,22 @@ function toggleSitePlanGroup(row, group, checked) {
 }
 
 function toggleSitePlanApp(row, app, checked) {
-	const selected = new Set(row.allowed_apps || []);
+	const selected = new Set((row.allowed_apps || []).length ? row.allowed_apps : sitePlanApps(row));
 	if (checked) selected.add(app);
 	else selected.delete(app);
 	row.allowed_apps = [...selected];
 }
 
-function toggleNewPlanGroup(group, checked) {
-	const selected = new Set(newSitePlan.release_groups);
-	if (checked) selected.add(group);
-	else selected.delete(group);
-	newSitePlan.release_groups = [...selected];
-	const eligible = new Set(newPlanApps.value);
-	newSitePlan.allowed_apps = newSitePlan.allowed_apps.filter(app => eligible.has(app));
+function isSitePlanAppSelected(row, app) {
+	return app === 'frappe' || !(row.allowed_apps || []).length || (row.allowed_apps || []).includes(app);
+}
+
+function isNewPlanAppSelected(app) {
+	return app === 'frappe' || !newSitePlan.allowed_apps.length || newSitePlan.allowed_apps.includes(app);
 }
 
 function toggleNewPlanApp(app, checked) {
-	const selected = new Set(newSitePlan.allowed_apps);
+	const selected = new Set(newSitePlan.allowed_apps.length ? newSitePlan.allowed_apps : newPlanApps.value);
 	if (checked) selected.add(app);
 	else selected.delete(app);
 	newSitePlan.allowed_apps = [...selected];
@@ -874,10 +919,10 @@ async function createSitePlan() {
 		await createSitePlanResource.submit({
 			name: newSitePlan.name.trim(), title: newSitePlan.title.trim(), description: newSitePlan.description.trim(),
 			interval: newSitePlan.interval, delivery_mode: newSitePlan.delivery_mode,
-			release_groups: newSitePlan.release_groups, allowed_apps: newSitePlan.allowed_apps,
+			release_groups: [], allowed_apps: newSitePlan.allowed_apps,
 		});
 		await Promise.all([sitePlans.fetch(), sitePlanOptions.fetch(), hostingReadiness.fetch()]);
-		Object.assign(newSitePlan, { name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', release_groups: [], allowed_apps: [] });
+		Object.assign(newSitePlan, { name: '', title: '', description: '', interval: 'Monthly', delivery_mode: 'Upgrade Existing Site', allowed_apps: [] });
 		showCreateSitePlan.value = false;
 		notice.value = 'پیش‌نویس پلن ساخته شد. قیمت و سقف منابع را تنظیم کن و بعد پلن را فعال کن.';
 	} catch (failure) { showError(failure); } finally { creatingSitePlan.value = false; }
@@ -891,6 +936,39 @@ async function retry(order) {
 		await Promise.all([adminOrders.fetch(), orders.fetch()]);
 		notice.value = 'تلاش مجدد تحویل به صف پردازش فرستاده شد.';
 	} catch (failure) { showError(failure); } finally { retrying.value = ''; }
+}
+
+async function loadHostiranServers(order) {
+	hostiranOptionsLoading.value = order.name;
+	error.value = '';
+	try {
+		const result = await hostiranServerOptionsResource.fetch({ order: order.name });
+		const options = result?.message || result || { servers: [], message: '' };
+		hostiranOptionsByOrder[order.name] = options;
+		if (!hostiranServerByOrder[order.name] && options.servers?.length === 1) {
+			hostiranServerByOrder[order.name] = options.servers[0].name;
+		}
+	} catch (failure) { showError(failure); } finally { hostiranOptionsLoading.value = ''; }
+}
+
+async function prepareHostiranSite(order) {
+	const server = hostiranServerByOrder[order.name];
+	const hostiranOrderReference = (hostiranReferenceByOrder[order.name] || '').trim();
+	if (!server || !hostiranOrderReference || preparingHostiranOrder.value) return;
+	if (!window.confirm('تأیید می‌کنی VPS اختصاصی این مشتری را از هاست‌ایران خریده‌ای و این سرور آمادهٔ ساخت سایت است؟')) return;
+	preparingHostiranOrder.value = order.name;
+	error.value = '';
+	try {
+		await prepareHostiranSiteResource.submit({ order: order.name, server, hostiran_order_reference: hostiranOrderReference });
+		await Promise.all([adminOrders.fetch(), orders.fetch()]);
+		delete hostiranOptionsByOrder[order.name];
+		delete hostiranServerByOrder[order.name];
+		delete hostiranReferenceByOrder[order.name];
+		notice.value = 'VPS به سفارش وصل شد و راه‌اندازی بنچ خصوصی روی همان VPS شروع شد.';
+	} catch (failure) {
+		showError(failure);
+		await adminOrders.fetch();
+	} finally { preparingHostiranOrder.value = ''; }
 }
 
 async function updateServiceOrderStatus(order, status) {

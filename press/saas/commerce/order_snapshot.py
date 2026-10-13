@@ -114,6 +114,11 @@ def hosting_order_snapshot(
 		original_plan = site["plan"]
 		selected_apps = []
 	else:
+		hostiran_product_code = str(plan.get("hostiran_product_code") or "").strip()
+		try:
+			hostiran_monthly_cost = int(plan.get("hostiran_monthly_cost_irr") or 0)
+		except (TypeError, ValueError, OverflowError):
+			hostiran_monthly_cost = 0
 		if site:
 			if (
 				not renew_new_site
@@ -136,6 +141,16 @@ def hosting_order_snapshot(
 		else:
 			if renew_new_site:
 				raise ValueError("برای تمدید، سایت اصلی این پلن را انتخاب کنید")
+			if (
+				not plan.get("dedicated_server_plan")
+				or not plan.get("private_bench_support")
+				or not hostiran_product_code
+				or len(hostiran_product_code) > 40
+				or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,39}", hostiran_product_code)
+				or hostiran_monthly_cost <= 0
+				or hostiran_monthly_cost > 2_147_483_647
+			):
+				raise ValueError("مشخصات SKU و هزینهٔ ماهانهٔ VPS هاست‌ایران برای این پلن ثبت نشده است")
 			subdomain_value = str(subdomain or "").strip()
 			if not SITE_SUBDOMAIN_PATTERN.fullmatch(subdomain_value) or len(subdomain_value) > 32:
 				raise ValueError("زیردامنه باید ۵ تا ۳۲ نویسه و شامل حروف کوچک انگلیسی، عدد یا خط تیره باشد")
@@ -153,7 +168,7 @@ def hosting_order_snapshot(
 				raise ValueError("تعداد برنامه‌های انتخاب‌شده بیش از حد مجاز است")
 		original_plan = None
 
-	return {
+	snapshot = {
 		"order_type": "Hosting",
 		"plan_type": "Site Plan",
 		"plan": plan["name"],
@@ -168,4 +183,13 @@ def hosting_order_snapshot(
 		"subdomain": subdomain_value,
 		"original_plan": original_plan,
 		"apps": selected_apps,
+		"hostiran_fulfillment_status": (
+			"Awaiting VPS"
+			if delivery_mode == NEW_SITE_PROVISIONING and not site
+			else "Not Applicable"
+		),
 	}
+	if delivery_mode == NEW_SITE_PROVISIONING and plan.get("dedicated_server_plan"):
+		snapshot["hostiran_product_code_snapshot"] = hostiran_product_code
+		snapshot["hostiran_monthly_cost_irr_snapshot"] = hostiran_monthly_cost
+	return snapshot

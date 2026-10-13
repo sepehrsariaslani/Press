@@ -12,6 +12,7 @@
   "site",
   "subdomain",
   "site_plan",
+  "commerce_order",
   "auto_provision_bench",
   "column_break_ydwn",
   "server",
@@ -116,6 +117,14 @@
    "label": "Site Plan",
    "link_filters": "[[\"Site Plan\",\"document_type\",\"=\",\"Site\"]]",
    "options": "Site Plan",
+   "read_only": 1
+  },
+  {
+   "description": "Asumi hosting order that authorized this dedicated VPS deployment.",
+   "fieldname": "commerce_order",
+   "fieldtype": "Link",
+   "label": "Asumi Commerce Order",
+   "options": "Commerce Order",
    "read_only": 1
   },
   {

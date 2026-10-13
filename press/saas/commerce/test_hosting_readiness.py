@@ -82,9 +82,8 @@ class HostingReadinessTest(unittest.TestCase):
 			"root_domain": {"ready": True, "detail": "asumi.ir ثبت شده است."},
 			"wildcard_dns": {"ready": True, "detail": "زیردامنه به سرور می‌رسد."},
 			"wildcard_tls": {"ready": True, "detail": "گواهی wildcard معتبر است."},
-			"press_infrastructure": {"ready": True, "detail": "بنچ عمومی آماده است."},
-			"capacity": {"ready": True, "detail": "منابع کافی است."},
-			"docker_agent": {"ready": True, "detail": "عامل متصل است."},
+			"press_infrastructure": {"ready": True, "detail": "بنچ خصوصی آماده است."},
+			"capacity": {"ready": True, "detail": "SKU و منابع VPS ثبت شده است."},
 			"access_email": {"ready": True, "detail": "ایمیل خروجی آماده است."},
 		}
 
@@ -95,7 +94,7 @@ class HostingReadinessTest(unittest.TestCase):
 		)
 
 		self.assertTrue(readiness["ready"])
-		self.assertEqual(len(readiness["checks"]), 9)
+		self.assertEqual(len(readiness["checks"]), 8)
 		self.assertEqual(readiness["resources"]["disk_free_bytes"], 8_800_000_000)
 
 	def test_one_missing_gate_keeps_new_site_sales_blocked(self):
