@@ -239,10 +239,10 @@ class HostingOrderSnapshotTest(unittest.TestCase):
 
 	def test_snapshots_new_subdomain_and_selected_apps(self):
 		self.plan["commerce_delivery_mode"] = "Create New Site"
-		self.plan["dedicated_server_plan"] = 1
-		self.plan["private_bench_support"] = 1
-		self.plan["hostiran_product_code"] = "VPS-3-IR"
-		self.plan["hostiran_monthly_cost_irr"] = 24_900_000
+		self.plan["dedicated_server_plan"] = 0
+		self.plan["private_bench_support"] = 0
+		self.plan["release_groups"] = [{"release_group": "PUBLIC-V16"}]
+		self.plan["allowed_apps"] = [{"app": "frappe"}, {"app": "erpnext"}, {"app": "hrms"}]
 		snapshot = hosting_order_snapshot(
 			self.plan,
 			self.team,
@@ -255,24 +255,27 @@ class HostingOrderSnapshotTest(unittest.TestCase):
 		self.assertEqual(snapshot["apps"], ["erpnext", "hrms"])
 		self.assertEqual(snapshot["service_delivery_mode"], "Create New Site")
 		self.assertIsNone(snapshot["original_plan"])
-		self.assertEqual(snapshot["hostiran_product_code_snapshot"], "VPS-3-IR")
-		self.assertEqual(snapshot["hostiran_monthly_cost_irr_snapshot"], 24_900_000)
+		self.assertNotIn("hostiran_product_code_snapshot", snapshot)
+		self.assertNotIn("hostiran_fulfillment_status", snapshot)
 
-	def test_new_site_checkout_requires_a_recorded_provider_product_and_cost(self):
+	def test_new_site_checkout_requires_public_bench_plan_and_approved_apps(self):
 		self.plan["commerce_delivery_mode"] = "Create New Site"
-		self.plan["dedicated_server_plan"] = 1
-		self.plan["private_bench_support"] = 1
-		for field, value in (("hostiran_product_code", ""), ("hostiran_monthly_cost_irr", 0)):
-			self.plan["hostiran_product_code"] = "VPS-3-IR"
-			self.plan["hostiran_monthly_cost_irr"] = 24_900_000
-			self.plan[field] = value
+		self.plan["release_groups"] = [{"release_group": "PUBLIC-V16"}]
+		self.plan["allowed_apps"] = [{"app": "frappe"}, {"app": "accounts"}]
+		for field, value in (
+			("private_bench_support", 1),
+			("release_groups", []),
+			("allowed_apps", [{"app": "accounts"}]),
+		):
+			current = dict(self.plan)
+			current[field] = value
 			with self.subTest(field=field), self.assertRaises(ValueError):
 				hosting_order_snapshot(
-					self.plan,
+					current,
 					self.team,
 					"buyer@example.com",
 					subdomain="my-company",
-					apps=["accounts"],
+					apps=["not-approved"],
 				)
 
 	def test_snapshots_renewal_for_a_site_created_by_the_same_plan(self):

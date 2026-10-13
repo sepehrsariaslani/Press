@@ -72,12 +72,22 @@ def new_site_delivery_action(order, site) -> str:
 
 def is_verified_hosting_site_creation(order, site, current_user) -> bool:
 	"""Allow the paid checkout flow to create only its verified Asumi site."""
+	try:
+		amount = int(order.get("amount") or 0) if order else 0
+	except (TypeError, ValueError, OverflowError):
+		amount = 0
 	return bool(
 		order
 		and site
 		and order.get("status") == "Provisioning"
 		and order.get("order_type") == "Hosting"
 		and order.get("service_delivery_mode") == NEW_SITE_PROVISIONING
+		and order.get("provider") == "ZarinPal"
+		and not order.get("sandbox_mode")
+		and order.get("currency") == "IRR"
+		and amount >= 10_000
+		and order.get("paid_at")
+		and order.get("payment_reference")
 		and order.get("customer") == current_user
 		and order.get("team") == site.get("team")
 		and order.get("plan") == site.get("subscription_plan")

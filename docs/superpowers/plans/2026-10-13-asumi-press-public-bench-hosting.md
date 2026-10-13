@@ -8,6 +8,14 @@
 
 **Tech Stack:** Frappe/Press Python, Press DocTypes and Agent Jobs, Vue 3 dashboard, ZarinPal, pytest/unittest-compatible mocked tests, Docker Compose deployment.
 
+## Implementation status — 2026-10-13
+
+Tasks 1–4 are implemented on the existing branch. Verification completed with 69 related backend unit tests, 58 dashboard tests, and a successful dashboard production build. The direct ESLint command is blocked by an assertion inside the installed `eslint-plugin-prettier`/ESLint integration and produced no source diagnostic. The dashboard test for `CommerceOrders.vue` checks its SFC source contract; Vite build parses and compiles the full component.
+
+The resolver checks pre-creation DNS directly against the selected active Press Proxy hostname/IP. Press's `check_dns_cname` and `check_dns_a` helpers require an existing `Site` record, so they cannot validate the requested subdomain before checkout. Historical HostIran schema fields remain hidden and read-only pending a production-data audit; no migration has been run.
+
+Task 5 remains pending. The prior read-only live audit found no eligible public Press Bench/Release Group/Proxy destination for Asumi, and live ZarinPal is still sandboxed or lacks production merchant configuration. Do not enable hosting checkout, create a customer Site, migrate, or reload services until the public Press destination is ready and fresh backups of all affected sites have been created and validated.
+
 ## Global Constraints
 
 - Do not create or buy a VPS for an individual customer site.
@@ -31,8 +39,8 @@
 - `press/saas/commerce/hosting_readiness.py`: retain only readiness fields and resource values needed by public Press hosting; remove Docker-host-specific capacity checklist output.
 - `press/saas/commerce/service_delivery.py`: retain shared Site/order validation; remove Docker-only new-hosted-site renewal helpers.
 - `press/saas/commerce/site_plan_admin.py`: allow only compatible public Release Groups for new-site plans; remove the synthetic HostIran group, SKU, provider cost, and dedicated-VPS validations.
-- `press/press/doctype/site_plan/site_plan.json`: remove HostIran SKU and monthly-cost fields while keeping native Press plan fields.
-- `press/saas/doctype/commerce_order/commerce_order.json`: remove HostIran-only order fields after the production-data audit; keep standard `site`, `agent_job`, and provisioning fields.
+- `press/press/doctype/site_plan/site_plan.json`: hide and make legacy HostIran SKU and monthly-cost fields read-only while keeping native Press plan fields.
+- `press/saas/doctype/commerce_order/commerce_order.json`: hide and make legacy HostIran-only order fields read-only until a production-data audit; keep standard `site`, `agent_job`, and provisioning fields.
 - `press/hooks.py`, `press/api/site.py`, `press/press/doctype/site_group_deploy/site_group_deploy.py`, `press/press/doctype/site_group_deploy/site_group_deploy.json`, `press/press/doctype/deploy_candidate/deploy_candidate.py`: remove hooks and bypasses used only by Asumi HostIran VPS orders; leave standard Press Site Group Deploy behavior intact.
 - `press/saas/commerce/dedicated_hosting.py`, `press/saas/commerce/test_dedicated_hosting.py`, `press/saas/commerce/test_hostiran_admin_api.py`: delete dedicated HostIran fulfillment code/tests; add `press/saas/commerce/test_native_hosting_api.py` for native Press Site lifecycle coverage.
 - `press/saas/commerce/test_hosting_capacity_api.py`, `press/saas/commerce/test_hosting_readiness.py`, `press/saas/commerce/test_site_plan_admin.py`, `press/saas/commerce/test_order_snapshot.py`: replace Docker/VPS assumptions with public Bench and Press plan checks.
@@ -48,11 +56,9 @@
 - `resolve_public_site_target(plan_doc, subdomain: str | None = None) -> dict | None` returns only `{domain, cluster, group, version, apps, bench, server}` for an eligible public destination; it returns `None` when any required Press, DNS, or TLS record is absent.
 - `public_site_target_is_ready(target: dict | None) -> bool` is true only for a complete target with a public enabled Release Group, active Bench, public active Server, active Proxy Server for `asumi.ir`, and `frappe` in the Bench and plan app set.
 
-- [ ] Write failing unit tests for a compatible public target, a private Release Group, a Bench missing a plan app, a non-public or inactive Server, a missing proxy-domain link, absent wildcard certificate, absent wildcard DNS/TLS, no plan Release Groups, and no candidate Bench.
-- [ ] Run `docker exec -w /home/frappe/frappe-bench/apps/press den-v16-backend /home/frappe/frappe-bench/env/bin/python -m unittest press.saas.commerce.test_press_hosting -v`; confirm the new target-resolution tests fail before implementation.
-- [ ] Implement target resolution using only the plan's public Release Groups and the Root Domain's default Cluster. Require an active Bench on an active public Server, an active Proxy Server linked to `asumi.ir`, and the selected plan apps installed on the Bench. For Generic DNS, use the existing `check_dns_cname` and `check_dns_a` helpers for the requested or deterministic readiness subdomain. Require a Press wildcard TLS Certificate and the existing live wildcard DNS/TLS checks.
-- [ ] Re-run `docker exec -w /home/frappe/frappe-bench/apps/press den-v16-backend /home/frappe/frappe-bench/env/bin/python -m unittest press.saas.commerce.test_press_hosting -v`; confirm all new placement tests pass.
-- [ ] Commit the isolated resolver and tests with `git add press/saas/commerce/press_hosting.py press/saas/commerce/test_press_hosting.py && git commit -m "افزودن بررسی بنچ عمومی Press برای میزبانی آسومی"`.
+- [x] Add unit tests for a compatible public target, private Release Group, missing Bench app, non-public or inactive Server, missing proxy-domain link, missing wildcard certificate/DNS/TLS, missing plan groups, and no candidate Bench.
+- [x] Implement target resolution using only the plan's public Release Groups and the Root Domain's default Cluster. Require an active Bench on an active public Server, an active Proxy Server linked to `asumi.ir`, and the selected plan apps installed on the Bench. Validate pre-creation subdomain DNS against the selected Proxy hostname/IP. Require a Press wildcard TLS Certificate and the existing live wildcard DNS/TLS checks.
+- [x] Run the resolver tests as part of the full related backend suite; all passed.
 
 ## Task 2: Native Press checkout and order fulfilment
 
@@ -64,45 +70,36 @@
 - `_provision_hosting_order(order)` revalidates the paid order, plan snapshot, team, reserved subdomain, app allowlist, Root Domain, and selected public target; it creates exactly one Press `Site`, records `order.site` and the matching `Agent Job`, and returns while that Agent Job is pending.
 - `activate_new_site_commerce_orders(site)` continues to activate only an order whose team, plan, domain, subdomain, and linked Site match after Press reports `Active`; `Broken` becomes `Provisioning Failed`.
 
-- [ ] Add mocked tests for checkout availability only when a compatible public target exists, rejecting private/missing/incompatible Bench destinations, and returning only plan-approved apps.
-- [ ] Add mocked order tests for a verified paid order creating one `Site` with the exact `team`, `subscription_plan`, `subdomain`, `domain`, `group`, `cluster`, and allowed `apps`; assert it links the Site and Agent Job and never calls Docker Control or HostIran/Site Group Deploy APIs.
-- [ ] Add tests for repeated worker/callback execution reusing the order's Site, occupied or separately reserved subdomains, mismatched team/plan/site, unsupported apps, an unverified payment, private-bench plans, Agent `Active` activation, Agent `Broken` failure, and retry of a pending Agent Job.
-- [ ] Run the targeted new and updated mocked tests with `docker exec -w /home/frappe/frappe-bench/apps/press den-v16-backend /home/frappe/frappe-bench/env/bin/python -m unittest press.saas.commerce.test_native_hosting_api press.saas.commerce.test_hosting_capacity_api press.saas.commerce.test_hosting_readiness press.saas.commerce.test_order_snapshot -v`; confirm the native order lifecycle tests fail before implementation.
-- [ ] Replace VPS-specific order fulfilment with the verified native `Site` insertion path. Build `Site` with the exact public target, set `site.flags.commerce_hosting_order` before insert, run under the order customer and team context, and use Press's existing `after_insert`/Agent Job path. Persist only the Site name and safe Agent Job name on the order. Make retries reuse `order.site` and wait for Press's existing Site status hook; do not call Docker Control, create a new VPS, or create a `Site Group Deploy`.
-- [ ] Update readiness to report public Press infrastructure and its matching plan/Release Group/Bench/Server/Proxy instead of Docker free-space, Docker Agent, HostIran SKU, or VPS capacity. Keep payment, plan price/period, Root Domain, wildcard DNS/TLS, and outgoing mail checks fail-closed.
-- [ ] Keep existing-site upgrades and new-site renewals on the linked native Press `Site`; do not re-create a site during renewal.
-- [ ] Run the targeted tests again and confirm all mocked placement, lifecycle, idempotency, retry, and fail-closed tests pass.
-- [ ] Commit with `git add press/saas/commerce && git commit -m "اتصال سفارش ساخت سایت به چرخه استاندارد Press"`.
+- [x] Add mocked tests for public target admission, paid native Site creation, Site/Agent linking, reuse, callback matching, unsupported apps, and rejected unverified payments.
+- [x] Replace VPS-specific new-site fulfillment with verified native `Site` insertion through Press's normal Agent Job lifecycle. Persist the Site and Agent Job links; retries reuse the linked Site and wait for Press status updates.
+- [x] Update readiness to report public Press infrastructure and fail closed on payment, plan, Root Domain, wildcard DNS/TLS, and outgoing mail checks.
+- [x] Keep existing-site upgrades and renewals on the linked Site without recreating it.
+- [x] Run the full related backend suite; all 69 tests passed.
 
 ## Task 3: Remove HostIran plan/order controls
 
 **Files:** Modify `press/saas/commerce/site_plan_admin.py`, `press/press/doctype/site_plan/site_plan.json`, `press/saas/doctype/commerce_order/commerce_order.json`, `press/hooks.py`, `press/api/site.py`, Site Group Deploy and Deploy Candidate HostIran hooks; update `press/saas/commerce/test_site_plan_admin.py`; remove HostIran-only module/tests.
 
-- [ ] Update plan-admin tests to accept only enabled public Release Groups for `Create New Site`, reject private/unavailable groups, and validate selected apps against the public groups. Ensure new-site plans force `private_bench_support=0` and `dedicated_server_plan=0` without asking for SKU or provider cost.
-- [ ] Before removing schema fields, inspect production orders through a read-only `bench execute` for Hosting orders in `Paid`, `Provisioning`, `Provisioning Failed`, `Active`, or `Expired` state and their `site`, `docker_site`, and HostIran links. Keep any historical data untouched; if a HostIran-linked paid/active record exists, retain its fields as hidden legacy data and exclude it from new checkout/fulfilment.
-- [ ] Remove HostIran product code and provider monthly cost from Site Plan JSON and admin validation. Remove the HostIran order/server/Site Group Deploy fields only if the live audit confirms no historical record depends on them; otherwise mark them hidden/read-only and stop all new writes.
-- [ ] Remove only hooks, Site Group Deploy fields, and Deploy Candidate bypasses added for HostIran orders. Keep Press's native Site creation checks and generic private-bench workflows unchanged.
-- [ ] Delete `press/saas/commerce/dedicated_hosting.py`, `press/saas/commerce/test_dedicated_hosting.py`, and `press/saas/commerce/test_hostiran_admin_api.py` after `test_native_hosting_api.py` covers paid Site creation, idempotency, Agent status, and retry.
-- [ ] Run `docker exec -w /home/frappe/frappe-bench/apps/press den-v16-backend /home/frappe/frappe-bench/env/bin/python -m unittest press.saas.commerce.test_site_plan_admin press.saas.commerce.test_service_delivery -v`; verify public Release Group constraints pass and HostIran plan options are absent.
-- [ ] Commit with `git add press/api/site.py press/hooks.py press/press/doctype press/saas/commerce && git commit -m "حذف تنظیمات VPS از تعرفه میزبانی آسومی"`.
+- [x] Restrict new-site plans to explicit public Release Groups and installed apps; new-site plans force `private_bench_support=0` and `dedicated_server_plan=0`.
+- [x] Preserve HostIran schema fields as hidden and read-only pending a production-data audit; no schema migration or field deletion was performed.
+- [x] Remove HostIran fulfillment hooks and bypasses while leaving generic Press Site Group Deploy behavior intact; delete the dedicated HostIran implementation and tests.
+- [x] Run plan, delivery, and full related backend tests; all passed.
 
 ## Task 4: Update customer and admin dashboard
 
 **Files:** Modify `dashboard/src/pages/CommerceOrders.vue`; remove `dashboard/src/utils/hostiranHosting.js` and `dashboard/src/utils/hostiranHosting.test.ts`.
 
-- [ ] Update the page tests (or add a focused component test using the existing Vue test setup) to verify that the customer view says a separate Site is placed on a public Press Bench, order status shows Press Site/Agent progress, the admin view shows missing public Press prerequisites, and no HostIran/VPS/SKU/server-registration controls render.
-- [ ] Add `dashboard/src/pages/CommerceOrders.test.ts` with mocked Asumi API responses for an unready public Bench and a paid order with a Press Site/Agent Job; assert the public-Bench copy and statuses render and HostIran controls do not. Run `cd dashboard && yarn vitest run src/pages/CommerceOrders.test.ts`; verify the no-VPS assertions fail against current copy.
-- [ ] Remove HostIran imports, labels, panel sections, server assignment/retry calls, product SKU and provider cost controls. Keep customer plan pricing, allowed app selection, existing-site upgrades, ZarinPal configuration, service pricing, and standard order history intact.
-- [ ] Show the readiness reason returned by `admin_hosting_readiness` (including the missing public Bench/Release Group/Proxy) and show the linked Site name and Agent Job/status for a paid new-site order.
-- [ ] Run `cd dashboard && yarn vitest run src/pages/CommerceOrders.test.ts` and `cd dashboard && yarn build`; verify both pass and search `dashboard/src/pages/CommerceOrders.vue` and the built bundle for removed HostIran fulfilment copy.
-- [ ] Commit with `git add dashboard/src/pages/CommerceOrders.vue dashboard/src/utils && git commit -m "نمایش میزبانی بنچ عمومی در پنل آسومی"`.
+- [x] Add SFC contract tests for public Bench copy, Press Site/Agent Job fields, readiness details, explicit public Release Group selection, and removed HostIran/VPS controls.
+- [x] Remove HostIran imports, labels, panels, server assignment/retry calls, SKU and provider cost controls; retain pricing, app selection, upgrades, ZarinPal, and order history.
+- [x] Display readiness reasons and the linked Site and Agent Job status.
+- [x] Run the dashboard tests (58 passed) and production build; search confirms the old HostIran/VPS copy is absent from this page and its utils.
 
 ## Task 5: Production migration and live verification
 
 **Files:** Update the design/implementation docs with actual deployment results; do not change any live settings that enable sales.
 
-- [ ] Run the full related mocked Python test set and dashboard tests/build from Tasks 1–4. Run `git diff --check`, inspect `git diff 7f4152bf1..HEAD`, and confirm no new-site order path calls HostIran or Docker Control.
-- [ ] On the live bench, take and validate fresh backups for every site that `bench migrate` will touch before schema migration. The backups created on 2026-10-14 cover the current Asumi, Boller, and Dehati databases; refresh those and create fresh backups for Denroom and Veederakht before deployment.
+- [ ] Run the full related mocked Python test set and dashboard tests/build from Tasks 1–4. Run `git diff --check`, inspect the implementation diff, and confirm native new-site creation does not call HostIran or Docker Control; legacy Docker-hosted site renewals may keep their existing handler.
+- [ ] On the live bench, take and validate fresh backups for every site that `bench migrate` will touch before schema migration; no backup is assumed prepared by this plan.
 - [ ] Read-only audit the five-site Bench membership, public Server, active public Release Group, Bench app inventory, Proxy Server/domain link, Root Domain, wildcard DNS/TLS, ZarinPal merchant/sandbox state, and SMTP before deployment. Do not expose credentials in shell output.
 - [ ] Build dashboard assets from the updated source, deploy the app code to the live bench, and run `bench --site asumi.ir migrate` only after backups validate. Do not turn on paid checkout or create a customer Site; current live readiness has no eligible public Press destination and live ZarinPal remains sandboxed/unconfigured.
 - [ ] Perform the already-authorized rolling web/worker reload only after successful migration and asset build. Check `admin_hosting_readiness` returns structured checks, `/dashboard/orders` and its new assets return HTTP 200, order APIs do not expose HostIran fields, and all five public site routes respond as expected.

@@ -1,215 +1,29 @@
 import unittest
-from unittest.mock import MagicMock
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from press.saas.commerce import api
 
 
-class HostingCapacityApiTest(unittest.TestCase):
-	def test_capacity_reservations_include_hosted_orders_and_deduplicate_renewals(self):
-		orders = [
-			SimpleNamespace(site=None, docker_site=None, subdomain="one", plan="SMALL"),
-			SimpleNamespace(
-				site="one.asumi.ir", docker_site=None, subdomain="one", plan="LARGE"
-			),
-			SimpleNamespace(site=None, docker_site=None, subdomain="two", plan="SMALL"),
-		]
-		plans = [
-			SimpleNamespace(name="SMALL", max_storage_usage=1024, memory=512),
-			SimpleNamespace(name="LARGE", max_storage_usage=2048, memory=1024),
-		]
-
-		def get_all(doctype, **kwargs):
-			if doctype == "Commerce Order":
-				self.assertEqual(
-					kwargs["filters"]["status"],
-					[
-						"in",
-						[
-							"Pending Payment",
-							"Paid",
-							"Provisioning",
-							"Provisioning Failed",
-							"Active",
-							"Expired",
-						],
-					],
-				)
-				self.assertEqual(kwargs["limit_page_length"], 5001)
-				return orders
-			if doctype == "Site Plan":
-				self.assertEqual(kwargs["filters"]["name"], ["in", ["LARGE", "SMALL"]])
-				return plans
-			self.fail(f"Unexpected DocType: {doctype}")
-
-		with patch.object(api.frappe, "get_all", side_effect=get_all):
-			reservations = api._hosting_capacity_reservation_totals()
-
-		self.assertEqual(
-			reservations,
-			{"sites": 2, "reserved_disk_mib": 3072, "reserved_memory_mib": 1536},
-		)
-
-	def test_capacity_reservations_fail_closed_when_order_history_exceeds_limit(self):
-		orders = [
-			SimpleNamespace(site=None, docker_site=None, subdomain=f"site-{index}", plan="SMALL")
-			for index in range(5001)
-		]
-		with patch.object(api.frappe, "get_all", return_value=orders):
-			with self.assertRaisesRegex(ValueError, "بیش از حد مجاز"):
-				api._hosting_capacity_reservation_totals()
-
-	def test_capacity_reservations_fail_closed_when_order_has_no_site_or_plan(self):
-		for order in (
-			SimpleNamespace(site=None, docker_site=None, subdomain=None, plan="SMALL"),
-			SimpleNamespace(site="one.asumi.ir", docker_site=None, subdomain="one", plan=None),
-		):
-			with self.subTest(order=order), patch.object(api.frappe, "get_all", return_value=[order]):
-				with self.assertRaises(ValueError):
-					api._hosting_capacity_reservation_totals()
-
-	def test_new_site_admission_does_not_target_the_shared_docker_host(self):
-		class Plan:
-			name = "HOSTIRAN-PLAN"
-			private_bench_support = 0
-
-			def as_dict(self):
-				return {
-					"name": self.name,
-					"max_storage_usage": 1024,
-					"memory": 512,
-					"dedicated_server_plan": 1,
-					"private_bench_support": self.private_bench_support,
-					"hostiran_product_code": "VPS-3-IR",
-					"hostiran_monthly_cost_irr": 24_900_000,
-					"vcpu": 2,
-					"disk": 60,
-				}
-
-		plan = Plan()
+class PublicPressAdmissionApiTest(unittest.TestCase):
+	def test_new_site_admission_delegates_to_public_press_target_resolver(self):
+		plan = {"name": "ASUMI-PUBLIC", "private_bench_support": 0}
+		target = {
+			"domain": "asumi.ir", "cluster": "IR", "group": "PUBLIC-V16", "version": "version-16",
+			"apps": ["frappe", "accounts"], "bench": "PUBLIC-BENCH", "server": "PUBLIC-SERVER",
+		}
 		with (
-			patch.object(
-				api,
-				"_get_settings",
-				return_value=SimpleNamespace(hosting_min_free_disk_gb=1, hosting_min_free_memory_gb=1),
-			),
-			patch.object(api, "_live_docker_snapshot") as live_docker_snapshot,
-			patch.object(api, "_resolve_ipv4", return_value=["62.60.207.82"]),
-			patch.object(api, "_wildcard_dns_targets_apex", return_value=True),
-			patch.object(api, "_wildcard_tls_ready", return_value=True),
-			patch.object(api, "_site_plan_app_choices", return_value={api.HOSTIRAN_DEDICATED_VPS: ["frappe", "accounts"]}),
-			patch.object(api.frappe, "get_all", return_value=["frappe", "accounts"]),
-			patch.object(api, "_hosting_capacity_reservation_totals") as reservations,
+			patch.object(api, "resolve_public_site_target", return_value=target) as resolve,
+			patch.object(api, "public_site_target_is_ready", return_value=True),
 		):
-			result = api._new_site_plan_config(plan, subdomain="another-site")
+			self.assertEqual(api._new_site_plan_config(plan, "another-site"), target)
+		resolve.assert_called_once_with(plan, "another-site")
 
-		self.assertIsNone(result)
-		live_docker_snapshot.assert_not_called()
-		reservations.assert_not_called()
-
-	def test_hostiran_site_admission_uses_provider_snapshot_and_never_reads_docker(self):
-		class Plan:
-			name = "HOSTIRAN-PLAN"
-
-			def as_dict(self):
-				return {
-					"name": self.name,
-					"dedicated_server_plan": 1,
-					"private_bench_support": 1,
-					"hostiran_product_code": "VPS-3-IR",
-					"hostiran_monthly_cost_irr": 24_900_000,
-					"vcpu": 2,
-					"memory": 4096,
-					"disk": 60,
-				}
-
+	def test_private_or_missing_public_target_is_never_admitted(self):
 		with (
-			patch.object(api, "_live_docker_snapshot") as docker_snapshot,
-			patch.object(api, "_resolve_ipv4", return_value=["62.60.207.82"]),
-			patch.object(api, "_wildcard_dns_targets_apex", return_value=True),
-			patch.object(api, "_wildcard_tls_ready", return_value=True),
-			patch.object(api, "_site_plan_app_choices", return_value={api.HOSTIRAN_DEDICATED_VPS: ["frappe", "accounts"]}),
-			patch.object(api.frappe, "get_all", return_value=["frappe", "accounts"]),
+			patch.object(api, "resolve_public_site_target", return_value=None),
+			patch.object(api, "public_site_target_is_ready", return_value=False),
 		):
-			config = api._new_site_plan_config(Plan())
-
-		self.assertEqual(config["backend"], "HostIran Dedicated VPS")
-		self.assertEqual(config["provider_product_code"], "VPS-3-IR")
-		self.assertEqual(config["provider_monthly_cost_irr"], 24_900_000)
-		self.assertEqual(config["apps"], ["accounts", "frappe"])
-		docker_snapshot.assert_not_called()
-
-	def test_new_hosted_site_orders_use_a_shared_capacity_lock(self):
-		with patch.object(api, "_acquire_transaction_lock", return_value=True) as acquire_lock:
-			api._acquire_hosting_capacity_lock()
-		acquire_lock.assert_called_once_with("asumi-hosting-capacity")
-
-		with (
-			patch.object(api, "_acquire_transaction_lock", return_value=False),
-			patch.object(api.frappe, "throw", side_effect=RuntimeError("capacity lock unavailable")),
-		):
-			with self.assertRaisesRegex(RuntimeError, "capacity lock unavailable"):
-				api._acquire_hosting_capacity_lock()
-
-	def test_admin_readiness_uses_dedicated_hostiran_gates_not_docker_capacity(self):
-		class Plan:
-			name = "SITE-PLAN"
-			price_irr = 10000
-			interval = "Monthly"
-			max_storage_usage = 1024
-			memory = 512
-			vcpu = 2
-			disk = 60
-			private_bench_support = 1
-			hostiran_product_code = "VPS-3-IR"
-			hostiran_monthly_cost_irr = 24_900_000
-
-			def as_dict(self):
-				return {"max_storage_usage": self.max_storage_usage, "memory": self.memory}
-
-		previous_db = getattr(api.frappe.local, "db", None)
-		api.frappe.local.db = MagicMock()
-		try:
-			with (
-			patch.object(api, "_require_commerce_admin"),
-			patch.object(
-				api,
-				"_get_settings",
-				return_value=SimpleNamespace(
-					enabled=0,
-					allow_site_plan_sales=0,
-					sandbox_mode=1,
-					hosting_min_free_disk_gb=1,
-					hosting_min_free_memory_gb=1,
-				),
-			),
-			patch.object(api.frappe.db, "exists", return_value=False),
-			patch.object(api.frappe, "get_all", return_value=[Plan()]),
-			patch.object(api, "_resolve_ipv4", return_value=[]),
-			patch.object(api, "_wildcard_dns_targets_apex", return_value=False),
-			patch.object(api, "_live_docker_snapshot") as docker_snapshot,
-			patch.object(api, "_hosting_access_email_ready", return_value=False),
-			patch.object(api, "_wildcard_tls_ready", return_value=False),
-			):
-				readiness = api.admin_hosting_readiness()
-		finally:
-			if previous_db is None:
-				del api.frappe.local.db
-			else:
-				api.frappe.local.db = previous_db
-
-		capacity_check = next(check for check in readiness["checks"] if check["key"] == "capacity")
-		self.assertTrue(capacity_check["ready"])
-		self.assertIn("ظرفیت هر مشتری جداگانه", capacity_check["detail"])
-		docker_snapshot.assert_not_called()
-
-
-def run_mocked_tests():
-	suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__, fromlist=["*"]))
-	result = unittest.TextTestRunner(verbosity=2).run(suite)
-	if not result.wasSuccessful():
-		raise RuntimeError("Hosting capacity API tests failed")
+			self.assertIsNone(api._new_site_plan_config({"name": "PRIVATE"}))
 
 
 if __name__ == "__main__":

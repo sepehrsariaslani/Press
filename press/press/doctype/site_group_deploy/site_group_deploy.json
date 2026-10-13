@@ -12,7 +12,6 @@
   "site",
   "subdomain",
   "site_plan",
-  "commerce_order",
   "auto_provision_bench",
   "column_break_ydwn",
   "server",
@@ -120,10 +119,12 @@
    "read_only": 1
   },
   {
-   "description": "Asumi hosting order that authorized this dedicated VPS deployment.",
+   "hidden": 1,
+   "read_only": 1,
+   "description": "Legacy link retained for historical records; new hosting uses the standard Site and Agent flow.",
    "fieldname": "commerce_order",
    "fieldtype": "Link",
-   "label": "Asumi Commerce Order",
+   "label": "Legacy Commerce Order",
    "options": "Commerce Order",
    "read_only": 1
   },

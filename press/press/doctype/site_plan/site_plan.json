@@ -45,8 +45,6 @@
   "servers",
   "cluster",
   "instance_type",
-  "hostiran_product_code",
-  "hostiran_monthly_cost_irr",
   "column_break_21",
   "vcpu",
   "memory",
@@ -212,18 +210,20 @@
    "label": "Instance Type"
   },
   {
-   "depends_on": "eval:doc.commerce_delivery_mode == 'Create New Site'",
-   "description": "HostIran SKU bought for each new customer site; verify current availability and price before purchase.",
+   "hidden": 1,
+   "read_only": 1,
+   "description": "Archived provider metadata retained for historical orders.",
    "fieldname": "hostiran_product_code",
    "fieldtype": "Data",
-   "label": "HostIran Product Code"
+   "label": "Legacy Provider Product Code"
   },
   {
-   "depends_on": "eval:doc.commerce_delivery_mode == 'Create New Site'",
-   "description": "Monthly provider cost recorded by an Asumi administrator. This value is not shown to customers.",
+   "hidden": 1,
+   "read_only": 1,
+   "description": "Archived provider metadata retained for historical orders.",
    "fieldname": "hostiran_monthly_cost_irr",
    "fieldtype": "Currency",
-   "label": "HostIran Monthly Cost (IRR)",
+   "label": "Legacy Provider Monthly Cost (IRR)",
    "options": "IRR"
   },
   {

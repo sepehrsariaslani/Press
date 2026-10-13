@@ -30,11 +30,13 @@ from press.saas.commerce.periods import period_end
 from press.saas.commerce.provisioning_recovery import subscription_recovery_state
 from press.saas.commerce.hosting_readiness import (
 	build_hosting_readiness,
-	hosting_capacity_reservations,
-	hosting_plan_fits_capacity,
-	normalize_capacity_reserve,
 	resolve_ipv4,
 	wildcard_dns_guidance,
+)
+from press.saas.commerce.press_hosting import (
+	build_public_site_target,
+	public_site_target_is_ready,
+	resolve_public_site_target,
 )
 from press.saas.commerce.checkout_access import checkout_available_for_actor, sale_enabled_for_settings
 from press.saas.commerce.pricing import (
@@ -51,9 +53,7 @@ from press.saas.commerce.service_delivery import (
 	new_hosted_site_renewal_action,
 	normalize_site_plan_delivery_mode,
 )
-from press.saas.commerce.dedicated_hosting import validate_hostiran_fulfillment
 from press.saas.commerce.site_plan_admin import (
-	HOSTIRAN_DEDICATED_VPS,
 	build_site_plan_draft,
 	normalize_site_plan_admin_update,
 )
@@ -79,15 +79,6 @@ from press.saas.commerce.zarinpal import (
 from press.utils import get_current_team, has_role, is_user_part_of_team
 
 ASUMI_ROOT_DOMAIN = "asumi.ir"
-HOSTING_CAPACITY_ORDER_STATUSES = (
-	"Pending Payment",
-	"Paid",
-	"Provisioning",
-	"Provisioning Failed",
-	"Active",
-	"Expired",
-)
-HOSTING_CAPACITY_ORDER_LIMIT = 5000
 MARKETPLACE_INSTALL_TIMEOUT_SECONDS = 10800
 MARKETPLACE_INSTALL_POLL_SECONDS = 3
 MARKETPLACE_PROVISION_TIMEOUT_SECONDS = MARKETPLACE_INSTALL_TIMEOUT_SECONDS * 2 + 300
@@ -171,12 +162,6 @@ def _acquire_transaction_lock(lock_name: str, timeout: int = 10) -> bool:
 	db.after_commit.add(release_lock)
 	db.after_rollback.add(release_lock)
 	return True
-
-
-def _acquire_hosting_capacity_lock() -> None:
-	"""Serialize new hosted-site orders while capacity and pending reservations are checked."""
-	if not _acquire_transaction_lock("asumi-hosting-capacity"):
-		frappe.throw(_("یک سفارش میزبانی دیگر در حال ثبت است؛ کمی بعد دوباره تلاش کنید."))
 
 
 def _require_commerce_admin():
@@ -266,132 +251,6 @@ def _wildcard_tls_ready(host_addresses: list[str]) -> bool:
 	return False
 
 
-def _press_shared_bench_ready(domain_doc) -> bool:
-	if not domain_doc or not domain_doc.default_cluster:
-		return False
-	benches = frappe.get_all(
-		"Bench",
-		filters={"cluster": domain_doc.default_cluster, "status": "Active"},
-		fields=["name", "server", "group"],
-		limit_page_length=100,
-		ignore_permissions=True,
-	)
-	for bench in benches:
-		if not bench.server or not bench.group:
-			continue
-		server = frappe.db.get_value(
-			"Server", bench.server, ["status", "public", "proxy_server"], as_dict=True
-		)
-		group = frappe.db.get_value(
-			"Release Group", bench.group, ["enabled", "public", "version"], as_dict=True
-		)
-		if not (
-			server
-			and server.status == "Active"
-			and server.public
-			and server.proxy_server
-			and group
-			and group.enabled
-			and group.public
-			and group.version
-		):
-			continue
-		proxy_status = frappe.db.get_value("Proxy Server", server.proxy_server, "status")
-		if proxy_status == "Active" and frappe.db.exists(
-			"Proxy Server Domain", {"parent": server.proxy_server, "domain": ASUMI_ROOT_DOMAIN}
-		):
-			bench_apps = {row.app for row in frappe.get_doc("Bench", bench.name).apps}
-			if "frappe" in bench_apps:
-				return True
-	return False
-
-
-def _live_docker_snapshot() -> dict:
-	try:
-		from press.api.docker_control import _client, _host_doc
-
-		host = _host_doc()
-		if host.connection_status != "Connected":
-			return {"connected": False, "resources": {}}
-		client = _client(host)
-		health = client.health(timeout=(2, 3))
-		resource_snapshot = client.resources()
-		available_apps = client.available_apps()
-		resources = resource_snapshot.get("resources")
-		return {
-			"connected": health.get("protocol_version") == 1
-			and resource_snapshot.get("protocol_version") == 1
-			and isinstance(available_apps, list),
-			"resources": resources if isinstance(resources, dict) else {},
-			"apps": available_apps,
-			"host": host.name,
-		}
-	except Exception:
-		return {"connected": False, "resources": {}, "apps": []}
-
-
-def _hosting_capacity_reservation_totals(
-	exclude_order: str | None = None, exclude_site: str | None = None
-) -> dict:
-	"""Return fail-closed resource reservations for every pending or provisioned hosted site."""
-	filters = {
-		"order_type": "Hosting",
-		"service_delivery_mode": "Create New Site",
-		"status": ["in", list(HOSTING_CAPACITY_ORDER_STATUSES)],
-	}
-	if exclude_order:
-		filters["name"] = ["!=", exclude_order]
-	orders = frappe.get_all(
-		"Commerce Order",
-		filters=filters,
-		fields=["site", "docker_site", "subdomain", "plan"],
-		limit_page_length=HOSTING_CAPACITY_ORDER_LIMIT + 1,
-		ignore_permissions=True,
-	)
-	if len(orders) > HOSTING_CAPACITY_ORDER_LIMIT:
-		raise ValueError("تعداد سفارش‌های میزبانی برای بررسی ظرفیت بیش از حد مجاز است.")
-	if not orders:
-		return {"sites": 0, "reserved_disk_mib": 0, "reserved_memory_mib": 0}
-
-	reservation_rows = []
-	plan_names = set()
-	for order in orders:
-		get_value = order.get if isinstance(order, dict) else lambda field: getattr(order, field, None)
-		plan_name = get_value("plan")
-		reservation_key = get_value("docker_site") or get_value("site")
-		if not reservation_key:
-			subdomain = get_value("subdomain")
-			if isinstance(subdomain, str) and subdomain.strip():
-				reservation_key = f"{subdomain.strip()}.{ASUMI_ROOT_DOMAIN}"
-		if not plan_name or not reservation_key:
-			raise ValueError("اطلاعات سایت یا پلن یکی از سفارش‌های میزبانی کامل نیست.")
-		reservation_rows.append({"reservation_key": reservation_key, "plan": plan_name})
-		plan_names.add(plan_name)
-	if exclude_site:
-		reservation_rows = [row for row in reservation_rows if row["reservation_key"] != exclude_site]
-		plan_names = {row["plan"] for row in reservation_rows}
-		if not reservation_rows:
-			return {"sites": 0, "reserved_disk_mib": 0, "reserved_memory_mib": 0}
-
-	plan_rows = frappe.get_all(
-		"Site Plan",
-		filters={"name": ["in", sorted(plan_names)]},
-		fields=["name", "max_storage_usage", "memory"],
-		limit_page_length=len(plan_names),
-		ignore_permissions=True,
-	)
-	plans_by_name = {}
-	for plan in plan_rows:
-		if isinstance(plan, dict):
-			plan_values = dict(plan)
-		elif hasattr(plan, "as_dict"):
-			plan_values = plan.as_dict()
-		else:
-			plan_values = vars(plan)
-		plans_by_name[plan.name] = plan_values
-	return hosting_capacity_reservations(reservation_rows, plans_by_name)
-
-
 @frappe.whitelist()
 def admin_hosting_readiness() -> dict:
 	"""Return the current hosting prerequisites to Press system administrators."""
@@ -418,16 +277,14 @@ def admin_hosting_readiness() -> dict:
 			"is_trial_plan": 0,
 			"legacy_plan": 0,
 			"commerce_delivery_mode": "Create New Site",
-			"private_bench_support": 1,
+			"private_bench_support": 0,
 		},
-		fields=[
-			"name", "plan_title", "price_irr", "interval", "max_storage_usage", "memory",
-			"disk", "vcpu", "hostiran_product_code", "hostiran_monthly_cost_irr", "private_bench_support",
-		],
+		fields=["name", "price_irr", "interval", "max_database_usage", "max_storage_usage", "memory"],
 		limit_page_length=100,
 		ignore_permissions=True,
 	)
 	valid_plans = []
+	public_target = None
 	for plan in plans:
 		try:
 			price = normalize_zarinpal_price(plan.price_irr)
@@ -436,24 +293,16 @@ def admin_hosting_readiness() -> dict:
 		if (
 			price >= ZARINPAL_MINIMUM_AMOUNT_IRR
 			and plan.interval in {"Monthly", "Annually"}
+			and int(plan.max_database_usage or 0) > 0
 			and int(plan.max_storage_usage or 0) > 0
 			and int(plan.memory or 0) > 0
-			and int(plan.disk or 0) > 0
-			and int(plan.vcpu or 0) > 0
-			and bool(plan.hostiran_product_code)
-			and int(plan.hostiran_monthly_cost_irr or 0) > 0
-			and bool(plan.private_bench_support)
 		):
 			valid_plans.append(plan)
+			candidate = _new_site_plan_config(frappe.get_doc("Site Plan", plan.name))
+			if candidate and public_target is None:
+				public_target = candidate
 
 	resources = {}
-	capacity_ready = bool(valid_plans)
-	capacity_detail = (
-		"پلن‌های VPS دارای SKU و منابع ثبت شده‌اند؛ ظرفیت هر مشتری جداگانه پس از خرید VPS بررسی می‌شود."
-		if capacity_ready
-		else "برای هر پلن ساخت سایت، SKU و برآورد هزینهٔ ماهانهٔ VPS هاست‌ایران را ثبت کنید."
-	)
-	dedicated_provisioning_ready = bool(frappe.db.exists("DocType", "Site Group Deploy"))
 
 	facts = {
 		"live_payment": {
@@ -493,14 +342,13 @@ def admin_hosting_readiness() -> dict:
 			),
 		},
 		"press_infrastructure": {
-			"ready": dedicated_provisioning_ready,
+			"ready": bool(public_target),
 			"detail": (
-				"مسیر بنچ خصوصی Press برای VPS اختصاصی در دسترس است."
-				if dedicated_provisioning_ready
-				else "ساختار Site Group Deploy برای راه‌اندازی بنچ خصوصی موجود نیست."
+				f"بنچ عمومی {public_target['bench']} روی سرور فعال {public_target['server']} آماده است."
+				if public_target
+				else "بنچ فعال روی Release Group عمومی، سرور عمومی و پراکسی متصل به asumi.ir پیدا نشد؛ زیرساخت عمومی Press را آماده کنید."
 			),
 		},
-		"capacity": {"ready": capacity_ready, "detail": capacity_detail},
 		"access_email": {
 			"ready": _hosting_access_email_ready(),
 			"detail": (
@@ -699,61 +547,10 @@ def _enqueue_provision_paid_order(order_name: str) -> None:
 def _new_site_plan_config(
 	plan_doc,
 	subdomain: str | None = None,
-	docker_snapshot: dict | None = None,
-	exclude_order: str | None = None,
-	exclude_site: str | None = None,
 ) -> dict | None:
-	"""Resolve a dedicated HostIran plan without consulting the shared Docker host."""
-	plan_values = plan_doc.as_dict() if hasattr(plan_doc, "as_dict") else dict(plan_doc)
-	if not plan_values.get("dedicated_server_plan") or not plan_values.get("private_bench_support"):
-		return None
-	product_code = str(plan_values.get("hostiran_product_code") or "").strip()
-	try:
-		monthly_cost_irr = int(plan_values.get("hostiran_monthly_cost_irr") or 0)
-		vcpu = int(plan_values.get("vcpu") or 0)
-		memory = int(plan_values.get("memory") or 0)
-		disk = int(plan_values.get("disk") or 0)
-	except (TypeError, ValueError, OverflowError):
-		return None
-	if (
-		not product_code
-		or len(product_code) > 40
-		or monthly_cost_irr <= 0
-		or vcpu <= 0
-		or memory <= 0
-		or disk <= 0
-	):
-		return None
-	root_addresses = _resolve_ipv4(ASUMI_ROOT_DOMAIN)
-	if (
-		not root_addresses
-		or not _wildcard_dns_targets_apex(root_addresses)
-		or not _wildcard_tls_ready(root_addresses)
-	):
-		return None
-	available_apps = _site_plan_app_choices().get(HOSTIRAN_DEDICATED_VPS, [])
-	if not available_apps:
-		return None
-	allowed_apps = frappe.get_all(
-		"Site Plan Allowed App",
-		filters={
-			"parent": getattr(plan_doc, "name", plan_values.get("name")),
-			"parenttype": "Site Plan",
-			"parentfield": "allowed_apps",
-		},
-		pluck="app",
-		ignore_permissions=True,
-	)
-	apps = sorted(set(allowed_apps).intersection(available_apps)) if allowed_apps else available_apps
-	if "frappe" not in apps or set(allowed_apps).difference(available_apps):
-		return None
-	return {
-		"domain": ASUMI_ROOT_DOMAIN,
-		"apps": apps,
-		"backend": "HostIran Dedicated VPS",
-		"provider_product_code": product_code,
-		"provider_monthly_cost_irr": monthly_cost_irr,
-	}
+	"""Resolve a native public Press Bench without consulting Docker or HostIran."""
+	target = resolve_public_site_target(plan_doc, subdomain)
+	return target if public_site_target_is_ready(target) else None
 
 
 def _new_site_plan_renewal_sites(plan_name: str, team: str) -> list[dict]:
@@ -899,7 +696,7 @@ def available_site_plan_offers() -> dict:
 				"message": "" if ready else (
 					"حالت آزمایشی فقط برای مدیران آسومی فعال است؛ برای خرید مشتریان، پرداخت زنده را فعال کنید."
 					if _sandbox_checkout_restricted(settings, "hosting")
-					else "تنظیمات پرداخت، پلن VPS هاست‌ایران، دامنه یا ایمیل تحویل هنوز آمادهٔ خرید نیست."
+					else "تنظیمات پرداخت، بنچ عمومی Press، دامنه یا ایمیل تحویل هنوز آمادهٔ خرید نیست."
 				),
 			}
 		)
@@ -1304,7 +1101,7 @@ def start_site_plan_purchase(
 				frappe.throw(_("برای تحویل امن دسترسی سایت، ایمیل معتبر و SMTP خروجی لازم است."))
 			config = _new_site_plan_config(plan_doc, snapshot["subdomain"])
 			if not config:
-				frappe.throw(_("مشخصات VPS هاست‌ایران، دامنه یا گواهی برای سفارش این سایت آماده نیست."))
+				frappe.throw(_("بنچ عمومی Press، دامنه یا گواهی برای سفارش این سایت آماده نیست."))
 			if any(app not in config["apps"] for app in snapshot["apps"]):
 				frappe.throw(_("یکی از برنامه‌های انتخاب‌شده برای ساخت بنچ اختصاصی این پلن آماده نیست."))
 			full_site_name = f"{snapshot['subdomain']}.{ASUMI_ROOT_DOMAIN}"
@@ -1561,256 +1358,12 @@ def _redirect_to_orders(result: str, order: str | None = None):
 	return
 
 
-def _hostiran_server_usage(server_names: list[str], *, exclude_order: str | None = None) -> tuple[set[str], set[str]]:
-	if not server_names:
-		return set(), set()
-	order_filters = {"hostiran_server": ["in", server_names]}
-	if exclude_order:
-		order_filters["name"] = ["!=", exclude_order]
-	assigned_servers = set(
-		frappe.get_all(
-			"Commerce Order",
-			filters=order_filters,
-			pluck="hostiran_server",
-			limit_page_length=5000,
-			ignore_permissions=True,
-		)
-	)
-	benched_servers = set(
-		frappe.get_all(
-			"Bench",
-			filters={"server": ["in", server_names]},
-			pluck="server",
-			limit_page_length=5000,
-			ignore_permissions=True,
-		)
-	)
-	return assigned_servers, benched_servers
-
-
-def _is_ready_hostiran_server(server, team: str) -> bool:
-	get_value = server.get if isinstance(server, dict) else lambda field: getattr(server, field, None)
-	return bool(
-		get_value("team") == team
-		and get_value("status") == "Active"
-		and not get_value("public")
-		and get_value("is_server_setup")
-		and get_value("is_standalone")
-		and get_value("is_standalone_setup")
-		and get_value("is_self_hosted")
-		and get_value("cluster")
-	)
-
-
-@frappe.whitelist()
-def admin_hostiran_server_options(order: str) -> dict:
-	"""List ready, exclusive VPSs purchased for one customer's paid HostIran order."""
-	_require_commerce_admin()
-	order_doc = frappe.get_doc("Commerce Order", order)
-	if (
-		order_doc.order_type != "Hosting"
-		or order_doc.service_delivery_mode != "Create New Site"
-		or order_doc.status not in {"Paid", "Provisioning Failed", "Provisioning"}
-		or order_doc.hostiran_site_group_deploy
-	):
-		return {"servers": [], "message": "این سفارش در مرحلهٔ انتخاب VPS نیست."}
-	servers = frappe.get_all(
-		"Server",
-		filters={
-			"team": order_doc.team,
-			"status": "Active",
-			"public": 0,
-			"is_server_setup": 1,
-			"is_standalone": 1,
-			"is_standalone_setup": 1,
-			"is_self_hosted": 1,
-		},
-		fields=["name", "title", "ip", "cluster", "ram", "provider", "team", "status", "public", "is_server_setup", "is_standalone", "is_standalone_setup", "is_self_hosted"],
-		order_by="title asc, name asc",
-		limit_page_length=5000,
-		ignore_permissions=True,
-	)
-	if order_doc.hostiran_server:
-		servers = [server for server in servers if server.name == order_doc.hostiran_server]
-	assigned_servers, benched_servers = _hostiran_server_usage(
-		[server.name for server in servers], exclude_order=order_doc.name
-	)
-	ready_servers = [
-		server
-		for server in servers
-		if _is_ready_hostiran_server(server, order_doc.team)
-		and server.name not in assigned_servers
-		and server.name not in benched_servers
-	]
-	return {
-		"servers": [
-			{
-				"name": server.name,
-				"title": server.title or server.name,
-				"ip": server.ip,
-				"cluster": server.cluster,
-				"ram": server.ram,
-				"provider": server.provider,
-			}
-			for server in ready_servers
-		],
-		"message": "" if ready_servers else "یک VPS اختصاصی هاست‌ایرانِ فعال و آماده برای همین تیم در Press ثبت کنید.",
-	}
-
-
-@frappe.whitelist(methods=["POST"])
-def admin_prepare_hostiran_site(order: str, server: str, hostiran_order_reference: str) -> dict:
-	"""Attach a paid new-site order to its dedicated VPS and start a private-bench deployment."""
-	_require_commerce_admin()
-	order_doc = frappe.get_doc("Commerce Order", order, for_update=True)
-	if order_doc.hostiran_site_group_deploy:
-		if (
-			order_doc.hostiran_server != server
-			or order_doc.hostiran_order_reference != (hostiran_order_reference or "").strip()
-		):
-			frappe.throw(_("این سفارش قبلاً به VPS یا شمارهٔ خرید دیگری متصل شده است."))
-		return {
-			"name": order_doc.name,
-			"status": order_doc.status,
-			"hostiran_fulfillment_status": order_doc.hostiran_fulfillment_status,
-			"hostiran_server": order_doc.hostiran_server,
-			"hostiran_site_group_deploy": order_doc.hostiran_site_group_deploy,
-		}
-	if order_doc.site or order_doc.docker_site:
-		frappe.throw(_("این سفارش قبلاً سایت دارد و نمی‌توان VPS تازه‌ای به آن متصل کرد."))
-	server_lock = hashlib.sha256(f"asumi-hostiran-server:{server}".encode()).hexdigest()[:40]
-	if not _acquire_transaction_lock(server_lock):
-		frappe.throw(_("این VPS هم‌زمان برای سفارش دیگری در حال استفاده است؛ کمی بعد دوباره تلاش کنید."))
-
-	plan = frappe.get_doc("Site Plan", order_doc.plan)
-	server_doc = frappe.get_doc("Server", server)
-	try:
-		validation = validate_hostiran_fulfillment(
-			order_doc, plan, server_doc, hostiran_order_reference
-		)
-	except ValueError as error:
-		frappe.throw(_(str(error)))
-	assigned_servers, benched_servers = _hostiran_server_usage(
-		[server_doc.name], exclude_order=order_doc.name
-	)
-	if server_doc.name in assigned_servers or server_doc.name in benched_servers:
-		frappe.throw(_("این VPS قبلاً به سفارش یا بنچ دیگری اختصاص داده شده است."))
-	if frappe.db.get_single_value("Press Settings", "domain") != ASUMI_ROOT_DOMAIN:
-		frappe.throw(_("دامنهٔ Press باید پیش از راه‌اندازی VPS روی asumi.ir تنظیم شود."))
-	config = _new_site_plan_config(plan, order_doc.subdomain, exclude_order=order_doc.name)
-	if not config:
-		frappe.throw(_("DNS، گواهی یا تنظیمات پلن VPS برای تحویل سایت آماده نیست."))
-	try:
-		selected_apps = json.loads(order_doc.apps or "[]") if isinstance(order_doc.apps, str) else (order_doc.apps or [])
-	except (TypeError, json.JSONDecodeError):
-		frappe.throw(_("فهرست برنامه‌های سفارش معتبر نیست."))
-	if not isinstance(selected_apps, list) or any(
-		not isinstance(app, str) or app not in config["apps"] for app in selected_apps
-	):
-		frappe.throw(_("یکی از برنامه‌های انتخاب‌شده در نسخهٔ VPS آماده نیست."))
-	selected_apps = list(dict.fromkeys(["frappe", *selected_apps]))
-	target = f"{order_doc.subdomain}.{ASUMI_ROOT_DOMAIN}"
-	if frappe.db.exists("Site", target) or frappe.db.exists("Docker Control Site", target):
-		frappe.throw(_("این زیردامنه قبلاً برای سایت دیگری استفاده شده است."))
-	if frappe.db.exists("Release Group", {"title": order_doc.subdomain}):
-		frappe.throw(_("برای این زیردامنه قبلاً یک بنچ ثبت شده است."))
-	if frappe.db.exists(
-		"Commerce Order",
-		{
-			"subdomain": order_doc.subdomain,
-			"order_type": "Hosting",
-			"service_delivery_mode": "Create New Site",
-			"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed", "Active"]],
-			"name": ["!=", order_doc.name],
-		},
-	):
-		frappe.throw(_("این زیردامنه به سفارش دیگری تعلق دارد."))
-	team_doc = frappe.get_doc("Team", order_doc.team)
-	if not team_doc.enabled:
-		frappe.throw(_("حساب مشتری غیرفعال است و امکان ساخت سایت ندارد."))
-	versions = frappe.get_all(
-		"Frappe Version",
-		filters={"status": "stable"},
-		fields=["name"],
-		order_by="number desc",
-		limit_page_length=1,
-		ignore_permissions=True,
-	)
-	if not versions:
-		frappe.throw(_("نسخهٔ پایدار Frappe برای ساخت بنچ آماده نیست."))
-
-	new_status = (
-		transition_order(order_doc.status, "Provisioning")
-		if order_doc.status != "Provisioning"
-		else order_doc.status
-	)
-	order_doc.db_set(
-		{
-			"status": new_status,
-			"hostiran_fulfillment_status": "Deploying Bench",
-			"hostiran_server": validation["server"],
-			"hostiran_order_reference": validation["provider_reference"],
-			"provisioning_attempts": int(order_doc.provisioning_attempts or 0) + 1,
-			"provisioning_error": "",
-		}
-	)
-	previous_user = frappe.session.user
-	previous_team = getattr(frappe.local, "team_name", None)
-	frappe.set_user(team_doc.user)
-	frappe.local.team_name = team_doc.name
-	try:
-		from press.api.site import create_site_on_private_bench
-
-		deployment = create_site_on_private_bench(
-			subdomain=order_doc.subdomain,
-			plan=plan.name,
-			cluster=validation["cluster"],
-			apps=selected_apps,
-			version=versions[0].name,
-			provider="",
-			server=validation["server"],
-			commerce_order=order_doc.name,
-		)
-	finally:
-		frappe.set_user(previous_user)
-		if previous_team is None:
-			try:
-				delattr(frappe.local, "team_name")
-			except AttributeError:
-				pass
-		else:
-			frappe.local.team_name = previous_team
-	order_doc.db_set("hostiran_site_group_deploy", deployment["site_group_deploy"])
-	return {
-		"name": order_doc.name,
-		"status": order_doc.status,
-		"hostiran_fulfillment_status": order_doc.hostiran_fulfillment_status,
-		"hostiran_server": order_doc.hostiran_server,
-		"hostiran_site_group_deploy": order_doc.hostiran_site_group_deploy,
-	}
-
-
 def provision_paid_order(order_name: str):
 	"""Idempotently deliver a verified marketplace or hosting order."""
 	order = frappe.get_doc("Commerce Order", order_name, for_update=True)
 	if order.order_type == "Asumi Service":
 		return order.status
 	if order.status not in {"Paid", "Provisioning Failed"}:
-		return order.status
-	if (
-		order.order_type == "Hosting"
-		and order.service_delivery_mode == "Create New Site"
-		and not order.site
-		and not order.docker_site
-	):
-		if order.hostiran_site_group_deploy:
-			return order.status
-		order.db_set(
-			{
-				"hostiran_fulfillment_status": "VPS Ready" if order.hostiran_server else "Awaiting VPS",
-				"provisioning_error": "",
-			}
-		)
 		return order.status
 	new_status = transition_order(order.status, "Provisioning")
 	order.db_set(
@@ -1962,6 +1515,7 @@ def _provision_hosting_order(order):
 	current_interval = {"Daily": "Daily", "Monthly": "Monthly", "Annually": "Yearly"}.get(plan.interval)
 	if (
 		plan.document_type != "Site"
+		or not plan.enabled
 		or int(plan.price_irr or 0) != int(order.amount)
 		or current_interval != order.interval
 		or normalize_site_plan_delivery_mode(plan.commerce_delivery_mode) != order.service_delivery_mode
@@ -1970,7 +1524,6 @@ def _provision_hosting_order(order):
 
 	if order.service_delivery_mode == "Create New Site":
 		if order.site:
-			# Preserve delivery of older orders already handed to Press's native Agent.
 			site = frappe.get_doc("Site", order.site)
 			site.reload()
 			action = new_site_delivery_action(order.as_dict(), site.as_dict())
@@ -2004,7 +1557,96 @@ def _provision_hosting_order(order):
 				set_asumi_hosted_site_maintenance(order, site, enabled=False)
 			return _activate_hosting_order(order)
 
-		frappe.throw(_("برای سایت جدید، ابتدا VPS اختصاصی هاست‌ایران را در پنل سفارش ثبت کنید."))
+		if order.status != "Provisioning" or order.provider != "ZarinPal" or order.sandbox_mode:
+			frappe.throw(_("ساخت سایت فقط برای سفارش پرداخت‌شده با زرین‌پال زنده مجاز است."))
+		if (
+			order.currency != "IRR"
+			or not order.payment_reference
+			or not order.paid_at
+			or not order.customer
+			or not order.team
+			or not SITE_SUBDOMAIN_PATTERN.fullmatch(order.subdomain or "")
+		):
+			frappe.throw(_("اطلاعات پرداخت یا زیردامنهٔ سفارش برای ساخت سایت معتبر نیست."))
+		if not _hosting_access_email_ready(order.customer):
+			frappe.throw(_("برای تحویل امن سایت، حساب کاربری باید ایمیل معتبر داشته باشد."))
+		if not _acquire_transaction_lock(f"asumi-site:{order.subdomain}"):
+			frappe.throw(_("ساخت این زیردامنه هم‌اکنون در حال انجام است؛ کمی بعد تلاش کنید."))
+		config = _new_site_plan_config(plan, order.subdomain)
+		if not config:
+			frappe.throw(_("هیچ بنچ عمومی سازگار برای این پلن آماده نیست؛ سفارش در صف بررسی می‌ماند."))
+		try:
+			selected_apps = json.loads(order.apps or "[]") if isinstance(order.apps, str) else (order.apps or [])
+		except (TypeError, json.JSONDecodeError):
+			frappe.throw(_("فهرست برنامه‌های سفارش معتبر نیست."))
+		if (
+			not isinstance(selected_apps, list)
+			or any(not isinstance(app, str) or app not in config["apps"] for app in selected_apps)
+			or len(set(selected_apps)) != len(selected_apps)
+		):
+			frappe.throw(_("یکی از برنامه‌های انتخاب‌شده در پلن یا بنچ عمومی مجاز نیست."))
+		selected_apps = ["frappe", *[app for app in selected_apps if app != "frappe"]]
+		full_site_name = f"{order.subdomain}.{config['domain']}"
+		candidate_site = {
+			"team": order.team,
+			"subscription_plan": order.plan,
+			"subdomain": order.subdomain,
+			"domain": config["domain"],
+		}
+		from press.saas.commerce.service_delivery import is_verified_hosting_site_creation
+
+		if not is_verified_hosting_site_creation(order.as_dict(), candidate_site, order.customer):
+			frappe.throw(_("سفارش پرداخت‌شده با سایت درخواستی تطابق ندارد."))
+		if frappe.db.exists("Site", full_site_name) or frappe.db.exists("Docker Control Site", full_site_name):
+			frappe.throw(_("این زیردامنه قبلاً استفاده شده است."))
+		if frappe.db.exists(
+			"Commerce Order",
+			{
+				"subdomain": order.subdomain,
+				"order_type": "Hosting",
+				"service_delivery_mode": "Create New Site",
+				"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed", "Active"]],
+				"name": ["!=", order.name],
+			},
+		):
+			frappe.throw(_("این زیردامنه به سفارش دیگری رزرو شده است."))
+		team_doc = frappe.get_doc("Team", order.team)
+		if not team_doc.enabled:
+			frappe.throw(_("حساب مشتری غیرفعال است و امکان ساخت سایت ندارد."))
+
+		previous_user = frappe.session.user
+		previous_team = getattr(frappe.local, "team_name", None)
+		frappe.set_user(order.customer)
+		frappe.local.team_name = order.team
+		try:
+			from press.api.site import _new as create_public_press_site
+
+			created = create_public_press_site(
+				{
+					"name": order.subdomain,
+					"domain": config["domain"],
+					"cluster": config["cluster"],
+					"group": config["group"],
+					"version": config["version"],
+					"plan": plan.name,
+					"apps": selected_apps,
+				},
+				server=config["server"],
+				commerce_hosting_order=order.name,
+			)
+		finally:
+			frappe.set_user(previous_user)
+			if previous_team is None:
+				try:
+					delattr(frappe.local, "team_name")
+				except AttributeError:
+					pass
+			else:
+				frappe.local.team_name = previous_team
+		if not created or not created.get("site") or not created.get("job"):
+			frappe.throw(_("Press سایت یا کار Agent را برنگرداند؛ سفارش برای بررسی باقی ماند."))
+		order.db_set({"site": created["site"], "agent_job": created["job"], "provisioning_error": ""})
+		return order.status
 
 	if not order.site:
 		frappe.throw(_("سایت سفارش میزبانی ثبت نشده است."))
@@ -2053,75 +1695,8 @@ def _activate_hosting_order(order):
 		"service_ends_at": period_end(service_start, order.interval),
 		"provisioning_error": "",
 	}
-	if order.hostiran_server and order.hostiran_site_group_deploy:
-		values["hostiran_fulfillment_status"] = "Active"
 	order.db_set(values)
 	return order.status
-
-
-def update_hostiran_order_from_site_group_deploy(doc, method=None):
-	"""Map private-bench deployment progress to its verified Asumi hosting order."""
-	if doc.doctype != "Site Group Deploy" or not doc.commerce_order:
-		return
-	from press.saas.commerce.dedicated_hosting import is_verified_hostiran_deployment
-
-	order = frappe.get_doc("Commerce Order", doc.commerce_order, for_update=True)
-	if order.hostiran_site_group_deploy and order.hostiran_site_group_deploy != doc.name:
-		return
-	if not is_verified_hostiran_deployment(order, doc):
-		return
-	values = {"hostiran_site_group_deploy": doc.name}
-	if doc.site:
-		site = frappe.db.get_value(
-			"Site",
-			doc.site,
-			["name", "team", "plan", "subdomain", "domain", "status"],
-			as_dict=True,
-		)
-		if not (
-			site
-			and site.name == f"{order.subdomain}.{ASUMI_ROOT_DOMAIN}"
-			and site.team == order.team
-			and site.plan == order.plan
-			and site.subdomain == order.subdomain
-			and site.domain == ASUMI_ROOT_DOMAIN
-		):
-			values.update(
-				{
-					"status": transition_order("Provisioning", "Provisioning Failed"),
-					"hostiran_fulfillment_status": "Failed",
-					"provisioning_error": "سایت ساخته‌شده با سفارش، تیم یا زیردامنه تطابق ندارد.",
-				}
-			)
-		else:
-			values["site"] = doc.site
-	if doc.status in {"Bench Deploy Failed", "Site Creation Failed"}:
-		failure_message = (
-			"راه‌اندازی بنچ خصوصی VPS ناموفق شد."
-			if doc.status == "Bench Deploy Failed"
-			else "ساخت سایت روی VPS ناموفق شد؛ وضعیت سایت را در Press بررسی کنید."
-		)
-		if order.status == "Provisioning":
-			values["status"] = transition_order("Provisioning", "Provisioning Failed")
-		values["hostiran_fulfillment_status"] = "Failed"
-		values["provisioning_error"] = failure_message
-	elif doc.status in {"Pending", "Deploying Bench", "Bench Deployed", "Creating Site", "Site Created"}:
-		values["hostiran_fulfillment_status"] = (
-			"Creating Site"
-			if doc.status in {"Bench Deployed", "Creating Site", "Site Created"} or doc.site
-			else "Deploying Bench"
-		)
-	order.db_set(values)
-	if (
-		doc.status == "Site Created"
-		and order.status == "Provisioning"
-		and doc.site
-		and site
-		and site.status == "Active"
-		and not values.get("status")
-	):
-		order.reload()
-		_activate_hosting_order(order)
 
 
 def activate_new_site_commerce_orders(doc, method=None):
@@ -2132,7 +1707,6 @@ def activate_new_site_commerce_orders(doc, method=None):
 		"Commerce Order",
 		filters={
 			"site": doc.name,
-			"team": doc.team,
 			"order_type": "Hosting",
 			"service_delivery_mode": "Create New Site",
 			"status": "Provisioning",
@@ -2151,8 +1725,24 @@ def activate_new_site_commerce_orders(doc, method=None):
 					"provisioning_error": "ساخت سایت توسط بنچ با خطا متوقف شد.",
 				}
 			)
-		elif action == "activate" and order.plan == doc.plan and order.subdomain == doc.subdomain:
-			_activate_hosting_order(order)
+		elif action == "activate":
+			matches_site = (
+				doc.domain == ASUMI_ROOT_DOMAIN
+				and doc.name == f"{order.subdomain}.{ASUMI_ROOT_DOMAIN}"
+				and order.site == doc.name
+				and order.team == doc.team
+				and order.plan == doc.plan
+				and order.subdomain == doc.subdomain
+			)
+			if matches_site:
+				_activate_hosting_order(order)
+			else:
+				order.db_set(
+					{
+						"status": transition_order("Provisioning", "Provisioning Failed"),
+						"provisioning_error": "سایت ساخته‌شده با تیم، پلن، زیردامنه یا دامنهٔ سفارش تطبیق ندارد.",
+					}
+				)
 
 
 def _sync_docker_site_subscription(site: str, app: str, secret_key: str | None) -> dict:
@@ -2350,7 +1940,7 @@ def my_orders(limit: int = 50) -> list[dict]:
 	rows = frappe.get_all(
 		"Commerce Order",
 		filters={"customer": frappe.session.user, "team": team},
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "hostiran_fulfillment_status", "service_title", "service_amount_toman", "service_quote_snapshot", "service_contact_name", "service_contact_phone", "service_company", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "service_title", "service_amount_toman", "service_quote_snapshot", "service_contact_name", "service_contact_phone", "service_company", "amount", "currency", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "authority", "sandbox_mode", "payment_error", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 50), 1), 100),
 		ignore_permissions=True,
@@ -2370,7 +1960,7 @@ def admin_orders(limit: int = 100) -> list[dict]:
 	_require_commerce_admin()
 	return frappe.get_all(
 		"Commerce Order",
-		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "hostiran_fulfillment_status", "hostiran_product_code_snapshot", "hostiran_monthly_cost_irr_snapshot", "hostiran_server", "hostiran_order_reference", "hostiran_site_group_deploy", "service_title", "service_amount_toman", "service_quote_snapshot", "service_contact_name", "service_contact_phone", "service_company", "team", "customer", "amount", "currency", "provider", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "agent_job", "install_backup", "install_backup_id", "install_operation", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
+		fields=["name", "status", "order_type", "plan", "interval", "marketplace_app", "app", "installation_required", "site", "docker_site", "subdomain", "service_delivery_mode", "service_title", "service_amount_toman", "service_quote_snapshot", "service_contact_name", "service_contact_phone", "service_company", "team", "customer", "amount", "currency", "provider", "payment_reference", "paid_at", "service_starts_at", "service_ends_at", "agent_job", "install_backup", "install_backup_id", "install_operation", "provisioning_attempts", "provisioning_error", "payment_error", "refund_reference", "refund_note", "refunded_at", "refunded_by", "creation"],
 		order_by="creation desc",
 		limit_page_length=min(max(int(limit or 100), 1), 200),
 		ignore_permissions=True,
@@ -2505,12 +2095,6 @@ def retry_provisioning(order: str) -> dict:
 		frappe.throw(_("سفارش خدمات آسومی به‌صورت دستی تحویل می‌شود و در صف نصب یا میزبانی قرار نمی‌گیرد."))
 	if doc.status != "Provisioning Failed":
 		frappe.throw(_("فقط سفارش‌های دارای خطای تحویل قابل تلاش مجدد هستند."))
-	if (
-		doc.order_type == "Hosting"
-		and doc.service_delivery_mode == "Create New Site"
-		and doc.hostiran_site_group_deploy
-	):
-		return _retry_hostiran_bench_deployment(doc)
 	if doc.order_type == "Hosting" and doc.service_delivery_mode == "Create New Site" and doc.site:
 		site_status = frappe.db.get_value("Site", doc.site, "status")
 		if site_status == "Broken":
@@ -2519,51 +2103,6 @@ def retry_provisioning(order: str) -> dict:
 			frappe.throw(_("وضعیت فعلی سایت برای تلاش مجدد تحویل مناسب نیست."))
 	_enqueue_provision_paid_order(doc.name)
 	return {"name": doc.name, "queued": True}
-
-
-def _retry_hostiran_bench_deployment(order) -> dict:
-	deployment = frappe.get_doc("Site Group Deploy", order.hostiran_site_group_deploy, for_update=True)
-	if deployment.status == "Site Creation Failed" or deployment.site:
-		frappe.throw(_("سایت ساخته‌شده را ابتدا از ابزارهای Press تعمیر کنید؛ این تلاش مجدد فقط برای خطای ساخت بنچ است."))
-	if (
-		deployment.status != "Bench Deploy Failed"
-		or deployment.commerce_order != order.name
-		or deployment.team != order.team
-		or deployment.site_plan != order.plan
-		or deployment.subdomain != order.subdomain
-		or deployment.server != order.hostiran_server
-		or not deployment.release_group
-	):
-		frappe.throw(_("وضعیت بنچ یا مشخصات VPS برای تلاش مجدد با سفارش تطابق ندارد."))
-	plan = frappe.get_doc("Site Plan", order.plan)
-	server = frappe.get_doc("Server", order.hostiran_server)
-	try:
-		validate_hostiran_fulfillment(order, plan, server, order.hostiran_order_reference)
-	except ValueError as error:
-		frappe.throw(_(str(error)))
-	server_lock = hashlib.sha256(f"asumi-hostiran-server:{server.name}".encode()).hexdigest()[:40]
-	if not _acquire_transaction_lock(server_lock):
-		frappe.throw(_("این VPS هم‌زمان در حال استفاده است؛ کمی بعد تلاش کنید."))
-	release_group = frappe.get_doc("Release Group", deployment.release_group)
-	if release_group.team != order.team or release_group.server != server.name:
-		frappe.throw(_("گروه بنچ به تیم یا VPS سفارش تعلق ندارد."))
-	order.db_set(
-		{
-			"status": transition_order("Provisioning Failed", "Provisioning"),
-			"hostiran_fulfillment_status": "Deploying Bench",
-			"provisioning_error": "",
-			"provisioning_attempts": int(order.provisioning_attempts or 0) + 1,
-		}
-	)
-	deployment.status = "Deploying Bench"
-	deployment.save(ignore_permissions=True)
-	release_group.initial_deploy()
-	return {
-		"name": order.name,
-		"queued": True,
-		"hostiran_fulfillment_status": "Deploying Bench",
-		"hostiran_site_group_deploy": deployment.name,
-	}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -2793,8 +2332,6 @@ def admin_site_plans() -> list[dict]:
 			"disk",
 			"dedicated_server_plan",
 			"private_bench_support",
-			"hostiran_product_code",
-			"hostiran_monthly_cost_irr",
 		],
 		order_by="plan_title asc",
 		limit_page_length=500,
@@ -2823,14 +2360,9 @@ def admin_site_plans() -> list[dict]:
 		for row in release_groups:
 			groups_by_plan.setdefault(row.parent, []).append(row.release_group)
 		for row in allowed_apps:
-			if row.app != "frappe":
-				apps_by_plan.setdefault(row.parent, []).append(row.app)
+			apps_by_plan.setdefault(row.parent, []).append(row.app)
 		for plan in plans:
-			plan.release_groups = (
-				[]
-				if normalize_site_plan_delivery_mode(plan.commerce_delivery_mode) == "Create New Site"
-				else groups_by_plan.get(plan.name, [])
-			)
+			plan.release_groups = groups_by_plan.get(plan.name, [])
 			plan.allowed_apps = apps_by_plan.get(plan.name, [])
 	for plan in plans:
 		plan.commerce_delivery_mode = normalize_site_plan_delivery_mode(plan.commerce_delivery_mode)
@@ -2838,32 +2370,12 @@ def admin_site_plans() -> list[dict]:
 
 
 def _site_plan_app_choices() -> dict[str, list[str]]:
-	choices = {HOSTIRAN_DEDICATED_VPS: ["frappe"]}
-	versions = frappe.get_all(
-		"Frappe Version",
-		filters={"status": "stable"},
-		fields=["name"],
-		order_by="number desc",
-		limit_page_length=1,
-		ignore_permissions=True,
+	choices = {}
+	root_domain = frappe.db.get_value(
+		"Root Domain", ASUMI_ROOT_DOMAIN, ["enabled", "default_cluster"], as_dict=True
 	)
-	if versions:
-		app_versions = frappe.get_all(
-			"Marketplace App Version",
-			filters={"version": versions[0].name},
-			fields=["parent", "source"],
-			limit_page_length=1000,
-			ignore_permissions=True,
-		)
-		apps_with_sources = {row.parent for row in app_versions if row.source}
-		published_apps = frappe.get_all(
-			"Marketplace App",
-			filters={"name": ["in", sorted(apps_with_sources) or [""]], "status": "Published"},
-			fields=["name"],
-			limit_page_length=1000,
-			ignore_permissions=True,
-		)
-		choices[HOSTIRAN_DEDICATED_VPS] = ["frappe", *sorted({row.name for row in published_apps})]
+	if not root_domain or not root_domain.enabled or not root_domain.default_cluster:
+		return choices
 	groups = frappe.get_all(
 		"Release Group",
 		filters={"enabled": 1, "public": 1},
@@ -2875,13 +2387,23 @@ def _site_plan_app_choices() -> dict[str, list[str]]:
 	for group in groups:
 		benches = frappe.get_all(
 			"Bench",
-			filters={"group": group.name, "status": "Active"},
-			fields=["name"],
+			filters={"group": group.name, "cluster": root_domain.default_cluster, "status": "Active"},
+			fields=["name", "server"],
 			limit_page_length=200,
 			ignore_permissions=True,
 		)
 		apps = set()
 		for bench in benches:
+			server = frappe.db.get_value(
+				"Server", bench.server, ["status", "public", "proxy_server"], as_dict=True
+			)
+			if not server or server.status != "Active" or not server.public or not server.proxy_server:
+				continue
+			proxy_status = frappe.db.get_value("Proxy Server", server.proxy_server, "status")
+			if proxy_status != "Active" or not frappe.db.exists(
+				"Proxy Server Domain", {"parent": server.proxy_server, "domain": ASUMI_ROOT_DOMAIN}
+			):
+				continue
 			apps.update(frappe.get_all("Bench App", filters={"parent": bench.name}, pluck="app"))
 		if "frappe" in apps:
 			choices[group.name] = sorted(apps)
@@ -2894,8 +2416,6 @@ def admin_site_plan_options() -> dict:
 	apps_by_group = _site_plan_app_choices()
 	return {
 		"domain": ASUMI_ROOT_DOMAIN,
-		"hostiran_product_note": "برای هر مشتری یک VPS جداگانه از هاست‌ایران تهیه می‌شود؛ خرید از پنل هاست‌ایران انجام می‌شود.",
-		"hostiran_apps": apps_by_group.get(HOSTIRAN_DEDICATED_VPS, ["frappe"]),
 		"release_groups": [
 			{
 				"name": name,
@@ -2965,8 +2485,6 @@ def save_site_plan_prices(
 	cpu_time_per_day: float | str | None = None,
 	vcpu: int | str | None = None,
 	disk: int | str | None = None,
-	hostiran_product_code: str | None = None,
-	hostiran_monthly_cost_irr: int | str | None = None,
 	release_groups=None,
 	allowed_apps=None,
 ) -> dict:
@@ -2978,7 +2496,6 @@ def save_site_plan_prices(
 		"price_inr", "price_usd", "price_irr", "interval", "enabled", "commerce_delivery_mode",
 		"max_database_usage", "max_storage_usage", "memory", "cpu_time_per_day",
 		"vcpu", "disk", "dedicated_server_plan", "private_bench_support",
-		"hostiran_product_code", "hostiran_monthly_cost_irr",
 	)}
 	current["release_groups"] = [row.release_group for row in doc.release_groups]
 	current["allowed_apps"] = [row.app for row in doc.allowed_apps]
@@ -2988,8 +2505,6 @@ def save_site_plan_prices(
 		("delivery_mode", delivery_mode), ("interval", interval), ("enabled", enabled),
 		("max_database_usage", max_database_usage), ("max_storage_usage", max_storage_usage),
 		("memory", memory), ("cpu_time_per_day", cpu_time_per_day), ("vcpu", vcpu), ("disk", disk),
-		("hostiran_product_code", hostiran_product_code),
-		("hostiran_monthly_cost_irr", hostiran_monthly_cost_irr),
 	):
 		if value is not None:
 			payload[field] = value
@@ -3024,9 +2539,7 @@ def save_site_plan_prices(
 			payload,
 			current=current,
 			has_orders=bool(active_subscriptions or pending_orders or active_orders),
-			available_apps_by_group=_site_plan_app_choices()
-			if "release_groups" in payload or "allowed_apps" in payload
-			else None,
+			available_apps_by_group=_site_plan_app_choices(),
 		)
 	except ValueError as error:
 		frappe.throw(str(error))
@@ -3068,8 +2581,6 @@ def admin_settings() -> dict:
 		"allow_service_sales": bool(settings and settings.allow_service_sales),
 		"sandbox_mode": bool(settings is None or settings.sandbox_mode),
 		"merchant_id_configured": bool(_merchant_id(settings)),
-		"hosting_min_free_disk_gb": getattr(settings, "hosting_min_free_disk_gb", 0) if settings else 0,
-		"hosting_min_free_memory_gb": getattr(settings, "hosting_min_free_memory_gb", 0) if settings else 0,
 	}
 
 
@@ -3081,8 +2592,6 @@ def save_admin_settings(
 	allow_site_plan_sales: bool | None = None,
 	allow_service_sales: bool | None = None,
 	merchant_id: str | None = None,
-	hosting_min_free_disk_gb: float | str | None = None,
-	hosting_min_free_memory_gb: float | str | None = None,
 ) -> dict:
 	_require_commerce_admin()
 	settings = _get_settings() or frappe.get_doc({"doctype": "Commerce Settings"})
@@ -3093,17 +2602,6 @@ def save_admin_settings(
 	if allow_service_sales is not None:
 		settings.allow_service_sales = int(frappe.utils.cint(allow_service_sales))
 	settings.sandbox_mode = int(frappe.utils.cint(sandbox_mode))
-	try:
-		if hosting_min_free_disk_gb is not None:
-			settings.hosting_min_free_disk_gb = normalize_capacity_reserve(
-				hosting_min_free_disk_gb, allow_zero=True
-			)
-		if hosting_min_free_memory_gb is not None:
-			settings.hosting_min_free_memory_gb = normalize_capacity_reserve(
-				hosting_min_free_memory_gb, allow_zero=True
-			)
-	except ValueError as error:
-		frappe.throw(str(error))
 	if merchant_id:
 		if len(merchant_id.strip()) > 100:
 			frappe.throw(_("شناسهٔ پذیرنده معتبر نیست."))

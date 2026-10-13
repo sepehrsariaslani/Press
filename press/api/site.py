@@ -134,12 +134,40 @@ def get_name_from_filters(filters: dict):
 	return None
 
 
-def _new(site, server: str | None = None, ignore_plan_validation: bool = False):
+def _new(
+	site,
+	server: str | None = None,
+	ignore_plan_validation: bool = False,
+	commerce_hosting_order: str | None = None,
+):
 	team = get_current_team(get_doc=True)
 	if not team.enabled:
 		frappe.throw(
 			"You cannot create a new site because your account is disabled. Please <b>create a new account</b> or reach out to us at <a href='https://support.frappe.io'>support.frappe.io</a>"
 		)
+
+	if commerce_hosting_order:
+		from press.saas.commerce.service_delivery import is_verified_hosting_site_creation
+
+		order = frappe.db.get_value(
+			"Commerce Order",
+			commerce_hosting_order,
+			[
+				"status", "order_type", "service_delivery_mode", "provider", "sandbox_mode",
+				"currency", "amount", "paid_at", "payment_reference", "customer", "team", "plan", "subdomain",
+			],
+			as_dict=True,
+		)
+		candidate_site = frappe._dict(
+			{
+				"team": team.name,
+				"subscription_plan": site.get("plan"),
+				"subdomain": site.get("name"),
+				"domain": site.get("domain"),
+			}
+		)
+		if not is_verified_hosting_site_creation(order, candidate_site, frappe.session.user):
+			frappe.throw("A verified paid Asumi hosting order is required to create this site.")
 
 	files = site.get("files", {})
 
@@ -191,7 +219,8 @@ def _new(site, server: str | None = None, ignore_plan_validation: bool = False):
 	plan = site["plan"]
 	app_plans = site.get("selected_app_plans")
 	if not ignore_plan_validation:
-		validate_plan(bench.server, plan)
+		if not commerce_hosting_order:
+			validate_plan(bench.server, plan)
 
 	site = frappe.get_doc(
 		{
@@ -214,6 +243,8 @@ def _new(site, server: str | None = None, ignore_plan_validation: bool = False):
 			"skip_failing_patches": site.get("skip_failing_patches", False),
 		},
 	)
+	if commerce_hosting_order:
+		site.flags.commerce_hosting_order = commerce_hosting_order
 
 	if app_plans and len(app_plans) > 0:
 		subscription_docs = get_app_subscriptions(app_plans, team.name)
@@ -469,7 +500,6 @@ def create_site_on_private_bench(
 	localisation_country: str | None = None,
 	server: str = "",
 	selected_app_plans: dict | None = None,
-	commerce_order: str | None = None,
 ) -> dict:
 	team = get_current_team()
 	selected_app_plans = selected_app_plans or {}
@@ -542,7 +572,6 @@ def create_site_on_private_bench(
 			"team": team,
 			"provider": provider,
 			"server": server,
-			"commerce_order": commerce_order,
 		}
 	).insert(ignore_permissions=True)
 
