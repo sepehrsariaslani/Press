@@ -38,6 +38,15 @@ def _normalize_phone(value: str | None) -> str:
 	return phone
 
 
+def normalize_service_contact(full_name: str, phone: str, company: str = "") -> dict[str, str]:
+	"""Normalize the contact details shared by Asumi inquiries and paid service orders."""
+	return {
+		"full_name": _clean_text(full_name, "name", 140, required=True),
+		"phone": _normalize_phone(phone),
+		"company": _clean_text(company, "company", 140),
+	}
+
+
 def build_service_request_lead(
 	*,
 	service: str,
@@ -54,9 +63,10 @@ def build_service_request_lead(
 	if service not in SUPPORTED_SERVICE_REQUESTS:
 		raise ValueError("service is not supported")
 
-	full_name = _clean_text(full_name, "name", 140, required=True)
-	phone = _normalize_phone(phone)
-	company = _clean_text(company, "company", 140)
+	contact = normalize_service_contact(full_name, phone, company)
+	full_name = contact["full_name"]
+	phone = contact["phone"]
+	company = contact["company"]
 	context = _clean_text(context, "context", MAX_SERVICE_CONTEXT_LENGTH)
 	source_path = _clean_text(source_path, "source_path", 240)
 	source_host = _clean_text(source_host, "source_host", 140)
