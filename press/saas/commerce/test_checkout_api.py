@@ -90,6 +90,19 @@ class MarketplaceCheckoutApiTest(unittest.TestCase):
 		self.assertEqual([app.app for app in result], ["accounts"])
 		self.assertEqual(get_all.call_args.kwargs["filters"], {"status": "Published"})
 
+	def test_admin_cannot_assign_a_price_to_the_base_framework(self):
+		plan = FakeDocument(name="PLAN-FRAPPE", app="frappe")
+		with (
+			patch.object(api, "_require_commerce_admin"),
+			patch.object(api.frappe, "get_doc", return_value=plan),
+			patch.object(api.frappe.db, "get_value", return_value="frappe"),
+			patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
+		):
+			with self.assertRaises(CheckoutRejected):
+				api.save_marketplace_plan_prices(
+					"PLAN-FRAPPE", price_inr=0, price_usd=0, price_irr=10000
+				)
+
 	@contextmanager
 	def purchase_context(self, **kwargs):
 		with ExitStack() as stack:
