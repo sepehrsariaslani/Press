@@ -1,5 +1,7 @@
 # Asumi shared-Docker hosting provisioning implementation plan
 
+> **Superseded:** This plan implements shared-Docker hosting, which conflicts with the clarified business model. Do not execute it for new customer sites. Use `2026-10-13-asumi-hostiran-dedicated-hosting.md` instead.
+
 ## Goal and guardrails
 
 Implement the approved, limited shared-Docker path in `2026-10-13-asumi-docker-hosting-provisioning-design.md`. Do not create a live customer site or enable public paid hosting while live checkout, wildcard DNS/TLS, and resource prerequisites are false.

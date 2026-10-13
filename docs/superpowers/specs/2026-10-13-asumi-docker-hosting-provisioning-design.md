@@ -1,5 +1,7 @@
 # Asumi shared-Docker hosting provisioning
 
+> **Superseded:** On 2026-10-13 the product owner clarified that Asumi does not own a multi-tenant hosting server; new customer sites must receive a separately purchased HostIran VPS and be provisioned through Press's managed Server/Bench flow. Do not enable or extend the shared-Docker new-site sales path described below. See `2026-10-13-asumi-hostiran-dedicated-hosting-design.md`.
+
 ## Goal
 
 Provision a customer-owned Frappe site on the existing Asumi Docker Bench after a ZarinPal payment has been verified. This replaces a Frappe Cloud dependency for the new-site hosting path while keeping the current Press-managed existing-site upgrade path intact.
