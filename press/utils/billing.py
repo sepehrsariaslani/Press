@@ -167,10 +167,12 @@ def get_setup_intent(team):
 	return intent
 
 
-def get_stripe():
+def get_stripe(required=True):
 	from frappe.utils.password import get_decrypted_password
 
 	if not stripe:
+		if not required:
+			return None
 		frappe.throw("Stripe client library is not installed on this server")
 
 	if not hasattr(frappe.local, "press_stripe_object"):
@@ -182,6 +184,8 @@ def get_stripe():
 		)
 
 		if not secret_key:
+			if not required:
+				return None
 			frappe.throw("Setup stripe via Press Settings before using press.api.billing.get_stripe")
 
 		stripe.api_key = secret_key

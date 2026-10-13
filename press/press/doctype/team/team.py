@@ -678,7 +678,9 @@ class Team(Document):
 
 	def create_stripe_customer(self):
 		if not self.stripe_customer_id:
-			stripe = get_stripe()
+			stripe = get_stripe(required=False)
+			if not stripe:
+				return
 			customer = stripe.Customer.create(email=self.user, name=get_fullname(self.user))
 			self.stripe_customer_id = customer.id
 			self.save()

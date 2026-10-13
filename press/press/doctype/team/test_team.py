@@ -60,6 +60,19 @@ class TestTeam(FrappeTestCase):
 	def tearDown(self):
 		frappe.db.rollback()
 
+	def test_stripe_customer_creation_is_optional_when_stripe_is_unavailable(self):
+		team = Team({"doctype": "Team", "user": "customer@example.com"})
+
+		with (
+			patch("press.press.doctype.team.team.get_stripe", return_value=None) as get_stripe,
+			patch.object(team, "save") as save,
+		):
+			team.create_stripe_customer()
+
+		get_stripe.assert_called_once_with(required=False)
+		save.assert_not_called()
+		self.assertFalse(team.stripe_customer_id)
+
 	def test_create_new_method_works(self):
 		account_request = create_test_account_request("testsubdomain")
 		team_count_before = frappe.db.count("Team")

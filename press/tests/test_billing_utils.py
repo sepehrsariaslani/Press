@@ -1,8 +1,10 @@
 from unittest import TestCase
+from unittest.mock import patch
 
 import frappe
 
 from press.api.billing import validate_gst
+from press.utils.billing import get_stripe
 
 VALID_GSTINS = [
 	{"gstin": "27AALFV4847R1Z2", "state": "Maharashtra", "country": "India"},
@@ -26,6 +28,24 @@ INVALID_GSTINS = [
 
 
 class TestBillingUtils(TestCase):
+	def test_get_stripe_can_be_optional_when_client_is_missing(self):
+		with patch("press.utils.billing.stripe", None):
+			self.assertIsNone(get_stripe(required=False))
+
+	def test_get_stripe_can_be_optional_when_credentials_are_missing(self):
+		with (
+			patch("press.utils.billing.stripe", object()),
+			patch("frappe.utils.password.get_decrypted_password", return_value=None),
+		):
+			self.assertIsNone(get_stripe(required=False))
+
+	def test_get_stripe_still_rejects_missing_client_for_required_stripe_operations(self):
+		with patch("press.utils.billing.stripe", None):
+			with self.assertRaisesRegex(
+				frappe.ValidationError, "Stripe client library is not installed"
+			):
+				get_stripe()
+
 	def test_validate_gstin_with_invalid(self):
 		for obj in INVALID_GSTINS:
 			self.assertRaises(frappe.ValidationError, validate_gst, obj)
