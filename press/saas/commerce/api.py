@@ -17,6 +17,7 @@ from press.saas.commerce.order_lifecycle import (
 from press.saas.commerce.order_snapshot import hosting_order_snapshot, marketplace_app_order_snapshot
 from press.saas.commerce.marketplace_plan_admin import build_marketplace_plan_draft
 from press.saas.commerce.marketplace_install import (
+	is_marketplace_app_sellable,
 	marketplace_install_state,
 	should_install_marketplace_app,
 )
@@ -152,6 +153,18 @@ def _acquire_transaction_lock(lock_name: str, timeout: int = 10) -> bool:
 def _require_commerce_admin():
 	if not (has_role("System Manager") or has_role("Press Admin")):
 		frappe.throw(_("Only a Press system administrator can manage commerce."), frappe.PermissionError)
+
+
+def _sellable_marketplace_app_rows(*, published_only: bool = False) -> list[dict]:
+	filters = {"status": "Published"} if published_only else {}
+	apps = frappe.get_all(
+		"Marketplace App",
+		filters=filters,
+		fields=["name", "app", "title"],
+		limit_page_length=500,
+		ignore_permissions=True,
+	)
+	return [app for app in apps if is_marketplace_app_sellable(app.app)]
 
 
 @frappe.whitelist(allow_guest=True)
@@ -1990,8 +2003,10 @@ def record_refund(order: str, refund_reference: str, refund_note: str = "") -> d
 @frappe.whitelist()
 def admin_marketplace_plans() -> list[dict]:
 	_require_commerce_admin()
+	app_names = [app.name for app in _sellable_marketplace_app_rows()]
 	return frappe.get_all(
 		"Marketplace App Plan",
+		filters={"app": ["in", app_names or [""]]},
 		fields=[
 			"name",
 			"app",
@@ -2014,13 +2029,12 @@ def admin_marketplace_plans() -> list[dict]:
 def admin_marketplace_plan_options() -> dict:
 	_require_commerce_admin()
 	return {
-		"apps": frappe.get_all(
-			"Marketplace App",
-			filters={"status": "Published"},
-			fields=["name", "title"],
-			order_by="title asc",
-			limit_page_length=500,
-			ignore_permissions=True,
+		"apps": sorted(
+			(
+				{"name": app.name, "title": app.title}
+				for app in _sellable_marketplace_app_rows(published_only=True)
+			),
+			key=lambda app: (app["title"] or app["name"]).casefold(),
 		)
 	}
 
@@ -2028,13 +2042,7 @@ def admin_marketplace_plan_options() -> dict:
 @frappe.whitelist(methods=["POST"])
 def create_marketplace_plan_draft(app: str, title: str, interval: str) -> dict:
 	_require_commerce_admin()
-	available_apps = frappe.get_all(
-		"Marketplace App",
-		filters={"status": "Published"},
-		pluck="name",
-		limit_page_length=500,
-		ignore_permissions=True,
-	)
+	available_apps = [app_doc.name for app_doc in _sellable_marketplace_app_rows(published_only=True)]
 	try:
 		values = build_marketplace_plan_draft(
 			app=app,
@@ -2074,6 +2082,9 @@ def save_marketplace_plan_prices(
 ) -> dict:
 	_require_commerce_admin()
 	doc = frappe.get_doc("Marketplace App Plan", plan, for_update=True)
+	app_id = frappe.db.get_value("Marketplace App", doc.app, "app")
+	if not is_marketplace_app_sellable(app_id):
+		frappe.throw(_("چارچوب پایهٔ Frappe برنامهٔ قابل‌فروش نیست و تعرفهٔ جداگانه نمی‌پذیرد."))
 	active_subscriptions = frappe.db.count(
 		"Press Subscription",
 		{"document_type": "Marketplace App", "plan_type": "Marketplace App Plan", "plan": plan, "enabled": 1},

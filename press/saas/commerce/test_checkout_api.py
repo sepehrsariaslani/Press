@@ -79,6 +79,17 @@ class MarketplaceCheckoutApiTest(unittest.TestCase):
 			patch.object(api, "_acquire_transaction_lock", return_value=True),
 		)
 
+	def test_admin_marketplace_plan_choices_exclude_the_base_framework(self):
+		apps = [
+			SimpleNamespace(name="accounts", app="accounts", title="Hesabyar"),
+			SimpleNamespace(name="frappe", app="frappe", title="Frappe Framework"),
+		]
+		with patch.object(api.frappe, "get_all", return_value=apps) as get_all:
+			result = api._sellable_marketplace_app_rows(published_only=True)
+
+		self.assertEqual([app.app for app in result], ["accounts"])
+		self.assertEqual(get_all.call_args.kwargs["filters"], {"status": "Published"})
+
 	@contextmanager
 	def purchase_context(self, **kwargs):
 		with ExitStack() as stack:

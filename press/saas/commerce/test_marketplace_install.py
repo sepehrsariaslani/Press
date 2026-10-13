@@ -26,6 +26,14 @@ class MarketplaceInstallStateTest(unittest.TestCase):
 			{"installed": True, "installation_required": False},
 		)
 
+	def test_rejects_the_base_framework_even_when_it_is_installed(self):
+		with self.assertRaisesRegex(ValueError, "قابل خرید"):
+			marketplace_install_state("frappe", ["frappe"], ["accounts", "restaurant"])
+		with self.assertRaisesRegex(ValueError, "قابل خرید"):
+			marketplace_install.should_install_marketplace_app(
+				"frappe", False, ["frappe"], ["accounts", "restaurant"]
+			)
+
 	def test_allows_install_when_app_code_is_available_on_the_selected_bench(self):
 		self.assertEqual(
 			marketplace_install_state("restaurant", [], ["accounts", "restaurant"]),

@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 
+from press.saas.commerce.marketplace_install import is_marketplace_app_sellable
 from press.saas.commerce.pricing import marketplace_plan_supported_by_asumi_checkout
 
 
@@ -8,10 +9,6 @@ INTERVAL_LABELS = {
 	"Monthly": "ماهانه",
 	"Yearly": "سالانه",
 }
-
-# Frappe is the base framework installed on every site, not a customer-installable product.
-NON_SELLABLE_MARKETPLACE_APPS = {"frappe"}
-
 
 def _normalize_price(value):
 	if value is None or isinstance(value, bool):
@@ -78,10 +75,11 @@ def build_marketplace_catalog(app_rows, plan_rows):
 	for app in app_rows:
 		name = app.get("name")
 		route = app.get("route")
+		app_id = app.get("app") or name
 		if (
 			app.get("status") != "Published"
 			or not name
-			or name in NON_SELLABLE_MARKETPLACE_APPS
+			or not is_marketplace_app_sellable(app_id)
 			or not _is_safe_marketplace_route(route)
 		):
 			continue
@@ -128,7 +126,7 @@ def get_public_marketplace_catalog(get_all):
 	apps = get_all(
 		"Marketplace App",
 		filters={"status": "Published"},
-		fields=["name", "title", "description", "route", "status"],
+		fields=["name", "app", "title", "description", "route", "status"],
 		order_by="title asc",
 	)
 	app_names = [app.get("name") for app in apps if app.get("name")]

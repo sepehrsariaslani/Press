@@ -26,6 +26,13 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 		self.plan["enabled"] = 0
 		with self.assertRaises(ValueError):
 			marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
+
+	def test_rejects_base_frappe_framework_order_even_when_installed(self):
+		self.app["app"] = "frappe"
+		self.site["installed_apps"] = ["frappe"]
+
+		with self.assertRaisesRegex(ValueError, "قابل خرید"):
+			marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
 		self.plan["enabled"] = 1
 		self.app["status"] = "Draft"
 		with self.assertRaises(ValueError):
