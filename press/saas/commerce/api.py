@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import socket
 import ssl
 import time
@@ -55,6 +56,11 @@ from press.saas.commerce.site_plan_admin import (
 from press.saas.commerce.service_requests import (
 	build_service_request_lead,
 	normalize_service_request_status,
+)
+from press.saas.commerce.service_pricing import (
+	calculate_service_quote,
+	default_service_prices,
+	normalize_service_prices,
 )
 from press.saas.commerce.zarinpal import (
 	build_payment_request,
@@ -169,6 +175,40 @@ def _acquire_hosting_capacity_lock() -> None:
 def _require_commerce_admin():
 	if not (has_role("System Manager") or has_role("Press Admin")):
 		frappe.throw(_("Only a Press system administrator can manage commerce."), frappe.PermissionError)
+
+
+def _get_service_prices() -> dict[str, dict[str, int]]:
+	if not frappe.db.exists("DocType", "Asumi Service Pricing"):
+		return default_service_prices()
+
+	doc = frappe.get_single("Asumi Service Pricing")
+	stored = {
+		"modules": doc.get("module_prices"),
+		"addons": doc.get("addon_prices"),
+		"packages": doc.get("package_prices"),
+	}
+	if all(value in (None, "") for value in stored.values()):
+		return default_service_prices()
+	if any(value in (None, "") for value in stored.values()):
+		frappe.throw(_("تنظیمات تعرفهٔ خدمات آسومی ناقص است؛ مدیر باید تعرفه‌ها را دوباره ذخیره کند."))
+
+	try:
+		decoded = {key: json.loads(value) for key, value in stored.items()}
+		return normalize_service_prices(decoded["modules"], decoded["addons"], decoded["packages"])
+	except (json.JSONDecodeError, TypeError, ValueError) as error:
+		frappe.throw(_(f"تنظیمات تعرفهٔ خدمات آسومی معتبر نیست: {error}"))
+
+
+def _parse_service_selection(value: str, field: str) -> list[str]:
+	if not isinstance(value, str) or len(value) > 2000:
+		raise ValueError(f"{field} is invalid")
+	try:
+		parsed = json.loads(value)
+	except json.JSONDecodeError as error:
+		raise ValueError(f"{field} must be a JSON array") from error
+	if not isinstance(parsed, list):
+		raise ValueError(f"{field} must be a JSON array")
+	return parsed
 
 
 def _sellable_marketplace_app_rows(*, published_only: bool = False) -> list[dict]:
@@ -1962,12 +2002,23 @@ def submit_service_request(
 	phone: str,
 	company: str = "",
 	context: str = "",
+	module_ids: str = "[]",
+	addon_ids: str = "[]",
 ) -> dict:
 	"""Save an authenticated service inquiry; this never creates a commerce order."""
 	if frappe.session.user == "Guest":
 		frappe.throw(_("برای ثبت درخواست بررسی، ابتدا وارد حساب آسومی شوید."), frappe.AuthenticationError)
 	if not frappe.db.exists("DocType", "Erpyar Lead"):
 		frappe.throw(_("ساختار ثبت درخواست در حال حاضر آماده نیست."))
+	quote_snapshot = None
+	if service == "module_pricing":
+		try:
+			module_selection = _parse_service_selection(module_ids, "module_ids")
+			addon_selection = _parse_service_selection(addon_ids, "addon_ids")
+			quote_snapshot = calculate_service_quote(module_selection, addon_selection, _get_service_prices())
+			quote_snapshot["quoted_at"] = str(frappe.utils.now_datetime())
+		except ValueError as error:
+			frappe.throw(_(str(error)))
 	try:
 		lead_values = build_service_request_lead(
 			service=service,
@@ -1975,6 +2026,7 @@ def submit_service_request(
 			phone=phone,
 			company=company,
 			context=context,
+			quote_snapshot=quote_snapshot,
 			source_path="/#website-design" if service == "website_design" else "/#pricing",
 			source_host=frappe.local.request.host if getattr(frappe.local, "request", None) else "",
 		)
@@ -1982,7 +2034,46 @@ def submit_service_request(
 		frappe.throw(_(str(error)))
 
 	lead = frappe.get_doc({"doctype": "Erpyar Lead", **lead_values}).insert(ignore_permissions=True)
-	return {"name": lead.name, "status": lead.status}
+	result = {"name": lead.name, "status": lead.status}
+	if quote_snapshot:
+		result["quote"] = quote_snapshot
+	return result
+
+
+@frappe.whitelist(allow_guest=True)
+def service_pricing() -> dict[str, dict[str, int]]:
+	"""Return the public Asumi service price maps without other commerce settings."""
+	return _get_service_prices()
+
+
+@frappe.whitelist()
+def admin_service_pricing() -> dict[str, dict[str, int]]:
+	_require_commerce_admin()
+	return _get_service_prices()
+
+
+@frappe.whitelist(methods=["POST"])
+def save_admin_service_pricing(
+	module_prices: str,
+	addon_prices: str,
+	package_prices: str,
+) -> dict[str, dict[str, int]]:
+	_require_commerce_admin()
+	try:
+		prices = normalize_service_prices(
+			json.loads(module_prices),
+			json.loads(addon_prices),
+			json.loads(package_prices),
+		)
+	except (json.JSONDecodeError, TypeError, ValueError) as error:
+		frappe.throw(_(str(error)))
+
+	doc = frappe.get_single("Asumi Service Pricing")
+	doc.set("module_prices", json.dumps(prices["modules"], ensure_ascii=False, sort_keys=True))
+	doc.set("addon_prices", json.dumps(prices["addons"], ensure_ascii=False, sort_keys=True))
+	doc.set("package_prices", json.dumps(prices["packages"], ensure_ascii=False, sort_keys=True))
+	doc.save(ignore_permissions=True)
+	return prices
 
 
 @frappe.whitelist()

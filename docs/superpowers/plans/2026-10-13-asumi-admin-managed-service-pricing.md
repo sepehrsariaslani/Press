@@ -31,7 +31,8 @@
 - `press/patches/v0_8_0/seed_asumi_service_pricing.py` و `press/patches.txt`: seed یک‌باره و idempotent قیمت‌های فعلی.
 - `press/saas/commerce/api.py`: endpoint عمومی خواندن، endpointهای مدیر و ثبت برآورد سروری.
 - `press/saas/commerce/service_requests.py` و `press/saas/commerce/test_service_requests.py`: ساخت پیام snapshot و حفظ مسیر مستقل طراحی سایت.
-- `press/saas/commerce/test_service_pricing_api.py`: دسترسی API، persistence، ثبت snapshot و عدم ساخت سفارش.
+- `press/saas/commerce/test_service_pricing_api.py`: آزمون seed و idempotency.
+- `press/saas/commerce/test_service_pricing_endpoints.py`: دسترسی API، persistence، ثبت snapshot و عدم ساخت سفارش.
 - `dashboard/asumi/src/product/pricing/catalog.ts`: فرادادهٔ نمایشی بدون قیمت مرجع سمت مرورگر.
 - `dashboard/asumi/src/product/pricing/pricingApi.ts`: بارگذاری و اعتبارسنجی پاسخ عمومی قیمت.
 - `dashboard/asumi/src/product/pricing/estimate.ts`: محاسبهٔ نمایشی بر پایهٔ نقشهٔ دریافتی از سرور.
@@ -56,11 +57,11 @@
 - `normalize_service_prices(modules, addons, packages) -> dict[str, dict[str, int]]` فقط کلیدهای کاتالوگ و اعداد صحیح بین صفر و سقف را می‌پذیرد.
 - `calculate_service_quote(module_ids, addon_ids, prices) -> dict` فهرست شناسه‌ها، سطرهای مبلغ، package ID اختیاری، جمع مستقل، تخفیف و مبلغ نهایی را برمی‌گرداند.
 
-- [ ] **گام ۱.۱: آزمون‌های قرمز را بنویس.** آزمون‌ها باید مقادیر آغازین ۱۵/۱/۵ را با جدول مشخصات تطبیق دهند؛ جمع `finance` و `sales` را برابر ۱۱٬۰۰۰٬۰۰۰ بگیرند؛ `professional` را دقیقاً ۹٬۹۰۰٬۰۰۰ بگیرند؛ بستهٔ کامل را ۵۰٬۰۰۰٬۰۰۰ بگیرند؛ و ورودی ناشناخته، تکراری، فهرست خالی، پیش‌نیاز جاافتاده، عدد منفی، اعشاری، رشته‌ای، سقف+۱ و map ناقص/اضافی را رد کنند.
-- [ ] **گام ۱.۲: آزمون را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing -v` باید در ابتدا به علت نبود ماژول/توابع شکست بخورد.
-- [ ] **گام ۱.۳: منطق حداقلی را بساز.** شناسه‌های مجاز و پیش‌نیازها را در Python صریح تعریف کن؛ مقدارهای عددی را با `type(value) is int` کنترل کن تا `bool` پذیرفته نشود؛ برای هر سه map برابری دقیق کلیدها را لازم بدان؛ بسته فقط برای تطبیق دقیق مجموعهٔ ماژول/افزونه اعمال شود؛ `discount = max(listed_total - package_price, 0)` و `total = package_price` در تطبیق بسته وگرنه `listed_total` باشد.
-- [ ] **گام ۱.۴: آزمون را تکرار کن.** همان دستور باید همهٔ آزمون‌های منطق را سبز کند.
-- [ ] **گام ۱.۵: commit کن.** `git add press/saas/commerce/service_pricing.py press/saas/commerce/test_service_pricing.py && git commit -m "افزودن منطق محاسبه تعرفه خدمات آسومی"`
+- [x] **گام ۱.۱: آزمون‌های قرمز را بنویس.** آزمون‌ها باید مقادیر آغازین ۱۵/۱/۵ را با جدول مشخصات تطبیق دهند؛ جمع `finance` و `sales` را برابر ۱۱٬۰۰۰٬۰۰۰ بگیرند؛ `professional` را دقیقاً ۹٬۹۰۰٬۰۰۰ بگیرند؛ بستهٔ کامل را ۵۰٬۰۰۰٬۰۰۰ بگیرند؛ و ورودی ناشناخته، تکراری، فهرست خالی، پیش‌نیاز جاافتاده، عدد منفی، اعشاری، رشته‌ای، سقف+۱ و map ناقص/اضافی را رد کنند.
+- [x] **گام ۱.۲: آزمون را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing -v` باید در ابتدا به علت نبود ماژول/توابع شکست بخورد.
+- [x] **گام ۱.۳: منطق حداقلی را بساز.** شناسه‌های مجاز و پیش‌نیازها را در Python صریح تعریف کن؛ مقدارهای عددی را با `type(value) is int` کنترل کن تا `bool` پذیرفته نشود؛ برای هر سه map برابری دقیق کلیدها را لازم بدان؛ بسته فقط برای تطبیق دقیق مجموعهٔ ماژول/افزونه اعمال شود؛ `discount = max(listed_total - package_price, 0)` و `total = package_price` در تطبیق بسته وگرنه `listed_total` باشد.
+- [x] **گام ۱.۴: آزمون را تکرار کن.** همان دستور باید همهٔ آزمون‌های منطق را سبز کند.
+- [x] **گام ۱.۵: commit کن.** `git add press/saas/commerce/service_pricing.py press/saas/commerce/test_service_pricing.py && git commit -m "افزودن منطق محاسبه تعرفه خدمات آسومی"`
 
 ### گام ۲: ذخیرهٔ پایدار و seed مهاجرت
 
@@ -69,15 +70,15 @@
 - بساز: `press/saas/doctype/asumi_service_pricing/asumi_service_pricing.py`
 - بساز: `press/patches/v0_8_0/seed_asumi_service_pricing.py`
 - ویرایش: `press/patches.txt`
-- بساز: `press/saas/commerce/test_service_pricing_api.py`
+- بساز: `press/saas/commerce/test_service_pricing_api.py` و `press/saas/commerce/test_service_pricing_endpoints.py`
 
 **رابط‌ها:** DocType از سه فیلد JSON متنی `module_prices`, `addon_prices`, `package_prices` و یک singleton استفاده می‌کند. تابع `seed_asumi_service_pricing()` فقط وقتی رکورد قیمت وجود ندارد، map آغازین گام ۱ را ذخیره می‌کند.
 
-- [ ] **گام ۲.۱: آزمون patch را بنویس.** با `unittest.mock`، اجرای دوبارهٔ seed را بررسی کن: بار اول باید سند را بسازد، بار دوم نباید مقدار دست‌کاری‌شده را بازنویسی کند.
-- [ ] **گام ۲.۲: آزمون را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing_api -v` باید برای آزمون patch تا قبل از ایجاد فایل‌ها شکست بخورد.
-- [ ] **گام ۲.۳: DocType و patch را بساز.** هر سه JSON فیلد فقط JSON نقشه را نگه می‌دارند؛ API تنها writer است. DocType در `module: SaaS`, `issingle: 1` با مجوز خواندن مدیران Press/System Manager تعریف شود. ثبت patch را در بخش `[post_model_sync]` قرار بده تا جدول پس از همگام‌سازی مدل موجود باشد.
-- [ ] **گام ۲.۴: آزمون seed را سبز کن.** اجرای آزمون باید ساخت اولیه و idempotency را ثابت کند.
-- [ ] **گام ۲.۵: commit کن.** `git add press/saas/doctype/asumi_service_pricing press/patches/v0_8_0/seed_asumi_service_pricing.py press/patches.txt press/saas/commerce/test_service_pricing_api.py && git commit -m "افزودن ذخیره و مهاجرت تعرفه خدمات آسومی"`
+- [x] **گام ۲.۱: آزمون patch را بنویس.** با `unittest.mock`، اجرای دوبارهٔ seed را بررسی کن: بار اول باید سند را بسازد، بار دوم نباید مقدار دست‌کاری‌شده را بازنویسی کند.
+- [x] **گام ۲.۲: آزمون را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing_api -v` باید برای آزمون patch تا قبل از ایجاد فایل‌ها شکست بخورد.
+- [x] **گام ۲.۳: DocType و patch را بساز.** هر سه JSON فیلد فقط JSON نقشه را نگه می‌دارند؛ API تنها writer است. DocType در `module: SaaS`, `issingle: 1` با مجوز خواندن مدیران Press/System Manager تعریف شود. ثبت patch را در بخش `[post_model_sync]` قرار بده تا جدول پس از همگام‌سازی مدل موجود باشد.
+- [x] **گام ۲.۴: آزمون seed را سبز کن.** اجرای آزمون باید ساخت اولیه و idempotency را ثابت کند.
+- [x] **گام ۲.۵: commit کن.** `git add press/saas/doctype/asumi_service_pricing press/patches/v0_8_0/seed_asumi_service_pricing.py press/patches.txt press/saas/commerce/test_service_pricing_api.py && git commit -m "افزودن ذخیره و مهاجرت تعرفه خدمات آسومی"`
 
 ### گام ۳: API عمومی، API مدیریت و snapshot ثبت درخواست
 
@@ -93,12 +94,12 @@
 - `save_admin_service_pricing(module_prices: str, addon_prices: str, package_prices: str) -> dict`: POST-only، دسترسی مدیر، JSON parse، اعتبارسنجی map کامل و save اتمیک.
 - `submit_service_request(..., module_ids: str = "[]", addon_ids: str = "[]") -> dict`: برای `module_pricing` مبلغ/عنوان `context` مرورگر را نادیده می‌گیرد؛ فقط IDها را parse و validate می‌کند و سرور snapshot ایجادشده را به builder می‌دهد. مسیر `website_design` همان context فعلی را نگه می‌دارد.
 
-- [ ] **گام ۳.۱: آزمون‌های دسترسی و رفتار را اضافه کن.** پاسخ عمومی نباید شامل تنظیمات دیگر باشد؛ نقش غیرمدیر read/write را رد کند؛ ورودی قیمت از مرورگر در snapshot اثری نداشته باشد؛ شناسهٔ دست‌کاری‌شده رد شود؛ snapshot شامل نام سطرها، تومان، مجموع و زمان باشد؛ endpoint فقط `Erpyar Lead` درج کند و هرگز `Commerce Order` نسازد؛ قیمت قبلی در Lead پس از تغییر تعرفه ثابت بماند.
-- [ ] **گام ۳.۲: آزمون‌های مشخص را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing_api press.saas.commerce.test_service_requests -v` باید در ابتدا در آزمون‌های تازه شکست رفتاری بدهد.
-- [ ] **گام ۳.۳: endpointها را پیاده کن.** از `frappe.get_single("Asumi Service Pricing")` استفاده کن؛ خطای JSON یا map نامعتبر را به `frappe.throw` تبدیل کن؛ endpoint write را با `methods=["POST"]` ببند؛ پاسخ عمومی را فقط با کلیدهای ثابت و بدون دادهٔ Lead بساز.
-- [ ] **گام ۳.۴: builder را توسعه بده.** تابع `build_service_request_lead` برای `module_pricing` پیام را از `quote_snapshot` سمت سرور بسازد؛ `context` مرورگر را در این سرویس مصرف نکند. برای `website_design` رفتار، حد ۵۰۰۰ نویسه و پیام فعلی حفظ شود.
-- [ ] **گام ۳.۵: آزمون‌های Python را سبز کن.** همان دستور باید همهٔ تست‌های مربوط را پاس کند.
-- [ ] **گام ۳.۶: commit کن.** `git add press/saas/commerce/api.py press/saas/commerce/service_requests.py press/saas/commerce/test_service_requests.py press/saas/commerce/test_service_pricing_api.py && git commit -m "افزودن API امن تعرفه و برآورد خدمات آسومی"`
+- [x] **گام ۳.۱: آزمون‌های دسترسی و رفتار را اضافه کن.** پاسخ عمومی نباید شامل تنظیمات دیگر باشد؛ نقش غیرمدیر read/write را رد کند؛ ورودی قیمت از مرورگر در snapshot اثری نداشته باشد؛ شناسهٔ دست‌کاری‌شده رد شود؛ snapshot شامل نام سطرها، تومان، مجموع و زمان باشد؛ endpoint فقط `Erpyar Lead` درج کند و هرگز `Commerce Order` نسازد؛ قیمت قبلی در Lead پس از تغییر تعرفه ثابت بماند.
+- [x] **گام ۳.۲: آزمون‌های مشخص را اجرا کن.** آزمون‌های خالص را با `python3 -m unittest press.saas.commerce.test_service_requests -v` و آزمون endpoint را داخل Frappe Console با suite `press.saas.commerce.test_service_pricing_endpoints` اجرا کن؛ suite endpoint همهٔ دسترسی‌ها و persistence را mock می‌کند و نباید در دیتابیس چیزی بنویسد. پیش از پیاده‌سازی، هر دو گروه باید به علت قرارداد/endpointهای مفقود شکست بخورند.
+- [x] **گام ۳.۳: endpointها را پیاده کن.** از `frappe.get_single("Asumi Service Pricing")` استفاده کن؛ خطای JSON یا map نامعتبر را به `frappe.throw` تبدیل کن؛ endpoint write را با `methods=["POST"]` ببند؛ پاسخ عمومی را فقط با کلیدهای ثابت و بدون دادهٔ Lead بساز.
+- [x] **گام ۳.۴: builder را توسعه بده.** تابع `build_service_request_lead` برای `module_pricing` پیام را از `quote_snapshot` سمت سرور بسازد؛ `context` مرورگر را در این سرویس مصرف نکند. برای `website_design` رفتار، حد ۵۰۰۰ نویسه و پیام فعلی حفظ شود.
+- [x] **گام ۳.۵: آزمون‌های Python را سبز کن.** همان دستور باید همهٔ تست‌های مربوط را پاس کند.
+- [x] **گام ۳.۶: commit کن.** `git add press/saas/commerce/api.py press/saas/commerce/service_requests.py press/saas/commerce/test_service_requests.py press/saas/commerce/test_service_pricing_endpoints.py && git commit -m "افزودن API امن تعرفه و برآورد خدمات آسومی"`
 
 ### گام ۴: قیمت پویا در صفحهٔ عمومی و انتقال امن انتخاب
 
@@ -141,7 +142,7 @@
 **فایل‌ها:** تغییرات همهٔ مراحل پیشین؛ فایل جدیدی برای secrets نساز.
 
 - [ ] **گام ۶.۱: بررسی اختلاف‌ها و تاریخچه را انجام بده.** `git status --short`, `git log -5 --oneline`, `git diff origin/server-snapshot-20260825...HEAD --check` باید بدون فایل تصادفی، commit گم‌شده یا whitespace error باشد.
-- [ ] **گام ۶.۲: آزمون Python را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing press.saas.commerce.test_service_requests press.saas.commerce.test_service_pricing_api -v` باید سبز باشد.
+- [ ] **گام ۶.۲: آزمون Python را اجرا کن.** `python3 -m unittest press.saas.commerce.test_service_pricing press.saas.commerce.test_service_requests press.saas.commerce.test_service_pricing_api -v` را برای منطق خالص و seed اجرا کن؛ suite `press.saas.commerce.test_service_pricing_endpoints` را در Frappe Console اجرا کن و خروجی `OK` را ثبت کن. آزمون endpoint فقط mock استفاده می‌کند؛ `allow_tests` سایت زنده را تغییر نده.
 - [ ] **گام ۶.۳: آزمون و build هر دو رابط را اجرا کن.** در `dashboard/asumi`: `yarn typecheck && yarn test --run && yarn build`; برای کل Press در ریشهٔ مخزن: `yarn test --run && yarn build`. `yarn build` باید هر دو dashboard، دارایی‌های CSS و shell در `press/www/asumi.html` را بسازد.
 - [ ] **گام ۶.۴: نسخه و منابع را پیش از انتشار ثبت کن.** وضعیت git، فضای آزاد و حافظه را بگیر؛ backup کامل دیتابیس و فایل‌های Asumi بساز و وجود و اندازهٔ backup را قبل از migrate تأیید کن. اگر backup ناقص یا فضای آزاد کمتر از ۲ گیگابایت شد، انتشار را متوقف و خطا را گزارش کن.
 - [ ] **گام ۶.۵: migration و دارایی‌ها را منتشر کن.** روی bench مشترک ابتدا patch و DocType را migrate کن، سپس build مربوط به Press Dashboard/Asumi را بساز و frontend و workerهای لازم را با روش نرم و بدون restart دیتابیس فعال کن. چون منابع asset بین سایت‌های bench مشترک است، قبل از هر reload وضعیت هر پنج سایت روی bench را ثبت کن.

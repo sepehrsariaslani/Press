@@ -45,6 +45,7 @@ def build_service_request_lead(
 	phone: str,
 	company: str = "",
 	context: str = "",
+	quote_snapshot: dict | None = None,
 	source_path: str = "",
 	source_host: str = "",
 ) -> dict[str, str]:
@@ -61,7 +62,9 @@ def build_service_request_lead(
 	source_host = _clean_text(source_host, "source_host", 140)
 
 	message = "درخواست بررسی برآورد خدمات آسومی. این درخواست فاکتور یا پرداخت نیست."
-	if context:
+	if service == "module_pricing":
+		message = f"{message}\n\n{_module_pricing_message(quote_snapshot)}"
+	elif context:
 		message = f"{message}\n\n{context}"
 
 	return {
@@ -75,6 +78,44 @@ def build_service_request_lead(
 		"source_path": source_path,
 		"source_host": source_host,
 	}
+
+
+def _module_pricing_message(quote_snapshot: dict | None) -> str:
+	if not isinstance(quote_snapshot, dict):
+		raise ValueError("quote_snapshot is required for module pricing")
+	lines = quote_snapshot.get("lines")
+	quoted_at = quote_snapshot.get("quoted_at")
+	if not isinstance(lines, list) or not lines or not isinstance(quoted_at, str) or not quoted_at.strip():
+		raise ValueError("quote_snapshot is incomplete")
+
+	formatted_lines = []
+	for line in lines:
+		if not isinstance(line, dict) or not isinstance(line.get("title"), str):
+			raise ValueError("quote_snapshot lines are invalid")
+		amount = line.get("amount")
+		if type(amount) is not int or amount < 0:
+			raise ValueError("quote_snapshot line amount is invalid")
+		formatted_lines.append(f"• {line['title']}: {_format_toman(amount)} تومان")
+
+	total = quote_snapshot.get("total")
+	listed_total = quote_snapshot.get("listed_total")
+	discount = quote_snapshot.get("discount")
+	if any(type(value) is not int or value < 0 for value in (total, listed_total, discount)):
+		raise ValueError("quote_snapshot totals are invalid")
+
+	parts = ["مبنای برآورد: تعرفهٔ ذخیره‌شده روی سرور"]
+	if quote_snapshot.get("package_title"):
+		parts.append(f"بستهٔ انتخاب‌شده: {quote_snapshot['package_title']}")
+	parts.extend(("انتخاب‌ها:", *formatted_lines, f"جمع قیمت‌های تکی: {_format_toman(listed_total)} تومان"))
+	if discount:
+		discount_label = _clean_text(quote_snapshot.get("discount_label"), "discount_label", 140, required=True)
+		parts.append(f"{discount_label}: −{_format_toman(discount)} تومان")
+	parts.extend((f"مبلغ نهایی ماهانه: {_format_toman(total)} تومان", f"زمان محاسبه: {quoted_at.strip()}"))
+	return "\n".join(parts)
+
+
+def _format_toman(amount: int) -> str:
+	return f"{amount:,}".translate(str.maketrans("0123456789,", "۰۱۲۳۴۵۶۷۸۹٬"))
 
 
 def normalize_service_request_status(value: str) -> str:
