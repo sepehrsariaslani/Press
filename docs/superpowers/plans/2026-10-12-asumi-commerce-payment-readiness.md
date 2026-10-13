@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- All 24 published Marketplace apps keep their current zero prices until the administrator changes them.
+- The current Marketplace catalog contains 23 published apps and 46 active plans; every price stays at zero until the administrator changes it.
 - Never put a Merchant ID or other payment secret in source code, browser output, logs, or chat.
 - ZarinPal verification uses the saved order amount and authority; callback query values alone never activate an order.
 - Only `System Manager` and `Press Admin` can edit commerce settings, prices, refunds, or provisioning.
@@ -164,3 +164,12 @@
 - Live audit on 2026-10-13: `checkout_status` reports paid checkout, Marketplace checkout, and hosting checkout disabled, with ZarinPal sandbox mode on. `admin_hosting_readiness` reports only the Root Domain and Docker agent ready; payment credentials/production mode, a priced Site Plan, wildcard DNS/TLS, Press hosting infrastructure, and capacity are not ready. The live Press database still has two disabled, zero-price Site Plan drafts and no eligible public Server, active Bench, Release Group, or proxy connection.
 - The current live resource reading is 7.4 GiB available memory and 9.8 GiB free disk. Site Plan capacity limits and configured reserves are missing, so new-site checkout stays disabled until the operator sets them and verifies headroom against the chosen plans.
 - The official IRNIC WHOIS server (`whois.nic.ir`) currently returns `no entries found` for `boller.ir`; this is a registration blocker, not only a missing DNS record. The domain cannot serve the existing site until its owner registers it and configures DNS. Do not purchase or substitute another domain without the user's direction.
+
+## Fresh live audit — 2026-10-13
+
+- The live Bench inventory contains 25 apps. The Marketplace publishes and enables all 23 sellable apps other than `raven` and `sales`, with 46 enabled plans and zero prices in INR, USD, and IRR. Both excluded apps are installed on `denroom.ir`; keep their Bench code and site installations intact.
+- Live `Commerce Settings` report the global commerce switch and free Marketplace sales enabled, Site Plan sales disabled, sandbox mode enabled, and no Merchant ID configured. The public `checkout_status` false values describe paid checkout; free app purchases use the separately enabled `free_purchase_enabled` setting.
+- The current hosting checklist has only Root Domain and Docker agent ready. Live payment, priced Site Plan, wildcard DNS, wildcard TLS, public Press infrastructure, and capacity checks remain false. The latest resource snapshot is 7.3 GiB available memory and 9.8 GiB free disk.
+- Re-ran all 19 `press.saas.commerce` test modules on a disposable Press site using Frappe light mode: 131 tests passed. The focused Docker agent operation tests passed (9 tests), and the Marketplace purchase UI tests passed (6 tests). The disposable site, temporary test-only dependencies, and test logs were removed; the five production sites remain the only registered sites.
+- The backend container and workspace both run commit `169fe048735c2a049d1cb3fb7b19304467f2d18f`. Public `/`, `/saas`, `/pricing`, `/marketplace`, and `/dashboard/orders` page shells returned HTTP 200.
+- Remaining launch inputs are the real ZarinPal Merchant ID entered through `/dashboard/orders` and the production-mode switch; wildcard DNS and TLS; and Press public Server/Bench/Release Group/Proxy plus validated site capacity limits. Do not enable paid or hosting checkout until those prerequisites pass the live checklist.
