@@ -30,6 +30,7 @@
 <script>
 import { toast } from 'vue-sonner';
 import AsumiBrand from '@/components/AsumiBrand.vue';
+import { getFrappeLoginRedirect } from '@/utils/asumiCommerceHost';
 
 export default {
 	name: 'LoginBox',
@@ -46,7 +47,8 @@ export default {
 	},
 	methods: {
 		redirectForFrappeioAuth() {
-			window.location = '/f-login';
+			const redirect = getFrappeLoginRedirect(window.location.hostname);
+			if (redirect) window.location = redirect;
 		},
 	},
 };

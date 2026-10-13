@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAsumiBillingRedirect, isAsumiCommerceHost } from './asumiCommerceHost';
+import { getAsumiBillingRedirect, getFrappeLoginRedirect, isAsumiCommerceHost } from './asumiCommerceHost';
 
 describe('Asumi legacy billing routing', () => {
 	it.each(['/billing', '/billing/', '/billing/payment-methods', '/billing/invoices'])(
@@ -28,5 +28,11 @@ describe('Asumi legacy billing routing', () => {
 			name: 'Commerce Orders',
 			replace: true,
 		});
+	});
+
+	it('keeps Asumi account sign-in on Asumi instead of opening Frappe login', () => {
+		expect(getFrappeLoginRedirect('asumi.ir')).toBeNull();
+		expect(getFrappeLoginRedirect('www.asumi.ir')).toBeNull();
+		expect(getFrappeLoginRedirect('veederakht.ir')).toBe('/f-login');
 	});
 });

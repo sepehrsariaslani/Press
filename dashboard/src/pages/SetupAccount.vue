@@ -123,7 +123,7 @@
 						</Button>
 					</template>
 				</form>
-				<div class="mt-4" v-if="!is2FA && !isInvitation">
+				<div class="mt-4" v-if="!is2FA && !isInvitation && !isAsumiHost">
 					<span class="text-base font-normal text-gray-600">
 						{{ 'By signing up, you agree to our ' }}
 					</span>
@@ -134,6 +134,9 @@
 						Terms & Policies
 					</a>
 				</div>
+				<p v-else-if="!is2FA && !isInvitation && isAsumiHost" class="mt-4 text-sm text-gray-600">
+					Your Asumi account lets you manage services, apps, and orders.
+				</p>
 			</LoginBox>
 		</div>
 	</div>
@@ -142,7 +145,7 @@
 		v-else-if="!$resources.validateRequestKey.loading && !email"
 	>
 		Verification link or code is invalid or expired.
-		<Link to="/signup">Sign up</Link>
+		<Link :to="{ name: 'Signup', query: { redirect: $route.query.redirect } }">Sign up</Link>
 		for a new account.
 	</div>
 	<div v-else></div>
@@ -153,6 +156,8 @@ import LoginBox from '../components/auth/LoginBox.vue';
 import Link from '@/components/Link.vue';
 import Form from '@/components/Form.vue';
 import PhoneInput from '@/components/PhoneInput.vue';
+import { getPostSignupDestination } from '@/utils/authRouting';
+import { isAsumiCommerceHost } from '@/utils/asumiCommerceHost';
 
 const detailsSharedProducts = [
 	'erpnext',
@@ -244,13 +249,11 @@ export default {
 						this.showLeadsConsentCheckbox && this.shareDetailsConsent,
 				},
 				onSuccess() {
-					let path = '/dashboard/create-site/app-selector';
-					if (this.saasProduct) {
-						path = `/dashboard/create-site/${this.saasProduct.name}/setup`;
-					}
-					if (this.isInvitation) {
-						path = '/dashboard/sites';
-					}
+					const path = getPostSignupDestination({
+						redirect: this.$route.query.redirect,
+						product: this.saasProduct?.name,
+						isInvitation: this.isInvitation,
+					});
 					window.location.href = path;
 				},
 			};
@@ -283,6 +286,9 @@ export default {
 		},
 	},
 	computed: {
+		isAsumiHost() {
+			return isAsumiCommerceHost(window.location.hostname);
+		},
 		is2FA() {
 			return (
 				this.$route.name === 'Setup Account' && this.$route.query.two_factor

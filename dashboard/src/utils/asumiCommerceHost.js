@@ -4,6 +4,10 @@ export function isAsumiCommerceHost(hostname) {
 	return ASUMI_COMMERCE_HOSTS.has(String(hostname || '').toLowerCase());
 }
 
+export function getFrappeLoginRedirect(hostname) {
+	return isAsumiCommerceHost(hostname) ? null : '/f-login';
+}
+
 export function getAsumiBillingRedirect(hostname, path) {
 	if (
 		!isAsumiCommerceHost(hostname) ||

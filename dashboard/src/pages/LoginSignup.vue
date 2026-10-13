@@ -295,7 +295,7 @@
 							class="mt-4 flex flex-col"
 							v-if="!hasForgotPassword && !isOauthLogin && !is2FA"
 						>
-							<div v-if="$route.name === 'Signup'">
+							<div v-if="$route.name === 'Signup' && !isAsumiHost">
 								<span class="text-base font-normal text-gray-600">
 									{{ 'By signing up, you agree to our ' }}
 								</span>
@@ -378,7 +378,7 @@
 							</Button>
 						</form>
 						<div class="mt-4 space-y-2">
-							<div v-if="$route.name === 'Signup'">
+							<div v-if="$route.name === 'Signup' && !isAsumiHost">
 								<span class="text-base font-normal text-gray-600">
 									{{ 'By signing up, you agree to our ' }}
 								</span>
@@ -445,6 +445,8 @@ import { toast } from 'vue-sonner';
 import { getToastErrorMessage } from '../utils/toast';
 import { h } from 'vue';
 import CustomToast from '../components/CustomToast.vue';
+import { isAsumiCommerceHost } from '@/utils/asumiCommerceHost';
+import { getSignupLoginRedirect } from '@/utils/authRouting';
 
 export default {
 	name: 'Signup',
@@ -472,7 +474,7 @@ export default {
 		this.email = localStorage.getItem('login_email');
 		if (window.posthog?.__loaded) {
 			window.posthog.identify(this.email || window.posthog.get_distinct_id(), {
-				app: 'frappe_cloud',
+				app: this.isAsumiHost ? 'asumi' : 'frappe_cloud',
 				action: 'login_signup',
 			});
 
@@ -487,20 +489,26 @@ export default {
 		if (this.$route.query?.reason) {
 			switch (this.$route.query.reason) {
 				case 'INVALID_TEAM':
-					toast.custom(
-						h(CustomToast, {
-							html: `
-							You are not part of an active team<br/>
-							<span class="text-sm text-gray-800">
-								If the issue persists, please contact 
-								<a href="https://support.frappe.io" class="font-medium underline" target="_blank" rel="noopener noreferrer">
-									support.
-								</a>
-							</span>
-						`,
-						}),
-						{ duration: 5000 },
-					);
+					if (this.isAsumiHost) {
+						toast.error(
+							'Your account is not connected to an active Asumi team. Please contact Asumi support.',
+						);
+					} else {
+						toast.custom(
+							h(CustomToast, {
+								html: `
+									You are not part of an active team<br/>
+									<span class="text-sm text-gray-800">
+										If the issue persists, please contact
+										<a href="https://support.frappe.io" class="font-medium underline" target="_blank" rel="noopener noreferrer">
+											support.
+										</a>
+									</span>
+								`,
+							}),
+							{ duration: 5000 },
+						);
+					}
 					break;
 				default:
 					toast.error(
@@ -540,19 +548,14 @@ export default {
 					// check if error message has `is already registered` substring
 					if (errorMessage.includes('is already registered')) {
 						localStorage.setItem('login_email', this.email);
-
-						if (this.$route.query?.product) {
-							this.$router.push({
-								name: 'Login',
-								query: {
-									redirect: `/dashboard/create-site/${this.$route.query.product}/setup`,
-								},
-							});
-						} else {
-							this.$router.push({
-								name: 'Login',
-							});
-						}
+						const redirect = getSignupLoginRedirect({
+							redirect: this.$route.query?.redirect,
+							product: this.$route.query?.product,
+						});
+						this.$router.push({
+							name: 'Login',
+							query: redirect ? { redirect } : {},
+						});
 					}
 				},
 			};
@@ -565,7 +568,13 @@ export default {
 					otp: this.otp,
 				},
 				onSuccess(key) {
-					window.open(`/dashboard/setup-account/${key}`, '_self');
+					this.$router.push({
+						name: 'Setup Account',
+						params: { requestKey: key },
+						query: this.$route.query.redirect
+							? { redirect: this.$route.query.redirect }
+							: {},
+					});
 				},
 			};
 		},
@@ -833,6 +842,9 @@ export default {
 		},
 	},
 	computed: {
+		isAsumiHost() {
+			return isAsumiCommerceHost(window.location.hostname);
+		},
 		error() {
 			if (this.$resources.signup.error) {
 				return this.$resources.signup.error;
@@ -904,11 +916,13 @@ export default {
 			} else if (this.otpRequested) {
 				return 'Verify your email address';
 			} else if (this.isLogin) {
+				if (this.isAsumiHost) return 'Log in to your Asumi account';
 				if (this.saasProduct) {
 					return `Log in to your account to start using ${this.saasProduct.title}`;
 				}
 				return 'Log in to your account';
 			} else {
+				if (this.isAsumiHost) return 'Create your Asumi account';
 				if (this.saasProduct) {
 					return `Sign up to create your ${this.saasProduct.title} site`;
 				}
@@ -920,6 +934,11 @@ export default {
 			if (this.hasForgotPassword) {
 				return 'Enter your email address to reset your password';
 			} else {
+				if (this.isAsumiHost) {
+					return this.isLogin
+						? 'Sign in to manage your Asumi services, apps, and orders'
+						: 'Create an account to order Asumi services and apps';
+				}
 				if (this.saasProduct) {
 					return `Get started and explore the easiest way to use ${this.saasProduct.title}`;
 				}
