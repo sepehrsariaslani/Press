@@ -2181,7 +2181,7 @@ def save_marketplace_plan_prices(
 	doc = frappe.get_doc("Marketplace App Plan", plan, for_update=True)
 	app_id = frappe.db.get_value("Marketplace App", doc.app, "app")
 	if not is_marketplace_app_sellable(app_id):
-		frappe.throw(_("چارچوب پایهٔ Frappe برنامهٔ قابل‌فروش نیست و تعرفهٔ جداگانه نمی‌پذیرد."))
+		frappe.throw(_("این برنامه در فروشگاه آسومی قابل‌فروش نیست و تعرفهٔ جداگانه نمی‌پذیرد."))
 	active_subscriptions = frappe.db.count(
 		"Press Subscription",
 		{"document_type": "Marketplace App", "plan_type": "Marketplace App Plan", "plan": plan, "enabled": 1},

@@ -34,6 +34,13 @@ class MarketplaceInstallStateTest(unittest.TestCase):
 				"frappe", False, ["frappe"], ["accounts", "restaurant"]
 			)
 
+	def test_rejects_raven_and_sales_even_when_their_code_is_on_the_bench(self):
+		for app in ("raven", "sales"):
+			with self.subTest(app=app), self.assertRaisesRegex(ValueError, "قابل خرید"):
+				marketplace_install_state(app, [], [app])
+			with self.subTest(app=app), self.assertRaisesRegex(ValueError, "قابل خرید"):
+				marketplace_install.should_install_marketplace_app(app, True, [], [app])
+
 	def test_allows_install_when_app_code_is_available_on_the_selected_bench(self):
 		self.assertEqual(
 			marketplace_install_state("restaurant", [], ["accounts", "restaurant"]),
@@ -42,7 +49,7 @@ class MarketplaceInstallStateTest(unittest.TestCase):
 
 	def test_rejects_app_missing_from_selected_bench(self):
 		with self.assertRaisesRegex(ValueError, "بنچ"):
-			marketplace_install_state("sales", ["accounts"], ["accounts", "restaurant"])
+			marketplace_install_state("unknown_app", ["accounts"], ["accounts", "restaurant"])
 
 	def test_rejects_an_empty_app_name(self):
 		with self.assertRaises(ValueError):

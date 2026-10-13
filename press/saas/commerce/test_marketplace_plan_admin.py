@@ -36,6 +36,16 @@ class MarketplacePlanAdminTest(unittest.TestCase):
 			with self.subTest(changes=changes), self.assertRaises(ValueError):
 				build_marketplace_plan_draft(**(base | changes))
 
+	def test_marketplace_plan_draft_rejects_apps_excluded_from_asumi_sales(self):
+		for app in ("frappe", "raven", "sales"):
+			with self.subTest(app=app), self.assertRaises(ValueError):
+				build_marketplace_plan_draft(
+					app=app,
+					title="Not for sale",
+					interval="Monthly",
+					available_apps=[app],
+				)
+
 
 if __name__ == "__main__":
 	unittest.main()

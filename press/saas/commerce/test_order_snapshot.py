@@ -38,6 +38,17 @@ class MarketplaceAppOrderSnapshotTest(unittest.TestCase):
 		with self.assertRaises(ValueError):
 			marketplace_app_order_snapshot(self.plan, self.app, self.site, self.team, "buyer@example.com")
 
+	def test_rejects_raven_and_sales_orders_even_when_installed_or_available(self):
+		for app_name in ("raven", "sales"):
+			with self.subTest(app=app_name):
+				self.app["app"] = app_name
+				self.site["installed_apps"] = [app_name]
+				self.site["available_apps"] = [app_name]
+				with self.assertRaisesRegex(ValueError, "قابل خرید"):
+					marketplace_app_order_snapshot(
+						self.plan, self.app, self.site, self.team, "buyer@example.com"
+					)
+
 	def test_rejects_unowned_site_or_missing_app(self):
 		self.site["team"] = "another-team"
 		with self.assertRaises(ValueError):

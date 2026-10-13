@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 
 APP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
-NON_SELLABLE_MARKETPLACE_APP_IDS = frozenset({"frappe"})
+NON_SELLABLE_MARKETPLACE_APP_IDS = frozenset({"frappe", "raven", "sales"})
 
 
 def is_marketplace_app_sellable(app: str) -> bool:
-	"""Exclude base framework packages that are present on every site by definition."""
+	"""Exclude framework and apps the Asumi owner has removed from the storefront."""
 	return isinstance(app, str) and app not in NON_SELLABLE_MARKETPLACE_APP_IDS
 
 
@@ -15,7 +15,7 @@ def _validate_marketplace_app(app: str) -> None:
 	if not isinstance(app, str) or not APP_NAME_RE.fullmatch(app):
 		raise ValueError("شناسهٔ برنامهٔ انتخاب‌شده معتبر نیست")
 	if not is_marketplace_app_sellable(app):
-		raise ValueError("چارچوب پایهٔ Frappe به‌صورت برنامهٔ جداگانه قابل خرید نیست")
+		raise ValueError("این برنامه در فروشگاه آسومی قابل خرید نیست")
 
 
 def marketplace_install_state(app: str, installed_apps: list[str], available_apps: list[str]) -> dict:

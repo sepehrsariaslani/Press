@@ -79,10 +79,12 @@ class MarketplaceCheckoutApiTest(unittest.TestCase):
 			patch.object(api, "_acquire_transaction_lock", return_value=True),
 		)
 
-	def test_admin_marketplace_plan_choices_exclude_the_base_framework(self):
+	def test_admin_marketplace_plan_choices_exclude_apps_blocked_from_storefront(self):
 		apps = [
 			SimpleNamespace(name="accounts", app="accounts", title="Hesabyar"),
 			SimpleNamespace(name="frappe", app="frappe", title="Frappe Framework"),
+			SimpleNamespace(name="raven", app="raven", title="Raven"),
+			SimpleNamespace(name="sales", app="sales", title="Sales"),
 		]
 		with patch.object(api.frappe, "get_all", return_value=apps) as get_all:
 			result = api._sellable_marketplace_app_rows(published_only=True)
@@ -90,18 +92,20 @@ class MarketplaceCheckoutApiTest(unittest.TestCase):
 		self.assertEqual([app.app for app in result], ["accounts"])
 		self.assertEqual(get_all.call_args.kwargs["filters"], {"status": "Published"})
 
-	def test_admin_cannot_assign_a_price_to_the_base_framework(self):
-		plan = FakeDocument(name="PLAN-FRAPPE", app="frappe")
-		with (
-			patch.object(api, "_require_commerce_admin"),
-			patch.object(api.frappe, "get_doc", return_value=plan),
-			patch.object(api.frappe.db, "get_value", return_value="frappe"),
-			patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
-		):
-			with self.assertRaises(CheckoutRejected):
-				api.save_marketplace_plan_prices(
-					"PLAN-FRAPPE", price_inr=0, price_usd=0, price_irr=10000
-				)
+	def test_admin_cannot_assign_a_price_to_apps_excluded_from_the_storefront(self):
+		for app in ("frappe", "raven", "sales"):
+			with self.subTest(app=app):
+				plan = FakeDocument(name=f"PLAN-{app.upper()}", app=app)
+				with (
+					patch.object(api, "_require_commerce_admin"),
+					patch.object(api.frappe, "get_doc", return_value=plan),
+					patch.object(api.frappe.db, "get_value", return_value=app),
+					patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
+				):
+					with self.assertRaises(CheckoutRejected):
+						api.save_marketplace_plan_prices(
+							plan.name, price_inr=0, price_usd=0, price_irr=10000
+						)
 
 	@contextmanager
 	def purchase_context(self, **kwargs):

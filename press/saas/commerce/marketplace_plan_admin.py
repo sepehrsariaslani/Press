@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from press.saas.commerce.marketplace_install import is_marketplace_app_sellable
 from press.saas.commerce.pricing import normalize_interval
 
 MARKETPLACE_PLAN_INTERVALS = {"Daily", "Monthly", "Yearly"}
@@ -9,7 +10,12 @@ MARKETPLACE_PLAN_INTERVALS = {"Daily", "Monthly", "Yearly"}
 
 def build_marketplace_plan_draft(*, app, title, interval, available_apps) -> dict:
 	"""Build a disabled, zero-price plan draft for a currently published app."""
-	if not isinstance(app, str) or not app.strip() or app.strip() not in set(available_apps or []):
+	if (
+		not isinstance(app, str)
+		or not app.strip()
+		or not is_marketplace_app_sellable(app.strip())
+		or app.strip() not in set(available_apps or [])
+	):
 		raise ValueError("برنامهٔ انتخاب‌شده منتشر نشده یا در دسترس نیست.")
 	if not isinstance(title, str) or not title.strip():
 		raise ValueError("نام تعرفه را وارد کنید.")
