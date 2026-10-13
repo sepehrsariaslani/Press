@@ -1,9 +1,20 @@
+import unittest
 from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from press.agent import Agent
+from press.marketplace.doctype.marketplace_app_plan.test_marketplace_app_plan import (
+	create_test_marketplace_app_plan,
+)
+from press.press.doctype.agent_job.agent_job import AgentJob
+from press.press.doctype.app.test_app import create_test_app
+from press.press.doctype.marketplace_app.test_marketplace_app import create_test_marketplace_app
+from press.press.doctype.site.site import Site
+from press.press.doctype.site_backup.site_backup import SiteBackup
 from press.press.doctype.press_subscription.press_subscription import PressSubscription
+from press.press.doctype.team.test_team import create_test_team
 from press.saas.commerce import api
 
 
@@ -117,3 +128,212 @@ class CommerceOrderIntegrationTest(FrappeTestCase):
 
 		order.reload()
 		self.assertEqual(order.status, "Expired")
+
+	def test_marketplace_order_keeps_backup_on_failed_install_and_activates_after_retry(self):
+		team = create_test_team()
+		app_name = f"commerce_integration_{frappe.generate_hash(length=8).lower()}"
+		create_test_app("frappe", "Frappe Framework")
+		create_test_app(app_name, "Commerce Integration App")
+		marketplace_app = create_test_marketplace_app(app_name, team=team.name)
+		plan = create_test_marketplace_app_plan(app_name)
+		plan.db_set("price_irr", 25_000)
+		plan.reload()
+		site = frappe.get_doc(
+			{
+				"doctype": "Site",
+				"status": "Active",
+				"subdomain": "commerce-integration",
+				"server": "integration-server",
+				"bench": "integration-bench",
+				"group": "integration-release-group",
+				"cluster": "integration-cluster",
+				"team": team.name,
+				"apps": [{"app": "frappe"}],
+			}
+		)
+		site.flags.ignore_links = True
+		with (
+			patch.object(Site, "before_insert"),
+			patch.object(Site, "validate"),
+			patch.object(Site, "after_insert"),
+			patch.object(Site, "on_update"),
+		):
+			site.insert(ignore_permissions=True)
+		order = frappe.get_doc(
+			{
+				"doctype": "Commerce Order",
+				"order_type": "Marketplace App",
+				"plan_type": "Marketplace App Plan",
+				"plan": plan.name,
+				"interval": plan.interval,
+				"marketplace_app": marketplace_app.name,
+				"site": site.name,
+				"installation_required": 1,
+				"team": team.name,
+				"customer": team.user,
+				"currency": "IRR",
+				"amount": plan.price_irr,
+				"status": "Paid",
+			}
+		).insert(ignore_permissions=True)
+
+		wait_for_backup = api._wait_for_site_backup
+		wait_for_agent_job = api._wait_for_site_agent_job
+		install_results = iter(["Failure", "Success"])
+		original_get_doc = frappe.get_doc
+		original_exists = frappe.db.exists
+
+		def complete_backup(backup_name):
+			backup = frappe.get_doc("Site Backup", backup_name)
+			frappe.db.set_value(
+				"Site Backup",
+				backup_name,
+				{
+					"status": "Success",
+					"database_file": "database.sql.gz",
+					"public_file": "public-files.tar",
+					"private_file": "private-files.tar",
+				},
+			)
+			if backup.job:
+				frappe.db.set_value("Agent Job", backup.job, "status", "Success")
+			return wait_for_backup(backup_name)
+
+		def complete_install(job_name):
+			frappe.db.set_value("Agent Job", job_name, "status", next(install_results))
+			frappe.db.set_value("Site", site.name, "status", "Active")
+			return wait_for_agent_job(job_name)
+
+		def get_doc(*args, **kwargs):
+			if len(args) > 1 and args[:2] == ("Bench", "integration-bench"):
+				return frappe._dict(apps=[frappe._dict(app="frappe"), frappe._dict(app=app_name)])
+			if not args and kwargs.get("doctype") == "Bench" and kwargs.get("name") == "integration-bench":
+				return frappe._dict(apps=[frappe._dict(app="frappe"), frappe._dict(app=app_name)])
+			return original_get_doc(*args, **kwargs)
+
+		def exists(doctype, name=None, *args, **kwargs):
+			if doctype == "Bench" and name == "integration-bench":
+				return True
+			return original_exists(doctype, name, *args, **kwargs)
+
+		def create_agent_job(job_type, target_site, request_path, request_data):
+			job = frappe.get_doc(
+				{
+					"doctype": "Agent Job",
+					"job_type": job_type,
+					"server_type": "Server",
+					"server": target_site.server,
+					"bench": target_site.bench,
+					"site": target_site.name,
+					"status": "Pending",
+					"request_method": "POST",
+					"request_path": request_path,
+					"request_data": frappe.as_json(request_data),
+					"request_files": "{}",
+				}
+			)
+			job.flags.ignore_links = True
+			with patch.object(AgentJob, "after_insert"):
+				return job.insert(ignore_permissions=True)
+
+		def request_backup(backup):
+			job = create_agent_job(
+				"Backup Site",
+				site,
+				f"benches/{site.bench}/sites/{site.name}/backup",
+				{"with_files": 1},
+			)
+			backup.db_set("job", job.name)
+			return job
+
+		def request_install(_agent, target_site, app):
+			return create_agent_job(
+				"Install App on Site",
+				target_site,
+				f"benches/{target_site.bench}/sites/{target_site.name}/apps",
+				{"name": app},
+			)
+
+		def sync_installed_apps(target_site):
+			target_site.flags.ignore_links = True
+			target_site.set("apps", [])
+			target_site.append("apps", {"app": "frappe"})
+			target_site.append("apps", {"app": app_name})
+			target_site.save(ignore_permissions=True)
+
+		with (
+			patch.object(Site, "validate"),
+			patch.object(Site, "on_update"),
+			patch.object(Site, "sync_apps", new=sync_installed_apps),
+			patch.object(SiteBackup, "start_backup", new=request_backup),
+			patch.object(Agent, "install_app_site", new=request_install),
+			patch.object(AgentJob, "enqueue_http_request"),
+			patch.object(AgentJob, "after_insert"),
+			patch.object(api.frappe, "get_doc", side_effect=get_doc),
+			patch.object(api.frappe.db, "exists", side_effect=exists),
+			patch.object(api, "_wait_for_site_backup", side_effect=complete_backup),
+			patch.object(api, "_wait_for_site_agent_job", side_effect=complete_install),
+			patch.object(api, "_sync_marketplace_subscription_config"),
+			patch.object(api.frappe.db, "commit"),
+			patch.object(api.frappe, "log_error"),
+		):
+			self.assertEqual(api.provision_paid_order(order.name), "Provisioning Failed")
+			order.reload()
+			self.assertEqual(order.status, "Provisioning Failed")
+			self.assertTrue(order.install_backup, order.provisioning_error)
+			self.assertTrue(frappe.db.exists("Site Backup", order.install_backup))
+			failed_backup = frappe.get_doc("Site Backup", order.install_backup)
+			self.assertEqual(failed_backup.status, "Success")
+			self.assertTrue(failed_backup.with_files)
+			self.assertTrue(failed_backup.database_file)
+			self.assertTrue(failed_backup.public_file)
+			self.assertTrue(failed_backup.private_file)
+			self.assertEqual(
+				frappe.db.get_value("Agent Job", order.agent_job, "status"), "Failure"
+			)
+			self.assertFalse(
+				frappe.db.exists(
+					"Press Subscription",
+					{
+						"site": site.name,
+						"document_type": "Marketplace App",
+						"document_name": app_name,
+					},
+				)
+			)
+
+			result = api.provision_paid_order(order.name)
+			order.reload()
+			self.assertEqual(result, "Active", order.provisioning_error)
+
+		order.reload()
+		subscription = frappe.get_doc("Press Subscription", order.subscription)
+		self.assertEqual(order.status, "Active")
+		self.assertEqual(order.provisioning_attempts, 2)
+		self.assertTrue(order.agent_job)
+		self.assertTrue(order.install_backup)
+		self.assertEqual(
+			frappe.db.get_value("Agent Job", order.agent_job, "status"), "Success"
+		)
+		self.assertEqual(frappe.db.count("Site Backup", {"site": site.name}), 2)
+		self.assertEqual(subscription.enabled, 1)
+		self.assertEqual(subscription.site, site.name)
+		self.assertEqual(subscription.team, team.name)
+		self.assertEqual(subscription.plan, plan.name)
+		installed_apps = {row.app for row in frappe.get_doc("Site", site.name).apps}
+		self.assertIn(app_name, installed_apps)
+
+
+def run_order_integration_tests():
+	"""Run DB integration tests without importing every Press test module."""
+	frappe.in_test = True
+	frappe.flags.in_test = True
+	suite = unittest.defaultTestLoader.loadTestsFromTestCase(CommerceOrderIntegrationTest)
+	result = unittest.TextTestRunner(verbosity=2).run(suite)
+	if not result.wasSuccessful():
+		raise RuntimeError("Commerce order integration tests failed")
+	return {
+		"tests_run": result.testsRun,
+		"failures": len(result.failures),
+		"errors": len(result.errors),
+	}
