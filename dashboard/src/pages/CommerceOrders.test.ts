@@ -20,4 +20,14 @@ describe('Asumi public Press hosting page contract', () => {
 		expect(page).toContain('release_groups: newSitePlan.release_groups');
 		expect(page).not.toContain('release_groups: [], allowed_apps: newSitePlan.allowed_apps');
 	});
+
+	it('keeps account add-on checkout site-scoped and posts no client price', () => {
+		expect(page).toContain('press.saas.commerce.api.eligible_addon_sites');
+		expect(page).toContain('press.saas.commerce.api.start_service_addon_purchase');
+		expect(page).toContain('site_type: selectedAddonSiteTarget.value.site_type');
+		expect(page).toContain('site_name: selectedAddonSiteTarget.value.name');
+		expect(page).toContain("checkout.checkout_url.startsWith('https://')");
+		expect(page).not.toContain('monthly_price_toman:');
+		expect(page).not.toContain('price_irr: addon');
+	});
 });

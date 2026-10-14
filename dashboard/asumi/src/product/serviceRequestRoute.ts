@@ -1,4 +1,11 @@
 export type ServiceRequestKind = 'module_pricing' | 'website_design';
+const asumiAccountAddonIds = new Set(['assistant_ai', 'internal_chat']);
+
+export function buildAddonPurchaseHref(addonId: string, isAuthenticated: boolean): string {
+	if (!asumiAccountAddonIds.has(addonId)) throw new Error('شناسهٔ افزونه معتبر نیست.');
+	const checkout = `/dashboard/orders?${new URLSearchParams({ asumi_addon_purchase: '1', addon_id: addonId }).toString()}`;
+	return isAuthenticated ? checkout : `/hesab/login?next=${encodeURIComponent(checkout)}`;
+}
 
 export function buildServiceRequestHref(service: ServiceRequestKind, context: string, moduleIds: string[] = [], addonIds: string[] = [], intent: 'request' | 'purchase' = 'request') {
 	const params = new URLSearchParams({

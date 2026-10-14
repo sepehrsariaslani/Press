@@ -262,3 +262,24 @@
 	.pricing-preset-card, .pricing-save-button, .pricing-request-button { transition: none; }
 	.pricing-preset-card:hover { transform: none; }
 }
+
+.pricing-account-addons { margin-top: 32px; padding-top: 25px; border-top: 1px solid var(--product-line); }
+.pricing-account-addons .pricing-section-heading { margin-bottom: 15px; }
+.pricing-account-addons .pricing-section-heading h2 { margin: 3px 0 0; font-size: clamp(20px, 2.5vw, 29px); }
+.pricing-account-addon-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.pricing-account-addon-card { display: flex; min-height: 230px; flex-direction: column; align-items: flex-start; padding: 22px; border: 1px solid var(--product-line); background: var(--product-card); }
+.pricing-account-addon-kicker { margin: 0 0 7px; color: var(--product-red); font-size: 10px; font-weight: 700; }
+.pricing-account-addon-card h3 { margin: 0; font-size: 20px; font-weight: 650; }
+.pricing-account-addon-price { margin: 14px 0 0; color: var(--product-red); font-size: 20px; font-weight: 700; }
+.pricing-account-addon-description { margin: 8px 0 18px; color: var(--product-muted); font-size: 12px; line-height: 1.9; }
+.pricing-account-addon-note { margin: auto 0 0; color: var(--product-muted); font-size: 11px; line-height: 1.8; }
+.pricing-account-addon-button { margin-top: auto; border: 1px solid var(--product-red); padding: 10px 15px; background: var(--product-red); color: white; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.pricing-account-addon-button:hover { background: #841c27; }
+.pricing-account-addon-button:focus-visible { outline: 3px solid #a9253259; outline-offset: 3px; }
+.pricing-addon-state { margin: 14px 0; color: var(--product-muted); font-size: 12px; }
+.pricing-addon-state-error { color: #9b2632; }
+
+@media (max-width: 700px) {
+	.pricing-account-addon-grid { grid-template-columns: 1fr; }
+	.pricing-account-addon-card { min-height: 205px; padding: 17px; }
+}

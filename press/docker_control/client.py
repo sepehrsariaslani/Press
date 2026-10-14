@@ -121,6 +121,27 @@ class DockerControlClient:
 			raise DockerControlError("عامل میزبان نتیجهٔ به‌روزرسانی اشتراک را تأیید نکرد.")
 		return result
 
+	def set_site_addon_subscription(self, site: str, addon_id: str, secret_key: str | None) -> dict:
+		"""Update one installed Accounts add-on key without persisting the secret as an operation."""
+		if not isinstance(site, str) or (
+			site not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}
+			and not HOSTED_SITE_RE.fullmatch(site)
+		):
+			raise DockerControlError("سایت برای به‌روزرسانی افزونه مجاز نیست.")
+		if addon_id not in {"assistant_ai", "internal_chat"}:
+			raise DockerControlError("شناسهٔ افزونهٔ حسابیار مجاز نیست.")
+		if secret_key is not None and (not isinstance(secret_key, str) or not re.fullmatch(r"[a-f0-9]{40}", secret_key)):
+			raise DockerControlError("کلید افزونهٔ حسابیار نامعتبر است.")
+		result = self.request(
+			"POST",
+			"/v1/site-addon-subscription",
+			{"site": site, "addon_id": addon_id, "secret_key": secret_key},
+			timeout=(5, 30),
+		)
+		if result != {"site": site, "addon_id": addon_id, "enabled": secret_key is not None}:
+			raise DockerControlError("عامل میزبان نتیجهٔ به‌روزرسانی افزونه را تأیید نکرد.")
+		return result
+
 	def inventory(self) -> dict:
 		return self.request("GET", "/v1/inventory", timeout=(5, 360))
 

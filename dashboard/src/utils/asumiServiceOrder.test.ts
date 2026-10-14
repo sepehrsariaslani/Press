@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	getAsumiServiceOrderLines,
+	getAsumiAddonOrderDetails,
 	getAsumiServiceOrderTitle,
 	getAsumiServiceOrderTomanAmount,
 	nextAsumiServiceDeliveryStatus,
@@ -33,5 +34,19 @@ describe('Asumi service order helpers', () => {
 		expect(nextAsumiServiceDeliveryStatus({ order_type: 'Asumi Service', status: 'Provisioning' })).toBe('Active');
 		expect(nextAsumiServiceDeliveryStatus({ order_type: 'Hosting', status: 'Paid' })).toBeNull();
 		expect(nextAsumiServiceDeliveryStatus({ order_type: 'Asumi Service', status: 'Active' })).toBeNull();
+	});
+
+	it('shows the add-on and exact target site from the saved quote snapshot', () => {
+		const order = {
+			order_type: 'Asumi Service',
+			service_quote_snapshot: JSON.stringify({
+				kind: 'account_addon', addon_id: 'internal_chat', title: 'چت سازمانی',
+				site_type: 'Docker Control Site', site_name: 'veederakht.ir', monthly_price_toman: 25_000,
+			}),
+		};
+		expect(getAsumiAddonOrderDetails(order)).toEqual({
+			addonId: 'internal_chat', addonTitle: 'چت سازمانی', siteName: 'veederakht.ir', siteType: 'Docker Control Site',
+		});
+		expect(getAsumiAddonOrderDetails({ order_type: 'Hosting', service_quote_snapshot: order.service_quote_snapshot })).toBeNull();
 	});
 });

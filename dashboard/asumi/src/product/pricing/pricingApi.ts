@@ -4,6 +4,16 @@ import { pricingAddons, pricingPresets, type ModuleId, type PricingAddonId } fro
 const MAX_SERVICE_PRICE_TOMAN = 1_000_000_000_000;
 const endpoint = '/api/method/press.saas.commerce.api.service_pricing';
 const checkoutStatusEndpoint = '/api/method/press.saas.commerce.api.checkout_status';
+const addonCatalogEndpoint = '/api/method/press.saas.commerce.api.service_addon_catalog';
+const MIN_PAID_ADDON_PRICE_TOMAN = 10_000;
+const addonIds = new Set(['assistant_ai', 'internal_chat']);
+
+export type SellableAddon = {
+	id: 'assistant_ai' | 'internal_chat';
+	title: string;
+	status: 'Free' | 'Paid';
+	monthly_price_toman: number;
+};
 
 export type ServicePriceMap = {
 	modules: Record<ModuleId, number>;
@@ -55,6 +65,48 @@ export async function loadServiceCheckoutStatus(fetcher: typeof fetch = fetch): 
 		throw new Error('وضعیت فروش خدمات آسومی معتبر نیست.');
 	}
 	return message.services_enabled;
+}
+
+export async function loadServiceAddonCatalog(fetcher: typeof fetch = fetch): Promise<SellableAddon[]> {
+	let response: Response;
+	try {
+		response = await fetcher(addonCatalogEndpoint, { credentials: 'same-origin' });
+	} catch {
+		throw new Error('دریافت کاتالوگ افزونه‌های حسابیار ممکن نشد.');
+	}
+	if (!response.ok) throw new Error('کاتالوگ افزونه‌های حسابیار دریافت نشد.');
+	let body: unknown;
+	try {
+		body = await response.json();
+	} catch {
+		throw new Error('پاسخ کاتالوگ افزونه‌ها قابل خواندن نیست.');
+	}
+	const message = isRecord(body) && 'message' in body ? body.message : body;
+	if (!Array.isArray(message)) throw new Error('ساختار کاتالوگ افزونه‌ها معتبر نیست.');
+	const seen = new Set<string>();
+	const offers: SellableAddon[] = [];
+	for (const row of message) {
+		if (!isRecord(row) || typeof row.id !== 'string' || !addonIds.has(row.id) || seen.has(row.id)) {
+			throw new Error('شناسهٔ افزونه در کاتالوگ معتبر نیست.');
+		}
+		seen.add(row.id);
+		if (typeof row.title !== 'string' || !row.title.trim() || row.title.length > 120) {
+			throw new Error('عنوان افزونه در کاتالوگ معتبر نیست.');
+		}
+		if (!['Unconfigured', 'Free', 'Paid', 'Disabled'].includes(String(row.status))) {
+			throw new Error('وضعیت افزونه در کاتالوگ معتبر نیست.');
+		}
+		const price = row.monthly_price_toman;
+		if (typeof price !== 'number' || !Number.isSafeInteger(price) || price < 0 || price > MAX_SERVICE_PRICE_TOMAN) {
+			throw new Error('قیمت افزونه در کاتالوگ معتبر نیست.');
+		}
+		if (row.status === 'Paid' && price < MIN_PAID_ADDON_PRICE_TOMAN) throw new Error('قیمت افزونهٔ پولی کمتر از حد مجاز است.');
+		if (row.status === 'Free' && price !== 0) throw new Error('افزونهٔ رایگان باید قیمت صفر داشته باشد.');
+		if (row.status === 'Free' || row.status === 'Paid') {
+			offers.push({ id: row.id as SellableAddon['id'], title: row.title.trim(), status: row.status, monthly_price_toman: price });
+		}
+	}
+	return offers;
 }
 
 function validatePriceMap<Id extends string>(value: unknown, expectedIds: readonly Id[]): Record<Id, number> {

@@ -1,4 +1,15 @@
 export const MAX_ASUMI_SERVICE_PRICE_TOMAN = 1_000_000_000_000;
+export const MIN_ASUMI_PAID_ADDON_PRICE_TOMAN = 10_000;
+
+export const ASUMI_ACCOUNT_ADDON_CATALOG = [
+	{ id: 'assistant_ai', title: 'دستیار هوش مصنوعی حسابیار' },
+	{ id: 'internal_chat', title: 'چت سازمانی' },
+] as const;
+
+export type AsumiAddonId = typeof ASUMI_ACCOUNT_ADDON_CATALOG[number]['id'];
+export type AsumiAddonOfferStatus = 'Unconfigured' | 'Free' | 'Paid' | 'Disabled';
+export type AsumiAddonOffer = { status: AsumiAddonOfferStatus; monthly_price_toman: number };
+export type AsumiAddonOffers = Record<AsumiAddonId, AsumiAddonOffer>;
 
 export const ASUMI_SERVICE_PRICE_CATALOG = {
 	modules: [
@@ -33,6 +44,40 @@ export type AsumiServicePricing = {
 	addons: Record<string, number>;
 	packages: Record<string, number>;
 };
+
+export function emptyAsumiAddonOffers(): AsumiAddonOffers {
+	return Object.fromEntries(ASUMI_ACCOUNT_ADDON_CATALOG.map(({ id }) => [id, {
+		status: 'Unconfigured', monthly_price_toman: 0,
+	}])) as AsumiAddonOffers;
+}
+
+export function validateAsumiAddonOffers(value: unknown): AsumiAddonOffers {
+	if (!isRecord(value)) throw new Error('تنظیمات فروش افزونه‌های حسابیار معتبر نیست.');
+	const expectedIds = ASUMI_ACCOUNT_ADDON_CATALOG.map(({ id }) => id);
+	if (Object.keys(value).length !== expectedIds.length || expectedIds.some(id => !Object.prototype.hasOwnProperty.call(value, id))) {
+		throw new Error('شناسه‌های افزونه باید دقیقاً با کاتالوگ حسابیار برابر باشند.');
+	}
+	return Object.fromEntries(expectedIds.map(id => {
+		const offer = value[id];
+		if (!isRecord(offer) || Object.keys(offer).length !== 2 || !('status' in offer) || !('monthly_price_toman' in offer)) {
+			throw new Error(`تنظیم افزونهٔ ${id} معتبر نیست.`);
+		}
+		const status = offer.status;
+		if (!['Unconfigured', 'Free', 'Paid', 'Disabled'].includes(String(status))) {
+			throw new Error(`وضعیت فروش افزونهٔ ${id} معتبر نیست.`);
+		}
+		const price = normalizeTomanPrice(offer.monthly_price_toman);
+		if (status === 'Paid' && price < MIN_ASUMI_PAID_ADDON_PRICE_TOMAN) {
+			throw new Error(`قیمت افزونهٔ پولی باید دست‌کم ${MIN_ASUMI_PAID_ADDON_PRICE_TOMAN.toLocaleString('fa-IR')} تومان باشد.`);
+		}
+		if (status === 'Free' && price !== 0) throw new Error('قیمت افزونهٔ رایگان باید صفر باشد.');
+		return [id, { status: status as AsumiAddonOfferStatus, monthly_price_toman: price }];
+	})) as AsumiAddonOffers;
+}
+
+export function buildAsumiAddonOffersPayload(value: unknown): { addon_offer_config: string } {
+	return { addon_offer_config: JSON.stringify(validateAsumiAddonOffers(value)) };
+}
 
 export function emptyAsumiServicePricing(): AsumiServicePricing {
 	return {

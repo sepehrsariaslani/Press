@@ -8,6 +8,7 @@ import { productModules } from './product/modules';
 import { useModuleNavigation } from './product/useModuleNavigation';
 import { StoryLanding } from './story/StoryLanding';
 import type { MarketplaceApp } from './product/marketplace/MarketplaceShowcase';
+import { buildAddonPurchaseHref } from './product/serviceRequestRoute';
 
 type AsumiAppProps = {
 	marketplaceApps?: MarketplaceApp[];
@@ -21,7 +22,7 @@ export function AsumiApp({ marketplaceApps = [], canManageMarketplacePrices = fa
 		return <WebsiteDesignPricingPage onReturnToModules={returnToModules} onRequestQuote={context => openOrderCenter([], context, 'website_design')} />;
 	}
 	if (showPricing) {
-		return <ModulePricingPage onOpenModule={openModule} onReturnToModules={returnToModules} onRequestPurchase={(moduleIds, context, addonIds, intent) => openOrderCenter(moduleIds, context, 'module_pricing', addonIds, intent)} />;
+		return <ModulePricingPage isAuthenticated={isAuthenticated} onOpenModule={openModule} onReturnToModules={returnToModules} onPurchaseAddon={addonId => window.location.assign(buildAddonPurchaseHref(addonId, isAuthenticated))} onRequestPurchase={(moduleIds, context, addonIds, intent) => openOrderCenter(moduleIds, context, 'module_pricing', addonIds, intent)} />;
 	}
 	const activeModuleIndex = productModules.findIndex(module => module.id === activeModuleId);
 	const activeModule = productModules[activeModuleIndex];

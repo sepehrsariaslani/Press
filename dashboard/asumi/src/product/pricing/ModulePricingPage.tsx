@@ -14,7 +14,7 @@ import {
 } from './catalog';
 import { addModule, removeModule, validSavedModules, type ModuleId } from './selection';
 import { estimateSelection } from './estimate';
-import { loadServiceCheckoutStatus, loadServicePrices, type ServicePriceMap } from './pricingApi';
+import { loadServiceAddonCatalog, loadServiceCheckoutStatus, loadServicePrices, type SellableAddon, type ServicePriceMap } from './pricingApi';
 import './module-pricing.css';
 
 const storageKey = 'asumi-pricing-selection-v2';
@@ -46,12 +46,14 @@ function persianNumber(value: number) {
 }
 
 type ModulePricingPageProps = {
+	isAuthenticated?: boolean;
 	onOpenModule: (moduleId: string) => void;
 	onReturnToModules: () => void;
+	onPurchaseAddon?: (addonId: SellableAddon['id']) => void;
 	onRequestPurchase: (moduleIds: string[], context: string, addonIds: string[], intent: 'request' | 'purchase') => void;
 };
 
-export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPurchase }: ModulePricingPageProps) {
+export function ModulePricingPage({ isAuthenticated = false, onOpenModule, onReturnToModules, onPurchaseAddon = () => {}, onRequestPurchase }: ModulePricingPageProps) {
 	const heading = useRef<HTMLHeadingElement>(null);
 	const [initial] = useState(initialSelection);
 	const [selectedIds, setSelectedIds] = useState<ModuleId[]>(initial.moduleIds);
@@ -65,6 +67,9 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 	const [checkoutStatusLoaded, setCheckoutStatusLoaded] = useState(false);
 	const [pricesError, setPricesError] = useState('');
 	const [pricingAttempt, setPricingAttempt] = useState(0);
+	const [accountAddons, setAccountAddons] = useState<SellableAddon[]>([]);
+	const [accountAddonsLoading, setAccountAddonsLoading] = useState(true);
+	const [accountAddonsError, setAccountAddonsError] = useState('');
 	const activeModule = productModules.find(module => module.id === activeId) || productModules[0];
 	const selectedPresetId = matchingPreset(selectedIds, selectedAddonIds);
 
@@ -75,17 +80,17 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 		setPricesError('');
 		setCheckoutStatusLoaded(false);
 		Promise.all([
-			loadServicePrices(),
+			loadServicePrices().then(value => ({ ok: true as const, value })).catch(() => ({ ok: false as const })),
 			loadServiceCheckoutStatus().catch(() => false),
-		]).then(([result, canCheckout]) => {
+		]).then(([priceResult, canCheckout]) => {
 			if (active) {
-				setPrices(result);
 				setCheckoutEnabled(canCheckout);
-			}
-		}).catch(() => {
-			if (active) {
-				setPrices(null);
-				setPricesError('تعرفهٔ زندهٔ آسومی در دسترس نیست. تا زمان دریافت قیمت معتبر، درخواست ثبت نمی‌شود.');
+				if (priceResult.ok) {
+					setPrices(priceResult.value);
+				} else {
+					setPrices(null);
+					setPricesError('تعرفهٔ زندهٔ آسومی در دسترس نیست. تا زمان دریافت قیمت معتبر، درخواست ثبت نمی‌شود.');
+				}
 			}
 		}).finally(() => {
 			if (active) {
@@ -93,6 +98,21 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 				setCheckoutStatusLoaded(true);
 			}
 		});
+		return () => { active = false; };
+	}, [pricingAttempt]);
+
+	useEffect(() => {
+		let active = true;
+		setAccountAddonsLoading(true);
+		setAccountAddonsError('');
+		loadServiceAddonCatalog().then(result => {
+			if (active) setAccountAddons(result);
+		}).catch(() => {
+			if (active) {
+				setAccountAddons([]);
+				setAccountAddonsError('وضعیت افزونه‌های حسابیار فعلاً دریافت نشد؛ خریدی ثبت نشده است.');
+			}
+		}).finally(() => { if (active) setAccountAddonsLoading(false); });
 		return () => { active = false; };
 	}, [pricingAttempt]);
 
@@ -206,8 +226,28 @@ export function ModulePricingPage({ onOpenModule, onReturnToModules, onRequestPu
 					<SelectedModuleDetail module={activeModule} selected={selectedIds.includes(activeModule.id)} selectedAddonIds={selectedAddonIds} prices={prices} onToggleAddon={toggleAddon} onOpenModule={onOpenModule} />
 				</section>
 			</>}
+			<section className="pricing-account-addons" aria-labelledby="pricing-account-addons-title">
+				<div className="pricing-section-heading">
+					<div><p>حسابیار · قابل تنظیم برای هر سایت</p><h2 id="pricing-account-addons-title">افزونه‌های هوش مصنوعی و چت</h2></div>
+					<span>مستقل از ماژول‌ها · اعتبار یک‌ماهه</span>
+				</div>
+				{accountAddonsLoading && <p className="pricing-addon-state" role="status">در حال دریافت وضعیت فروش افزونه‌ها…</p>}
+				{accountAddonsError && <p className="pricing-addon-state pricing-addon-state-error" role="status">{accountAddonsError}</p>}
+				{!accountAddonsLoading && accountAddons.length > 0 && <div className="pricing-account-addon-grid">
+					{accountAddons.map(addon => <article className="pricing-account-addon-card" key={addon.id}>
+						<div><p className="pricing-account-addon-kicker">افزونهٔ مستقل حسابیار</p><h3>{addon.title}</h3></div>
+						<p className="pricing-account-addon-price">{addon.status === 'Free' ? 'رایگان' : `${formatToman(addon.monthly_price_toman)} در ماه`}</p>
+						<p className="pricing-account-addon-description">{addon.id === 'assistant_ai' ? 'دستیار هوش مصنوعی برای گفتگو و انجام کارهای مجاز در حسابیار.' : 'گفتگوی سازمانی و همکاری تیمی داخل حسابیار.'}</p>
+						{addon.status === 'Free'
+							? <p className="pricing-account-addon-note" role="status">این افزونه برای سایت‌های واجد شرایط رایگان و فعال است.</p>
+							: checkoutEnabled
+								? <button type="button" className="pricing-account-addon-button" onClick={() => onPurchaseAddon(addon.id)}>{isAuthenticated ? `خرید ${addon.title} برای یک ماه` : `ورود و خرید ${addon.title}`}</button>
+								: <p className="pricing-account-addon-note">پس از فعال‌سازی پرداخت آنلاین آسومی، خرید یک‌ماهه در همین صفحه انجام می‌شود.</p>}
+					</article>)}
+				</div>}
+			</section>
 
-			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice}{prices && <> بستهٔ حرفه‌ای ماهانه {formatToman(prices.packages.professional)}، همهٔ ماژول‌ها بدون افزونهٔ منو {formatToman(prices.packages.completeWithoutMenu)} و با مدیریت منو {formatToman(prices.packages.complete)} است.</>}{checkoutEnabled ? ' سفارش یک ماه اعتبار دارد و تمدید آن دستی است؛ پس از ثبت، مدیر آسومی فعال‌سازی را انجام می‌دهد.' : ' تا زمان فعال‌سازی فروش آنلاین، این صفحه فقط درخواست بررسی ثبت می‌کند.'}</p></aside>
+			<aside className="pricing-terms-note"><span aria-hidden="true">i</span><p>{pricingNotice}{prices && <> بستهٔ حرفه‌ای ماهانه {formatToman(prices.packages.professional)}، همهٔ ماژول‌ها بدون افزونهٔ منو {formatToman(prices.packages.completeWithoutMenu)} و با مدیریت منو {formatToman(prices.packages.complete)} است.</>}{checkoutEnabled ? ' پرداخت یک‌ماهه با زرین‌پال انجام می‌شود؛ پس از بررسی، مدیر آسومی افزونه را برای یک ماه فعال می‌کند و تمدید دستی است.' : ' پرداخت آنلاین هنوز فعال نیست؛ برای ماژول‌ها و افزونه‌های پولی فقط درخواست بررسی ثبت می‌شود.'}</p></aside>
 		</div>
 		<SiteFooter />
 	</main>;

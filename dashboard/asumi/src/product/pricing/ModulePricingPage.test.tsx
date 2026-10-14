@@ -25,7 +25,7 @@ test('does not display old bundled prices while the server price map is loading'
 	vi.stubGlobal('fetch', vi.fn(() => responsePromise));
 	render(<ModulePricingPage onOpenModule={vi.fn()} onReturnToModules={vi.fn()} onRequestPurchase={vi.fn()} />);
 
-	expect(screen.getByRole('status')).toHaveTextContent('در حال دریافت تعرفه');
+	expect(screen.getByText('در حال دریافت تعرفهٔ به‌روز آسومی…')).toBeInTheDocument();
 	expect(screen.queryByText('۵٬۵۰۰٬۰۰۰ تومان')).not.toBeInTheDocument();
 	expect(screen.queryByRole('button', { name: 'ادامه برای درخواست این ترکیب' })).not.toBeInTheDocument();
 
@@ -58,7 +58,7 @@ test('offers a paid one-month order only when the server enables service checkou
 	render(<ModulePricingPage onOpenModule={vi.fn()} onReturnToModules={vi.fn()} onRequestPurchase={onRequestPurchase} />);
 
 	const purchaseButton = await screen.findByRole('button', { name: 'ثبت سفارش و پرداخت' });
-	expect(screen.getByText(/یک ماه اعتبار دارد و تمدید آن دستی است/)).toBeInTheDocument();
+	expect(screen.getByText(/پرداخت یک‌ماهه با زرین‌پال انجام می‌شود/)).toBeInTheDocument();
 	fireEvent.click(purchaseButton);
 	expect(onRequestPurchase).toHaveBeenCalledWith(['finance'], '', [], 'purchase');
 });
@@ -96,4 +96,45 @@ test('shows an API error without a price fallback and allows retry', async () =>
 	expect(screen.queryByRole('button', { name: 'ادامه برای درخواست این ترکیب' })).not.toBeInTheDocument();
 	fireEvent.click(screen.getByRole('button', { name: 'تلاش دوباره' }));
 	await waitFor(() => expect(screen.getByRole('button', { name: 'ادامه برای درخواست این ترکیب' })).toBeInTheDocument());
+});
+
+test('shows paid and free Accounts add-ons independently from the module selection', async () => {
+	vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+		if (String(input).includes('service_addon_catalog')) {
+			return { ok: true, json: async () => ({ message: [
+				{ id: 'assistant_ai', title: 'دستیار هوش مصنوعی حسابیار', status: 'Paid', monthly_price_toman: 25_000 },
+				{ id: 'internal_chat', title: 'چت سازمانی', status: 'Free', monthly_price_toman: 0 },
+			] }) } as Response;
+		}
+		if (String(input).includes('checkout_status')) return { ok: true, json: async () => ({ message: { services_enabled: true } }) } as Response;
+		return { ok: true, json: async () => ({ message: servicePrices }) } as Response;
+	}));
+	const onPurchaseAddon = vi.fn();
+	render(<ModulePricingPage isAuthenticated onOpenModule={vi.fn()} onReturnToModules={vi.fn()} onRequestPurchase={vi.fn()} onPurchaseAddon={onPurchaseAddon} />);
+
+	const assistant = await screen.findByText('دستیار هوش مصنوعی حسابیار');
+	expect(assistant).toBeInTheDocument();
+	expect(screen.getByText('چت سازمانی')).toBeInTheDocument();
+	expect(screen.getByText('۲۵٬۰۰۰ تومان در ماه')).toBeInTheDocument();
+	expect(screen.getByText('رایگان')).toBeInTheDocument();
+	expect(screen.getByText(/پرداخت یک‌ماهه با زرین‌پال انجام می‌شود/)).toBeInTheDocument();
+	expect(screen.queryByText(/ثبت درخواست بررسی، فاکتور یا پرداخت نیست/)).not.toBeInTheDocument();
+	fireEvent.click(screen.getByRole('button', { name: 'خرید دستیار هوش مصنوعی حسابیار برای یک ماه' }));
+	expect(onPurchaseAddon).toHaveBeenCalledWith('assistant_ai');
+	expect(screen.queryByRole('button', { name: /خرید چت سازمانی/ })).not.toBeInTheDocument();
+});
+
+test('offers guest purchase through the login redirect and hides paid checkout when sales are disabled', async () => {
+	const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+		if (String(input).includes('service_addon_catalog')) return { ok: true, json: async () => ({ message: [{ id: 'assistant_ai', title: 'دستیار هوش مصنوعی حسابیار', status: 'Paid', monthly_price_toman: 25_000 }] }) } as Response;
+		if (String(input).includes('checkout_status')) return { ok: true, json: async () => ({ message: { services_enabled: true } }) } as Response;
+		return { ok: true, json: async () => ({ message: servicePrices }) } as Response;
+	});
+	vi.stubGlobal('fetch', fetcher);
+	const onPurchaseAddon = vi.fn();
+	render(<ModulePricingPage isAuthenticated={false} onOpenModule={vi.fn()} onReturnToModules={vi.fn()} onRequestPurchase={vi.fn()} onPurchaseAddon={onPurchaseAddon} />);
+
+	await screen.findByText('دستیار هوش مصنوعی حسابیار');
+	fireEvent.click(screen.getByRole('button', { name: 'ورود و خرید دستیار هوش مصنوعی حسابیار' }));
+	expect(onPurchaseAddon).toHaveBeenCalledWith('assistant_ai');
 });

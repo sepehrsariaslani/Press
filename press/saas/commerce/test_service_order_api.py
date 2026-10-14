@@ -364,6 +364,95 @@ class ServiceOrderApiTests(unittest.TestCase):
 		self.assertEqual(str(order.service_starts_at), "2026-10-13 12:00:00")
 		self.assertEqual(str(order.service_ends_at), "2026-11-13 12:00:00")
 
+	def test_addon_order_activates_only_after_press_subscription_key_sync_succeeds(self):
+		order = FakeDocument(
+			name="ORDER-ADDON", order_type="Asumi Service", status="Provisioning",
+			service_quote_snapshot='{"kind":"account_addon","addon_id":"assistant_ai"}',
+		)
+		starts_at = __import__("datetime").datetime(2026, 10, 14, 12)
+		ends_at = __import__("datetime").datetime(2026, 11, 14, 12)
+		with (
+			patch.object(api, "_require_commerce_admin"),
+			patch.object(api.frappe, "get_doc", return_value=order),
+			patch.object(api, "issue_or_extend_addon_subscription", return_value=SimpleNamespace(starts_at=starts_at, ends_at=ends_at)) as issue,
+		):
+			result = api.update_service_order_status(order.name, "Active")
+
+		self.assertEqual(result, {"name": order.name, "status": "Active"})
+		issue.assert_called_once_with(order)
+		self.assertEqual(order.status, "Active")
+		self.assertEqual(order.service_starts_at, starts_at)
+		self.assertEqual(order.service_ends_at, ends_at)
+
+	def test_addon_key_sync_failure_leaves_order_pending_for_manual_retry(self):
+		order = FakeDocument(
+			name="ORDER-ADDON", order_type="Asumi Service", status="Provisioning",
+			service_quote_snapshot='{"kind":"account_addon","addon_id":"assistant_ai"}',
+		)
+		with (
+			patch.object(api, "_require_commerce_admin"),
+			patch.object(api.frappe, "get_doc", return_value=order),
+			patch.object(api, "issue_or_extend_addon_subscription", side_effect=api.AddonSubscriptionSyncError("همگام‌سازی ناموفق")),
+			patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
+		):
+			with self.assertRaises(CheckoutRejected):
+				api.update_service_order_status(order.name, "Active")
+
+		self.assertEqual(order.status, "Provisioning")
+		self.assertEqual(order.provisioning_error, "همگام‌سازی ناموفق")
+		self.assertFalse(hasattr(order, "service_starts_at"))
+
+	def test_public_addon_validator_returns_only_access_state(self):
+		with (
+			patch.object(api, "_get_addon_offers", return_value={"assistant_ai": {"status": "Paid"}}),
+			patch.object(api, "check_addon_subscription", return_value={
+				"enabled": True, "status": "Paid", "expires_at": "2026-11-14 12:00:00"
+			}) as check,
+		):
+			result = api.validate_addon_subscription("assistant_ai", "tenant.asumi.ir", "a" * 40)
+
+		check.assert_called_once_with("assistant_ai", "tenant.asumi.ir", "a" * 40, {"status": "Paid"})
+		self.assertEqual(set(result), {"enabled", "status", "expires_at"})
+		self.assertNotIn("a" * 40, repr(result))
+
+	def test_refund_revokes_only_the_subscription_created_by_that_order(self):
+		order = FakeDocument(
+			name="ORDER-ADDON", order_type="Asumi Service",
+			service_quote_snapshot=(
+				'{"kind":"account_addon","addon_id":"assistant_ai",'
+				'"site_type":"Site","site_name":"tenant.asumi.ir"}'
+			),
+		)
+		subscription = FakeDocument(name="ASAI-1", source_order=order.name)
+		with (
+			patch.object(api.frappe.db, "exists", return_value=True),
+			patch.object(api.frappe, "get_doc", return_value=subscription),
+			patch.object(api, "sync_addon_subscription_key") as sync,
+		):
+			api._revoke_refunded_addon(order)
+
+		self.assertEqual(subscription.status, "Revoked")
+		sync.assert_called_once_with(subscription, None)
+
+	def test_refunding_an_older_addon_order_keeps_the_newer_renewal(self):
+		order = FakeDocument(
+			name="ORDER-OLD", order_type="Asumi Service",
+			service_quote_snapshot=(
+				'{"kind":"account_addon","addon_id":"assistant_ai",'
+				'"site_type":"Site","site_name":"tenant.asumi.ir"}'
+			),
+		)
+		subscription = FakeDocument(name="ASAI-1", source_order="ORDER-NEW", status="Active")
+		with (
+			patch.object(api.frappe.db, "exists", return_value=True),
+			patch.object(api.frappe, "get_doc", return_value=subscription),
+			patch.object(api, "sync_addon_subscription_key") as sync,
+		):
+			api._revoke_refunded_addon(order)
+
+		self.assertEqual(subscription.status, "Active")
+		sync.assert_not_called()
+
 	@contextmanager
 	def _purchase_context(self, *, prices=None, get_all=None):
 		with ExitStack() as stack:

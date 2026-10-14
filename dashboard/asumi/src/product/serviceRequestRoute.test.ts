@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { buildServiceRequestHref } from './serviceRequestRoute';
+import { buildAddonPurchaseHref, buildServiceRequestHref } from './serviceRequestRoute';
 
 test('carries only selected module and addon IDs for a server-priced inquiry', () => {
 	const href = buildServiceRequestHref(
@@ -34,4 +34,22 @@ test('marks a module pricing route for checkout without changing its selected ID
 	expect(url.searchParams.get('asumi_service_purchase')).toBe('1');
 	expect(url.searchParams.get('modules')).toBe('finance');
 	expect(url.searchParams.get('addons')).toBe('restaurantMenu');
+});
+
+test('opens the site-scoped add-on checkout for signed-in users and sends guests through login', () => {
+	const signedIn = new URL(buildAddonPurchaseHref('assistant_ai', true), 'https://asumi.ir');
+	expect(signedIn.pathname).toBe('/dashboard/orders');
+	expect(signedIn.searchParams.get('asumi_addon_purchase')).toBe('1');
+	expect(signedIn.searchParams.get('addon_id')).toBe('assistant_ai');
+	expect(signedIn.searchParams.has('price')).toBe(false);
+
+	const guest = new URL(buildAddonPurchaseHref('internal_chat', false), 'https://asumi.ir');
+	expect(guest.pathname).toBe('/hesab/login');
+	const next = new URL(guest.searchParams.get('next') || '', 'https://asumi.ir');
+	expect(next.pathname).toBe('/dashboard/orders');
+	expect(next.searchParams.get('addon_id')).toBe('internal_chat');
+});
+
+test('rejects unknown add-on checkout identifiers', () => {
+	expect(() => buildAddonPurchaseHref('unlisted', true)).toThrow(/افزونه/);
 });

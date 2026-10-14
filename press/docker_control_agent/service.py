@@ -16,6 +16,7 @@ from .operations import (
 	connect,
 	preflight_app_revision,
 	_installed_apps,
+	write_site_addon_subscription_key,
 	write_site_subscription_key,
 )
 from .operations import (
@@ -81,7 +82,7 @@ class ControlHandler(BaseHTTPRequestHandler):
 			r"/v1/site-admins/(boller\.ir|dehati\.ir|denroom\.ir|veederakht\.ir)", path
 		)
 		preflight = re.fullmatch(r"/v1/preflight/(accounts|restaurant)/([a-f0-9]{40})", path)
-		if not site_admins and not preflight and path not in {"/v1/site-subscription", "/v1/available-apps"} and not re.fullmatch(
+		if not site_admins and not preflight and path not in {"/v1/site-subscription", "/v1/site-addon-subscription", "/v1/available-apps"} and not re.fullmatch(
 			r"/v1/(health|inventory|resources|operations(?:/[a-f0-9-]{36,48})?)", path
 		):
 			self._send(404, {"error": "Not found"})
@@ -150,6 +151,41 @@ class ControlHandler(BaseHTTPRequestHandler):
 					self.config.sites_root,
 					payload.get("site"),
 					payload.get("app"),
+					secret_key,
+					installed_apps=installed_apps,
+				)
+				self._send(200, result)
+				return
+			if self.command == "POST" and path == "/v1/site-addon-subscription":
+				try:
+					payload = json.loads(body)
+				except json.JSONDecodeError as error:
+					raise ValueError("Invalid request") from error
+				if not isinstance(payload, dict) or set(payload) != {"site", "addon_id", "secret_key"}:
+					raise ValueError("Invalid request")
+				secret_key = payload.get("secret_key")
+				site_name = payload.get("site")
+				addon_id = payload.get("addon_id")
+				if (
+					(
+						site_name not in CUSTOMER_SITES
+						and not (
+							isinstance(site_name, str)
+							and re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.asumi\.ir", site_name)
+						)
+					)
+					or addon_id not in {"assistant_ai", "internal_chat"}
+					or (
+						secret_key is not None
+						and (not isinstance(secret_key, str) or not re.fullmatch(r"[a-f0-9]{40}", secret_key))
+					)
+				):
+					raise OperationError("Site, add-on, or subscription key is not allowed")
+				installed_apps = _installed_apps(self.config, site_name)
+				result = write_site_addon_subscription_key(
+					self.config.sites_root,
+					site_name,
+					addon_id,
 					secret_key,
 					installed_apps=installed_apps,
 				)

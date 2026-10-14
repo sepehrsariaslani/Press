@@ -1,5 +1,7 @@
 type ServiceOrderLike = Record<string, unknown>;
 
+export type AsumiAddonOrderDetails = { addonId: string; addonTitle: string; siteName: string; siteType: string };
+
 export function getAsumiServiceOrderTitle(order: ServiceOrderLike): string {
 	if (order.order_type !== 'Asumi Service') return stringValue(order.plan) || stringValue(order.plan_title) || '—';
 	return stringValue(order.service_title) || 'خدمات آسومی';
@@ -20,6 +22,18 @@ export function getAsumiServiceOrderLines(order: ServiceOrderLike): string[] {
 		const title = stringValue((line as Record<string, unknown>).title);
 		return title ? [title] : [];
 	});
+}
+
+export function getAsumiAddonOrderDetails(order: ServiceOrderLike): AsumiAddonOrderDetails | null {
+	if (order.order_type !== 'Asumi Service') return null;
+	const snapshot = parseSnapshot(order.service_quote_snapshot);
+	if (snapshot?.kind !== 'account_addon') return null;
+	const addonId = stringValue(snapshot.addon_id);
+	const addonTitle = stringValue(snapshot.title);
+	const siteName = stringValue(snapshot.site_name);
+	const siteType = stringValue(snapshot.site_type);
+	if (!addonId || !addonTitle || !siteName || !['Site', 'Docker Control Site'].includes(siteType)) return null;
+	return { addonId, addonTitle, siteName, siteType };
 }
 
 export function nextAsumiServiceDeliveryStatus(order: ServiceOrderLike): 'Provisioning' | 'Active' | null {

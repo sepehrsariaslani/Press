@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+	ASUMI_ACCOUNT_ADDON_CATALOG,
 	ASUMI_SERVICE_PRICE_CATALOG,
+	buildAsumiAddonOffersPayload,
 	buildAsumiServicePricingPayload,
+	emptyAsumiAddonOffers,
 	normalizeTomanPrice,
+	validateAsumiAddonOffers,
 	validateAsumiServicePricing,
 } from './asumiServicePricing';
 
@@ -36,5 +40,27 @@ describe('Asumi service pricing admin data', () => {
 		expect(JSON.parse(payload.module_prices)).toEqual(pricing.modules);
 		expect(JSON.parse(payload.addon_prices)).toEqual(pricing.addons);
 		expect(JSON.parse(payload.package_prices)).toEqual(pricing.packages);
+	});
+
+	it('keeps account add-on offers separate from the legacy module and menu tariffs', () => {
+		const offers = emptyAsumiAddonOffers();
+		expect(Object.keys(offers)).toEqual(ASUMI_ACCOUNT_ADDON_CATALOG.map(({ id }) => id));
+		expect(offers.assistant_ai).toEqual({ status: 'Unconfigured', monthly_price_toman: 0 });
+		const changed = {
+			...offers,
+			assistant_ai: { status: 'Paid' as const, monthly_price_toman: 25_000 },
+			internal_chat: { status: 'Free' as const, monthly_price_toman: 0 },
+		};
+		expect(validateAsumiAddonOffers(changed)).toEqual(changed);
+		expect(JSON.parse(buildAsumiAddonOffersPayload(changed).addon_offer_config)).toEqual(changed);
+		expect(pricing.addons).toEqual({ restaurantMenu: 101 });
+	});
+
+	it('rejects malformed add-on IDs, statuses, and prices', () => {
+		const offers = emptyAsumiAddonOffers();
+		expect(() => validateAsumiAddonOffers({ ...offers, unknown: offers.assistant_ai })).toThrow(/شناسه/);
+		expect(() => validateAsumiAddonOffers({ ...offers, assistant_ai: { status: 'Paid', monthly_price_toman: 9_999 } })).toThrow(/دست‌کم/);
+		expect(() => validateAsumiAddonOffers({ ...offers, assistant_ai: { status: 'Free', monthly_price_toman: 1 } })).toThrow(/صفر/);
+		expect(() => validateAsumiAddonOffers({ ...offers, assistant_ai: { status: 'Paid', monthly_price_toman: 25_000.5 } })).toThrow(/صحیح/);
 	});
 });

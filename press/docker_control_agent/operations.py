@@ -26,6 +26,10 @@ OPERATION_ID_RE = re.compile(r"^[a-f0-9-]{36,48}$")
 COMMIT_RE = re.compile(r"^[a-f0-9]{40}$")
 APP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 HOSTED_SITE_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.asumi\.ir$")
+ASUMI_ADDON_CONFIG_KEYS = {
+	"assistant_ai": "asumi_addon_assistant_ai_key",
+	"internal_chat": "asumi_addon_internal_chat_key",
+}
 ADMIN_PASSWORD_RE = re.compile(r"^[A-Za-z0-9!#$%&()*+,./:;<=>?@\[\]^_{|}~-]{24,128}$")
 HOSTED_SITE_SCRIPT = """
 import json
@@ -176,6 +180,76 @@ def write_site_subscription_key(
 			temporary_path.unlink(missing_ok=True)
 		raise OperationError("Site config update failed") from error
 	return {"site": site, "app": app, "enabled": secret_key is not None}
+
+
+def write_site_addon_subscription_key(
+	sites_root: Path,
+	site: str,
+	addon_id: str,
+	secret_key: str | None,
+	*,
+	installed_apps: list[str],
+) -> dict:
+	"""Set or remove one fixed Accounts add-on key using an atomic config update."""
+	if (
+		(site not in CUSTOMER_SITES and not (isinstance(site, str) and HOSTED_SITE_RE.fullmatch(site)))
+		or addon_id not in ASUMI_ADDON_CONFIG_KEYS
+	):
+		raise OperationError("Site or add-on is not allowed")
+	if "accounts" not in installed_apps:
+		raise OperationError("Accounts is not installed on the selected site")
+	if secret_key is not None and (not isinstance(secret_key, str) or not re.fullmatch(r"[a-f0-9]{40}", secret_key)):
+		raise OperationError("Add-on key is invalid")
+
+	try:
+		root = sites_root.resolve(strict=True)
+		site_path = (root / site).resolve(strict=True)
+		if not site_path.is_relative_to(root) or not site_path.is_dir():
+			raise OperationError("Site config path is invalid")
+		config_path = site_path / "site_config.json"
+		config_stat = config_path.lstat()
+		if not stat.S_ISREG(config_stat.st_mode):
+			raise OperationError("Site config file is invalid")
+		config = json.loads(config_path.read_text(encoding="utf-8"))
+		if not isinstance(config, dict):
+			raise OperationError("Site config file is invalid")
+	except OperationError:
+		raise
+	except (OSError, ValueError, json.JSONDecodeError) as error:
+		raise OperationError("Site config file is unavailable") from error
+
+	config_key = ASUMI_ADDON_CONFIG_KEYS[addon_id]
+	if secret_key is None:
+		config.pop(config_key, None)
+	else:
+		config[config_key] = secret_key
+
+	file_descriptor = -1
+	temporary_path = None
+	try:
+		file_descriptor, temporary_name = tempfile.mkstemp(prefix=".site-config-", dir=site_path)
+		temporary_path = Path(temporary_name)
+		with os.fdopen(file_descriptor, "w", encoding="utf-8") as temporary_file:
+			file_descriptor = -1
+			os.fchmod(temporary_file.fileno(), 0o600)
+			if os.geteuid() == 0:
+				os.fchown(temporary_file.fileno(), config_stat.st_uid, config_stat.st_gid)
+			temporary_file.write(json.dumps(config, indent=1, ensure_ascii=False) + "\n")
+			temporary_file.flush()
+			os.fsync(temporary_file.fileno())
+		os.replace(temporary_path, config_path)
+		directory_fd = os.open(site_path, os.O_RDONLY)
+		try:
+			os.fsync(directory_fd)
+		finally:
+			os.close(directory_fd)
+	except (OSError, ValueError, TypeError) as error:
+		if file_descriptor >= 0:
+			os.close(file_descriptor)
+		if temporary_path:
+			temporary_path.unlink(missing_ok=True)
+		raise OperationError("Site config update failed") from error
+	return {"site": site, "addon_id": addon_id, "enabled": secret_key is not None}
 
 
 def init_database(connection: sqlite3.Connection) -> None:

@@ -52,7 +52,7 @@ export const pricingPresets: readonly PricingPreset[] = [
 	},
 ];
 
-export const pricingNotice = 'قیمت هر ماژول و افزونه ماهانه و جداگانه محاسبه می‌شود؛ تعداد کاربران و شرکت‌ها محدودیتی ندارد. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند. ثبت درخواست بررسی، فاکتور یا پرداخت نیست و برای هماهنگی راه‌اندازی بررسی می‌شود.';
+export const pricingNotice = 'قیمت هر ماژول و افزونه ماهانه و جداگانه محاسبه می‌شود؛ تعداد کاربران و شرکت‌ها محدودیتی ندارد. مالیات ارزش افزوده، استقرار، آموزش و انتقال داده جداگانه محاسبه می‌شوند.';
 
 export const modulePrerequisites: Readonly<Record<ModuleId, readonly ModuleId[]>> = {
 	finance: [], sales: [], crm: [], procurement: [], inventory: [], projects: [],

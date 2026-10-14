@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 from press.saas.commerce.order_lifecycle import (
 	customer_provisioning_message,
@@ -64,6 +65,13 @@ from press.saas.commerce.service_requests import (
 from press.saas.commerce.service_orders import (
 	build_addon_order_snapshot,
 	build_service_order_snapshot,
+)
+from press.saas.commerce.addon_entitlements import (
+	AddonSubscriptionSyncError,
+	addon_subscription_name,
+	check_addon_subscription,
+	issue_or_extend_addon_subscription,
+	sync_addon_subscription_key,
 )
 from press.saas.commerce.service_pricing import (
 	ADDON_OFFER_TITLES,
@@ -1995,6 +2003,10 @@ def expire_commerce_orders():
 				continue
 			order.db_set("status", transition_order("Active", "Expired"))
 			continue
+		if order.order_type == "Asumi Service" and _is_account_addon_order(order):
+			_expire_addon_subscription(order, now)
+			order.db_set("status", transition_order("Active", "Expired"))
+			continue
 		subscription = frappe.get_doc("Press Subscription", order.subscription) if order.subscription else None
 		if subscription and subscription.plan == order.plan:
 			target_field = "docker_site" if order.docker_site else "site"
@@ -2200,10 +2212,96 @@ def service_addon_catalog() -> list[dict[str, object]]:
 	]
 
 
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(limit=120, seconds=60)
+def validate_addon_subscription(addon_id: str, site_name: str, secret_key: str) -> dict:
+	"""Validate one site-bound add-on key; never return customer or key data."""
+	offers = _get_addon_offers()
+	offer = offers.get(addon_id) if isinstance(addon_id, str) else None
+	return check_addon_subscription(addon_id, site_name, secret_key, offer or {"status": "Disabled"})
+
+
 @frappe.whitelist()
 def admin_service_addon_offers() -> dict[str, dict[str, object]]:
 	_require_commerce_admin()
 	return _get_addon_offers()
+
+
+@frappe.whitelist()
+def admin_service_addon_impact() -> dict[str, dict[str, int]]:
+	"""Summarize active Accounts sites and unfinished add-on orders for the warning UI."""
+	_require_commerce_admin()
+	now = frappe.utils.now_datetime()
+	standard_apps = frappe.get_all(
+		"Site App",
+		filters={"app": "accounts", "parenttype": "Site", "parentfield": "apps"},
+		pluck="parent",
+		limit_page_length=0,
+		ignore_permissions=True,
+	)
+	standard_sites = frappe.get_all(
+		"Site",
+		filters={"name": ["in", standard_apps or ["__none__"]], "status": "Active"},
+		fields=["name"],
+		limit_page_length=0,
+		ignore_permissions=True,
+	)
+	docker_apps = frappe.get_all(
+		"Docker Control Site App",
+		filters={"app": "accounts", "parenttype": "Docker Control Site", "parentfield": "apps"},
+		pluck="parent",
+		limit_page_length=0,
+		ignore_permissions=True,
+	)
+	docker_sites = frappe.get_all(
+		"Docker Control Site",
+		filters={"domain": ["in", docker_apps or ["__none__"]], "enabled": 1},
+		fields=["domain", "hosted_status"],
+		limit_page_length=0,
+		ignore_permissions=True,
+	)
+	active_site_keys = {("Site", row.name) for row in standard_sites}
+	active_site_keys.update(
+		("Docker Control Site", row.domain)
+		for row in docker_sites
+		if not row.hosted_status or row.hosted_status == "Active"
+	)
+	orders = frappe.get_all(
+		"Commerce Order",
+		filters={
+			"order_type": "Asumi Service",
+			"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed"]],
+		},
+		fields=["service_quote_snapshot"],
+		limit_page_length=0,
+		ignore_permissions=True,
+	)
+	impact = {}
+	for addon_id in ADDON_OFFER_TITLES:
+		active_subscriptions = frappe.get_all(
+			"Asumi Addon Subscription",
+			filters={"addon_id": addon_id, "status": "Active", "ends_at": [">", now]},
+			fields=["site_type", "site_name"],
+			limit_page_length=0,
+			ignore_permissions=True,
+		)
+		entitled_site_keys = {(row.site_type, row.site_name) for row in active_subscriptions}
+		pending_orders = 0
+		for order in orders:
+			raw_snapshot = order.service_quote_snapshot
+			try:
+				snapshot = json.loads(raw_snapshot) if isinstance(raw_snapshot, str) else raw_snapshot
+			except (TypeError, json.JSONDecodeError):
+				continue
+			if isinstance(snapshot, dict) and snapshot.get("kind") == "account_addon" and snapshot.get("addon_id") == addon_id:
+				pending_orders += 1
+		impact[addon_id] = {
+			"active_accounts_sites": len(active_site_keys),
+			"paid_active_sites": len(entitled_site_keys & active_site_keys),
+			"sites_without_paid_entitlement": len(active_site_keys - entitled_site_keys),
+			"pending_orders": pending_orders,
+		}
+	return impact
 
 
 @frappe.whitelist(methods=["POST"])
@@ -2326,8 +2424,76 @@ def update_service_order_status(order: str, status: str) -> dict:
 		start = frappe.utils.now_datetime()
 		values["service_starts_at"] = start
 		values["service_ends_at"] = period_end(start, "Monthly")
+		if _is_account_addon_order(doc):
+			try:
+				subscription = issue_or_extend_addon_subscription(doc)
+			except (AddonSubscriptionSyncError, TypeError, ValueError) as error:
+				doc.db_set("provisioning_error", str(error)[:300])
+				frappe.throw(_(str(error)))
+			values["service_starts_at"] = subscription.starts_at
+			values["service_ends_at"] = subscription.ends_at
 	doc.db_set(values)
 	return {"name": doc.name, "status": next_status}
+
+
+def _is_account_addon_order(order) -> bool:
+	raw_snapshot = getattr(order, "service_quote_snapshot", None)
+	try:
+		snapshot = json.loads(raw_snapshot) if isinstance(raw_snapshot, str) else raw_snapshot
+	except (TypeError, json.JSONDecodeError):
+		return False
+	return isinstance(snapshot, dict) and snapshot.get("kind") == "account_addon"
+
+
+def _account_addon_snapshot_values(order) -> dict | None:
+	if not _is_account_addon_order(order):
+		return None
+	raw_snapshot = order.service_quote_snapshot
+	return json.loads(raw_snapshot) if isinstance(raw_snapshot, str) else raw_snapshot
+
+
+def _expire_addon_subscription(order, now) -> None:
+	snapshot = _account_addon_snapshot_values(order)
+	try:
+		name = addon_subscription_name(snapshot.get("site_type"), snapshot.get("site_name"), snapshot.get("addon_id"))
+	except (AttributeError, TypeError, ValueError):
+		return
+	if not frappe.db.exists("Asumi Addon Subscription", name):
+		return
+	subscription = frappe.get_doc("Asumi Addon Subscription", name, for_update=True)
+	if subscription.source_order != order.name:
+		return
+	subscription.db_set({"status": "Expired", "sync_error": ""})
+	try:
+		sync_addon_subscription_key(subscription, None)
+	except Exception:
+		frappe.log_error(
+			f"Could not remove an expired Accounts add-on key for order {order.name}.",
+			"Asumi Commerce",
+		)
+
+
+def _revoke_refunded_addon(order) -> None:
+	snapshot = _account_addon_snapshot_values(order)
+	if not snapshot:
+		return
+	try:
+		name = addon_subscription_name(snapshot.get("site_type"), snapshot.get("site_name"), snapshot.get("addon_id"))
+	except (AttributeError, TypeError, ValueError):
+		return
+	if not frappe.db.exists("Asumi Addon Subscription", name):
+		return
+	subscription = frappe.get_doc("Asumi Addon Subscription", name, for_update=True)
+	if subscription.source_order != order.name:
+		return
+	subscription.db_set({"status": "Revoked", "sync_error": ""})
+	try:
+		sync_addon_subscription_key(subscription, None)
+	except Exception:
+		frappe.log_error(
+			f"Could not remove a refunded Accounts add-on key for order {order.name}.",
+			"Asumi Commerce",
+		)
 
 
 @frappe.whitelist()
@@ -2351,6 +2517,8 @@ def record_refund(order: str, refund_reference: str, refund_note: str = "") -> d
 	except ValueError as error:
 		frappe.throw(str(error))
 
+	if doc.order_type == "Asumi Service" and _is_account_addon_order(doc):
+		_revoke_refunded_addon(doc)
 	if doc.order_type == "Hosting" and doc.status in {"Active", "Provisioning Failed"}:
 		_restore_hosting_site_after_term(doc, frappe.utils.now_datetime())
 	elif doc.status == "Active" and doc.subscription:

@@ -14,6 +14,38 @@
 		<div v-if="notice" class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950" role="status">{{ notice }}</div>
 		<div v-if="error" class="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-950" role="alert">{{ error }}</div>
 
+		<section v-if="addonPurchaseId" class="rounded-2xl border border-rose-200 bg-rose-50/60 p-5 shadow-sm" aria-labelledby="asumi-addon-purchase-title">
+			<div>
+				<p class="text-sm font-medium text-rose-700">خرید افزونهٔ حسابیار</p>
+				<h2 id="asumi-addon-purchase-title" class="mt-1 text-lg font-semibold text-gray-950">{{ accountAddonTitle(addonPurchaseId) }} · یک ماه</h2>
+				<p class="mt-2 text-sm leading-6 text-gray-700">افزونه برای یک سایت حسابیار فعال می‌شود. مبلغ را سرور از تعرفهٔ جاری می‌خواند و پس از پرداخت، مدیر آسومی دسترسی را دستی تأیید می‌کند.</p>
+			</div>
+			<div v-if="eligibleAddonSites.loading" class="mt-4 rounded-xl bg-white px-4 py-6 text-center text-sm text-gray-600" role="status">در حال دریافت سایت‌های حسابیار تیم…</div>
+			<div v-else-if="eligibleAddonSites.error" class="mt-4 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm leading-6 text-rose-900" role="alert">فهرست سایت‌های مجاز دریافت نشد. دوباره صفحه را تازه کنید؛ سفارش هنوز ثبت نشده است.</div>
+			<div v-else-if="!(addonSitesList.length)" class="mt-4 rounded-xl border border-amber-200 bg-white px-4 py-4 text-sm leading-6 text-amber-950">در تیم فعلی، سایت فعال دارای حسابیار پیدا نشد. فقط سایت‌هایی که متعلق به همین تیم و برنامهٔ حسابیار رویشان نصب است در اینجا قابل انتخاب‌اند.</div>
+			<form v-else class="mt-4 grid gap-3 sm:grid-cols-2" @submit.prevent="submitAddonPurchase">
+				<label class="text-sm font-medium text-gray-700 sm:col-span-2">سایت مقصد
+					<select v-model="selectedAddonSite" required class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+						<option value="">انتخاب سایت حسابیار</option>
+						<option v-for="site in addonSitesList" :key="site.key" :value="site.key">{{ site.label }}{{ site.site_type === 'Docker Control Site' ? ' · سایت متصل' : '' }}</option>
+					</select>
+				</label>
+				<label class="text-sm font-medium text-gray-700">نام و نام خانوادگی
+					<input v-model="addonPurchaseForm.full_name" required maxlength="140" autocomplete="name" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+				</label>
+				<label class="text-sm font-medium text-gray-700">شماره تماس
+					<input v-model="addonPurchaseForm.phone" required maxlength="32" inputmode="tel" autocomplete="tel" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" placeholder="مثلاً ۰۹۱۲۱۲۳۴۵۶۷" />
+				</label>
+				<label class="text-sm font-medium text-gray-700 sm:col-span-2">نام کسب‌وکار (اختیاری)
+					<input v-model="addonPurchaseForm.company" maxlength="140" autocomplete="organization" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" />
+				</label>
+				<div class="flex flex-wrap items-center gap-3 sm:col-span-2">
+					<button type="submit" :disabled="submittingAddonPurchase || !selectedAddonSite" class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:cursor-wait disabled:opacity-60">{{ submittingAddonPurchase ? 'در حال ساخت پرداخت…' : 'ادامه به پرداخت زرین‌پال' }}</button>
+					<span class="text-xs leading-5 text-gray-600">مبلغ نهایی یک ماه پیش از پرداخت در درگاه نمایش داده می‌شود؛ قیمت یا شناسهٔ سایت از مرورگر به‌عنوان مبلغ پذیرفته نمی‌شود.</span>
+				</div>
+			</form>
+		</section>
+
 		<section v-if="serviceRequest" class="rounded-2xl border border-rose-200 bg-rose-50/60 p-5 shadow-sm" aria-labelledby="asumi-service-request-title">
 			<div>
 				<p class="text-sm font-medium text-rose-700">{{ servicePurchase ? 'خرید خدمات آسومی' : 'درخواست خدمات آسومی' }}</p>
@@ -158,6 +190,7 @@
 					<div>
 						<p class="font-medium text-gray-950">{{ getAsumiServiceOrderTitle(order) }}<span v-if="order.site_label"> · {{ order.site_label }}</span></p>
 						<p v-if="order.order_type === 'Asumi Service' && getAsumiServiceOrderLines(order).length" class="mt-1 text-xs text-gray-600">{{ getAsumiServiceOrderLines(order).join(' · ') }}</p>
+						<p v-if="getAsumiAddonOrderDetails(order)" class="mt-1 text-xs text-gray-600">افزونه: {{ getAsumiAddonOrderDetails(order).addonTitle }} · سایت مقصد: {{ getAsumiAddonOrderDetails(order).siteName }}</p>
 						<p class="mt-1 text-xs text-gray-500">{{ order.name }} · {{ dateLabel(order.creation) }}<span v-if="order.service_ends_at"> · پایان دوره: {{ dateLabel(order.service_ends_at) }}</span></p>
 						<p v-if="order.order_type === 'Hosting' && order.service_delivery_mode === 'Create New Site'" class="mt-1 text-xs leading-5 text-indigo-700">Site در Press: <strong>{{ order.site || 'در انتظار ساخت' }}</strong> · کار Agent: <strong>{{ order.agent_job || 'در انتظار صف' }}</strong></p>
 						<p v-if="order.provisioning_error || order.payment_error" class="mt-1 text-sm text-rose-700">{{ order.provisioning_error || order.payment_error }}</p>
@@ -248,6 +281,46 @@
 						</div>
 					</fieldset>
 				</div>
+			</div>
+		</section>
+
+		<section v-if="isCommerceAdmin" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" aria-labelledby="asumi-addon-offers-title">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<p class="text-sm font-medium text-rose-700">حسابیار · افزونه‌های مستقل</p>
+					<h2 id="asumi-addon-offers-title" class="mt-1 text-lg font-semibold text-gray-950">فروش دستیار و چت سازمانی</h2>
+					<p class="mt-1 text-sm leading-6 text-gray-600">وضعیت رایگان/پولی و قیمت ماهانه را جدا از قیمت ۱۵ ماژول و مدیریت منو تنظیم کنید. «تنظیم‌نشده» قابلیت فعلی سایت‌ها را حفظ می‌کند.</p>
+				</div>
+				<div class="flex gap-2">
+					<Button label="بارگذاری افزونه‌ها" :loading="adminAddonOffers.loading || adminAddonImpact.loading" @click="loadAddonOffers" />
+					<Button variant="solid" label="ذخیرهٔ تنظیم افزونه‌ها" :loading="savingAddonOffers" :disabled="!addonOffersLoaded || savingAddonOffers" @click="saveAddonOffers" />
+				</div>
+			</div>
+			<p v-if="addonOffersError" class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-900" role="alert">{{ addonOffersError }}</p>
+			<p v-if="addonOffersNotice" class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm leading-6 text-emerald-900" role="status">{{ addonOffersNotice }}</p>
+			<div v-if="!addonOffersLoaded" class="mt-4 rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">برای تنظیم فروش، وضعیت افزونه‌ها را بارگذاری کنید.</div>
+			<div v-else class="mt-4 grid gap-4 lg:grid-cols-2">
+				<fieldset v-for="item in ASUMI_ACCOUNT_ADDON_CATALOG" :key="item.id" class="rounded-xl border border-gray-200 p-4">
+					<legend class="px-2 text-sm font-semibold text-gray-900">{{ item.title }}</legend>
+					<div class="grid gap-3 sm:grid-cols-2">
+						<label class="text-sm font-medium text-gray-700">وضعیت فروش
+							<select v-model="addonOffersForm[item.id].status" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" :aria-label="`وضعیت فروش ${item.title}`">
+								<option value="Unconfigured">تنظیم‌نشده</option><option value="Free">رایگان</option><option value="Paid">پولی</option><option value="Disabled">غیرفعال</option>
+							</select>
+						</label>
+						<label v-if="addonOffersForm[item.id].status === 'Paid'" class="text-sm font-medium text-gray-700">قیمت ماهانه به تومان
+							<input v-model.number="addonOffersForm[item.id].monthly_price_toman" type="number" min="10000" :max="MAX_ASUMI_SERVICE_PRICE_TOMAN" step="1" inputmode="numeric" class="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm" :aria-label="`قیمت ماهانهٔ ${item.title} به تومان`" />
+							<span class="mt-1 block text-xs text-gray-500">حداقل ۱۰٬۰۰۰ تومان برای رعایت کف پرداخت زرین‌پال</span>
+						</label>
+						<p v-else class="flex items-center rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">{{ addonOffersForm[item.id].status === 'Free' ? 'برای همهٔ سایت‌های واجد شرایط رایگان و فعال است.' : addonOffersForm[item.id].status === 'Disabled' ? 'خرید و دسترسی این افزونه بسته می‌شود.' : 'وضعیت فعلی سایت‌ها حفظ می‌شود و خرید جدید نمایش داده نمی‌شود.' }}</p>
+					</div>
+					<p v-if="addonOfferImpact(item.id)" class="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">
+						{{ addonOfferImpact(item.id).active_accounts_sites }} سایت حسابیار فعال · {{ addonOfferImpact(item.id).paid_active_sites }} اشتراک پولی فعال · {{ addonOfferImpact(item.id).pending_orders }} سفارش باز
+					</p>
+					<p v-if="wouldRestrictAddonSites(item.id)" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950" role="alert">
+						{{ addonOfferImpact(item.id).sites_without_paid_entitlement }} سایت بدون اشتراک پولی پس از تغییر به حالت پولی، دسترسی این افزونه را از دست می‌دهند؛ هنگام ذخیره تأیید جداگانه می‌خواهیم.
+					</p>
+				</fieldset>
 			</div>
 		</section>
 
@@ -467,14 +540,14 @@
 					<thead class="border-b border-gray-200 text-right text-xs text-gray-500"><tr><th class="py-3 pr-2">سفارش</th><th>مشتری / تیم</th><th>مبلغ</th><th>وضعیت</th><th>پشتیبان / عملیات نصب</th><th>خطای تحویل</th><th></th></tr></thead>
 					<tbody class="divide-y divide-gray-100">
 						<tr v-for="order in adminOrders.data" :key="order.name">
-							<td class="py-3 pr-2"><strong>{{ order.name }}</strong><span class="block text-xs text-gray-500">{{ getAsumiServiceOrderTitle(order) }}<span v-if="order.order_type !== 'Asumi Service'"> · {{ order.docker_site || order.site || order.subdomain }}</span></span><span v-if="order.order_type === 'Asumi Service'" class="mt-1 block max-w-72 text-xs text-gray-600">{{ getAsumiServiceOrderLines(order).join(' · ') || 'جزئیات ترکیب ثبت نشده' }}</span></td>
+							<td class="py-3 pr-2"><strong>{{ order.name }}</strong><span class="block text-xs text-gray-500">{{ getAsumiServiceOrderTitle(order) }}<span v-if="order.order_type !== 'Asumi Service'"> · {{ order.docker_site || order.site || order.subdomain }}</span></span><span v-if="order.order_type === 'Asumi Service' && !getAsumiAddonOrderDetails(order)" class="mt-1 block max-w-72 text-xs text-gray-600">{{ getAsumiServiceOrderLines(order).join(' · ') || 'جزئیات ترکیب ثبت نشده' }}</span><span v-if="getAsumiAddonOrderDetails(order)" class="mt-1 block max-w-72 text-xs text-gray-600">افزونهٔ {{ getAsumiAddonOrderDetails(order).addonTitle }} · سایت {{ getAsumiAddonOrderDetails(order).siteName }}</span></td>
 							<td>{{ order.customer }}<span class="block text-xs text-gray-500">{{ order.team }}</span><span v-if="order.service_contact_name" class="mt-1 block text-xs">{{ order.service_contact_name }} · {{ order.service_contact_phone }}</span><span v-if="order.service_company" class="block text-xs text-gray-500">{{ order.service_company }}</span></td>
 							<td>{{ order.order_type === 'Asumi Service' ? `${money(getAsumiServiceOrderTomanAmount(order) ?? 0)} تومان / ماه` : `${money(order.amount)} ${order.currency}` }}</td>
 							<td>{{ statusLabel(order.status) }}<span v-if="order.refund_reference" class="block text-xs text-gray-500">مرجع بازپرداخت: {{ order.refund_reference }}</span></td>
 							<td class="text-xs text-gray-600"><span v-if="order.install_backup" class="block">پشتیبان: {{ order.install_backup }}</span><span v-if="order.install_backup_id" class="block">پشتیبان نصب: {{ order.install_backup_id }}</span><span v-if="order.site" class="block">Site در Press: {{ order.site }}</span><span v-if="order.agent_job" class="block">کار Agent: {{ order.agent_job }}</span><span v-if="order.install_operation" class="block">عملیات نصب: {{ order.install_operation }}</span></td>
 							<td class="max-w-64 truncate text-rose-700">{{ order.provisioning_error || order.payment_error || '—' }}</td>
 							<td class="flex flex-col items-start gap-2 py-2">
-								<Button v-if="order.order_type === 'Asumi Service' && nextAsumiServiceDeliveryStatus(order)" :label="nextAsumiServiceDeliveryStatus(order) === 'Provisioning' ? 'شروع تحویل' : 'ثبت فعال‌سازی'" :loading="updatingServiceOrder === order.name" @click="updateServiceOrderStatus(order, nextAsumiServiceDeliveryStatus(order))" />
+								<Button v-if="order.order_type === 'Asumi Service' && nextAsumiServiceDeliveryStatus(order)" :label="nextAsumiServiceDeliveryStatus(order) === 'Provisioning' ? 'شروع تحویل' : getAsumiAddonOrderDetails(order) && order.provisioning_error ? 'تلاش دوبارهٔ همگام‌سازی و فعال‌سازی' : 'ثبت فعال‌سازی'" :loading="updatingServiceOrder === order.name" @click="updateServiceOrderStatus(order, nextAsumiServiceDeliveryStatus(order))" />
 								<Button v-else-if="order.order_type !== 'Asumi Service' && order.status === 'Provisioning Failed'" label="تلاش مجدد تحویل" :loading="retrying === order.name" @click="retry(order)" />
 								<template v-if="order.provider !== 'Free' && ['Paid', 'Active', 'Provisioning Failed'].includes(order.status)">
 									<input v-model="refundReferences[order.name]" class="w-36 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900" placeholder="شمارهٔ پیگیری" :aria-label="`شمارهٔ بازپرداخت ${order.name}`" />
@@ -498,7 +571,7 @@ import { canManageAsumiCommerce } from '@/utils/commerceAccess';
 import { commerceGatewayState } from '@/utils/commerceGatewayState';
 import { commercePurchaseSiteParams, resolveCommercePurchaseSite } from '@/utils/commerceSites';
 import { marketplacePlanActionLabel, selectMarketplacePlans } from '@/utils/marketplacePlanSelection';
-import { isAsumiServicePurchaseRequest, parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
+import { isAsumiServicePurchaseRequest, parseAsumiAddonPurchaseRequest, parseAsumiServiceRequest } from '@/utils/asumiServiceRequest';
 import {
 	getAsumiServiceOrderLines,
 	getAsumiServiceOrderTitle,
@@ -506,9 +579,13 @@ import {
 	nextAsumiServiceDeliveryStatus,
 } from '@/utils/asumiServiceOrder';
 import {
+	ASUMI_ACCOUNT_ADDON_CATALOG,
 	ASUMI_SERVICE_PRICE_CATALOG,
 	MAX_ASUMI_SERVICE_PRICE_TOMAN,
+	buildAsumiAddonOffersPayload,
 	buildAsumiServicePricingPayload,
+	emptyAsumiAddonOffers,
+	validateAsumiAddonOffers,
 	emptyAsumiServicePricing,
 	validateAsumiServicePricing,
 } from '@/utils/asumiServicePricing';
@@ -516,6 +593,15 @@ import {
 const isCommerceAdmin = computed(() => canManageAsumiCommerce(session));
 const serviceRequest = ref(parseAsumiServiceRequest(window.location.search));
 const servicePurchase = computed(() => isAsumiServicePurchaseRequest(serviceRequest.value));
+const addonPurchaseId = ref(parseAsumiAddonPurchaseRequest(window.location.search));
+const addonPurchaseForm = reactive({ full_name: '', phone: '', company: '' });
+const selectedAddonSite = ref('');
+const submittingAddonPurchase = ref(false);
+const addonSitesList = computed(() => {
+	const value = eligibleAddonSites.data?.message || eligibleAddonSites.data;
+	return Array.isArray(value) ? value : [];
+});
+const selectedAddonSiteTarget = computed(() => addonSitesList.value.find(site => site.key === selectedAddonSite.value) || null);
 const marketplaceQuery = new URLSearchParams(window.location.search);
 const requestedMarketplaceApp = ref((marketplaceQuery.get('asumi_app') || '').trim());
 const requestedMarketplaceAppTitle = ref((marketplaceQuery.get('asumi_app_title') || '').trim());
@@ -549,8 +635,22 @@ const servicePricingLoaded = ref(false);
 const savingServicePricing = ref(false);
 const servicePricingError = ref('');
 const servicePricingNotice = ref('');
+const addonOffersForm = reactive(emptyAsumiAddonOffers());
+const savedAddonOffers = ref(emptyAsumiAddonOffers());
+const addonOffersLoaded = ref(false);
+const savingAddonOffers = ref(false);
+const addonOffersError = ref('');
+const addonOffersNotice = ref('');
 
 const sites = createResource({ url: 'press.saas.commerce.api.my_purchase_sites', auto: true });
+const eligibleAddonSites = createResource({
+	url: 'press.saas.commerce.api.eligible_addon_sites',
+	auto: Boolean(addonPurchaseId.value),
+	onSuccess(data) {
+		const rows = data?.message || data;
+		if (Array.isArray(rows) && rows.length === 1) selectedAddonSite.value = rows[0].key;
+	},
+});
 const orders = createResource({ url: 'press.saas.commerce.api.my_orders', auto: true });
 const hostingOffers = createResource({
 	url: 'press.saas.commerce.api.available_site_plan_offers',
@@ -583,6 +683,13 @@ const adminServicePricing = createResource({
 	onSuccess(data) { applyServicePricing(data); },
 	onError(failure) { servicePricingError.value = failure?.messages?.[0] || failure?.message || 'بارگذاری تعرفه‌های آسومی ناموفق بود.'; },
 });
+const adminAddonOffers = createResource({
+	url: 'press.saas.commerce.api.admin_service_addon_offers',
+	auto: isCommerceAdmin.value,
+	onSuccess(data) { applyAddonOffers(data); },
+	onError(failure) { addonOffersError.value = failure?.messages?.[0] || failure?.message || 'بارگذاری تنظیم فروش افزونه‌ها ناموفق بود.'; },
+});
+const adminAddonImpact = createResource({ url: 'press.saas.commerce.api.admin_service_addon_impact', auto: isCommerceAdmin.value });
 const gatewayStatus = computed(() => commerceGatewayState(settings.data));
 const hostingReadiness = createResource({ url: 'press.saas.commerce.api.admin_hosting_readiness', auto: isCommerceAdmin.value });
 const appPlans = createResource({ url: 'press.saas.commerce.api.admin_marketplace_plans', auto: isCommerceAdmin.value });
@@ -602,8 +709,10 @@ const startPurchaseResource = createResource({ url: 'press.saas.commerce.api.sta
 const startHostingPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_site_plan_purchase' });
 const submitServiceRequestResource = createResource({ url: 'press.saas.commerce.api.submit_service_request' });
 const saveServicePricingResource = createResource({ url: 'press.saas.commerce.api.save_admin_service_pricing' });
+const saveAddonOffersResource = createResource({ url: 'press.saas.commerce.api.save_admin_service_addon_offers' });
 const updateServiceRequestStatusResource = createResource({ url: 'press.saas.commerce.api.update_service_request_status' });
 const startServicePurchaseResource = createResource({ url: 'press.saas.commerce.api.start_service_purchase' });
+const startAddonPurchaseResource = createResource({ url: 'press.saas.commerce.api.start_service_addon_purchase' });
 const updateServiceOrderStatusResource = createResource({ url: 'press.saas.commerce.api.update_service_order_status' });
 const updatingServiceOrder = ref('');
 
@@ -623,6 +732,31 @@ watch(selectedSite, async (site) => {
 	if (!target) return;
 	try { await plans.fetch({ site: target.name, site_type: target.site_type }); } catch (failure) { showError(failure); }
 });
+
+async function submitAddonPurchase() {
+	if (!addonPurchaseId.value || !selectedAddonSiteTarget.value || submittingAddonPurchase.value) return;
+	error.value = '';
+	submittingAddonPurchase.value = true;
+	try {
+		const result = await startAddonPurchaseResource.submit({
+			addon_id: addonPurchaseId.value,
+			site_type: selectedAddonSiteTarget.value.site_type,
+			site_name: selectedAddonSiteTarget.value.name,
+			full_name: addonPurchaseForm.full_name.trim(),
+			phone: addonPurchaseForm.phone.trim(),
+			company: addonPurchaseForm.company.trim(),
+		});
+		const checkout = result?.message || result;
+		if (typeof checkout?.checkout_url !== 'string' || !checkout.checkout_url.startsWith('https://')) {
+			throw new Error('نشانی امن پرداخت از سرور دریافت نشد؛ سفارش افزونه ایجاد نشد.');
+		}
+		window.location.assign(checkout.checkout_url);
+	} catch (failure) {
+		showError(failure);
+	} finally {
+		submittingAddonPurchase.value = false;
+	}
+}
 
 async function submitServiceRequest(forceRequest = false) {
 	if (!serviceRequest.value || submittingServiceRequest.value) return;
@@ -707,12 +841,76 @@ async function saveServicePricing() {
 	}
 }
 
+function applyAddonOffers(value) {
+	try {
+		const offers = validateAsumiAddonOffers(value?.message || value);
+		Object.assign(addonOffersForm, offers);
+		savedAddonOffers.value = JSON.parse(JSON.stringify(offers));
+		addonOffersLoaded.value = true;
+		addonOffersError.value = '';
+	} catch (failure) {
+		addonOffersLoaded.value = false;
+		addonOffersError.value = failure?.message || 'تنظیم فروش افزونه‌های دریافتی از سرور معتبر نیست.';
+	}
+}
+
+function addonOfferImpact(addonId) {
+	const data = adminAddonImpact.data?.message || adminAddonImpact.data;
+	return data?.[addonId] || null;
+}
+
+function wouldRestrictAddonSites(addonId) {
+	const currentStatus = savedAddonOffers.value[addonId]?.status;
+	const nextStatus = addonOffersForm[addonId]?.status;
+	const impact = addonOfferImpact(addonId);
+	return ['Unconfigured', 'Free'].includes(currentStatus) && nextStatus === 'Paid' && Number(impact?.sites_without_paid_entitlement || 0) > 0;
+}
+
+async function loadAddonOffers() {
+	addonOffersError.value = '';
+	addonOffersNotice.value = '';
+	try {
+		const [offers] = await Promise.all([adminAddonOffers.fetch(), adminAddonImpact.fetch()]);
+		if (!addonOffersLoaded.value && offers) applyAddonOffers(offers);
+	} catch (failure) {
+		addonOffersError.value = failure?.messages?.[0] || failure?.message || 'بارگذاری تنظیم فروش افزونه‌ها ناموفق بود.';
+	}
+}
+
+async function saveAddonOffers() {
+	if (!addonOffersLoaded.value || savingAddonOffers.value) return;
+	addonOffersError.value = '';
+	addonOffersNotice.value = '';
+	let payload;
+	try { payload = buildAsumiAddonOffersPayload(addonOffersForm); }
+	catch (failure) { addonOffersError.value = failure?.message || 'تنظیم افزونه‌ها معتبر نیست.'; return; }
+	const impacted = ASUMI_ACCOUNT_ADDON_CATALOG
+		.filter(({ id }) => wouldRestrictAddonSites(id))
+		.map(({ id, title }) => `${title}: ${money(addonOfferImpact(id).sites_without_paid_entitlement)} سایت`);
+	if (impacted.length && !window.confirm(`با پولی‌کردن افزونه، دسترسی سایت‌های فاقد اشتراک قطع می‌شود:\n${impacted.join('\n')}\n\nتغییر ذخیره شود؟`)) return;
+	savingAddonOffers.value = true;
+	try {
+		const result = await saveAddonOffersResource.submit(payload);
+		applyAddonOffers(result?.message || result);
+		await adminAddonImpact.fetch();
+		if (addonOffersLoaded.value) addonOffersNotice.value = 'وضعیت فروش و قیمت افزونه‌های حسابیار ذخیره شد.';
+	} catch (failure) {
+		addonOffersError.value = failure?.messages?.[0] || failure?.message || 'ذخیرهٔ تنظیم فروش افزونه‌ها ناموفق بود.';
+	} finally {
+		savingAddonOffers.value = false;
+	}
+}
+
 function serviceModuleTitle(id) {
 	return ASUMI_SERVICE_PRICE_CATALOG.modules.find(item => item.id === id)?.title || id;
 }
 
 function serviceAddonTitle(id) {
 	return ASUMI_SERVICE_PRICE_CATALOG.addons.find(item => item.id === id)?.title || id;
+}
+
+function accountAddonTitle(id) {
+	return ASUMI_ACCOUNT_ADDON_CATALOG.find(item => item.id === id)?.title || id;
 }
 
 async function updateServiceRequestStatus(lead, status) {
@@ -956,7 +1154,8 @@ async function refresh() {
 	error.value = '';
 	try {
 		const calls = [sites.fetch(), orders.fetch(), hostingOffers.fetch()];
-		if (isCommerceAdmin.value) calls.push(settings.fetch(), adminServicePricing.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch(), adminServiceRequests.fetch());
+		if (addonPurchaseId.value) calls.push(eligibleAddonSites.fetch());
+		if (isCommerceAdmin.value) calls.push(settings.fetch(), adminServicePricing.fetch(), adminAddonOffers.fetch(), adminAddonImpact.fetch(), hostingReadiness.fetch(), appPlans.fetch(), marketplacePlanOptions.fetch(), sitePlans.fetch(), sitePlanOptions.fetch(), adminOrders.fetch(), adminServiceRequests.fetch());
 		if (selectedSiteTarget.value) calls.push(plans.fetch({ site: selectedSiteTarget.value.name, site_type: selectedSiteTarget.value.site_type }));
 		await Promise.all(calls);
 	} catch (failure) { showError(failure); }

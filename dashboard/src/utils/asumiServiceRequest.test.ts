@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAsumiServicePurchaseRequest, parseAsumiServiceRequest } from './asumiServiceRequest';
+import { isAsumiServicePurchaseRequest, parseAsumiAddonPurchaseRequest, parseAsumiServiceRequest } from './asumiServiceRequest';
 
 describe('parseAsumiServiceRequest', () => {
 	it('reads the selected service and safe module and addon ids', () => {
@@ -43,5 +43,14 @@ describe('parseAsumiServiceRequest', () => {
 		expect(parseAsumiServiceRequest('?asumi_service_request=1&service=website_design&context=web')?.addonIds).toEqual([]);
 		const oversized = new URLSearchParams({ asumi_service_request: '1', service: 'website_design', context: 'x'.repeat(5001) });
 		expect(parseAsumiServiceRequest(`?${oversized}`)).toBeNull();
+	});
+});
+
+describe('parseAsumiAddonPurchaseRequest', () => {
+	it('accepts only the two site-scoped add-on identifiers', () => {
+		expect(parseAsumiAddonPurchaseRequest('?asumi_addon_purchase=1&addon_id=assistant_ai')).toBe('assistant_ai');
+		expect(parseAsumiAddonPurchaseRequest('?asumi_addon_purchase=1&addon_id=internal_chat')).toBe('internal_chat');
+		expect(parseAsumiAddonPurchaseRequest('?asumi_addon_purchase=1&addon_id=other')).toBeNull();
+		expect(parseAsumiAddonPurchaseRequest('?addon_id=assistant_ai')).toBeNull();
 	});
 });

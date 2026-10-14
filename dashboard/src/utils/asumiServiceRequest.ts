@@ -8,6 +8,15 @@ export type AsumiServiceRequest = {
 	addonIds: string[];
 };
 
+export type AsumiAccountAddonId = 'assistant_ai' | 'internal_chat';
+
+export function parseAsumiAddonPurchaseRequest(search: string): AsumiAccountAddonId | null {
+	const params = new URLSearchParams(search);
+	if (params.get('asumi_addon_purchase') !== '1') return null;
+	const addonId = params.get('addon_id');
+	return addonId === 'assistant_ai' || addonId === 'internal_chat' ? addonId : null;
+}
+
 export function isAsumiServicePurchaseRequest(request: AsumiServiceRequest | null): boolean {
 	return request?.service === 'module_pricing' && request.intent === 'purchase';
 }

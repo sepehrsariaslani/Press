@@ -88,6 +88,42 @@ class DockerControlClientTest(unittest.TestCase):
 				client.set_site_subscription(site, app, secret)
 
 	@patch("press.docker_control.client.requests.request")
+	def test_site_addon_subscription_uses_dedicated_private_endpoint(self, request):
+		response = SimpleNamespace(
+			status_code=200,
+			json=lambda: {"site": "veederakht.ir", "addon_id": "internal_chat", "enabled": True},
+		)
+		request.return_value = response
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+
+		result = DockerControlClient(host).set_site_addon_subscription("veederakht.ir", "internal_chat", "f" * 40)
+
+		self.assertEqual(result, {"site": "veederakht.ir", "addon_id": "internal_chat", "enabled": True})
+		self.assertEqual(
+			request.call_args.args[:2],
+			("POST", "http://172.18.0.1:8769/v1/site-addon-subscription"),
+		)
+		self.assertEqual(
+			request.call_args.kwargs["data"],
+			b'{"addon_id":"internal_chat","secret_key":"' + b"f" * 40 + b'","site":"veederakht.ir"}',
+		)
+		self.assertEqual(request.call_args.kwargs["timeout"], (5, 30))
+
+	def test_site_addon_subscription_rejects_untrusted_values_before_network_access(self):
+		host = SimpleNamespace(endpoint="http://172.18.0.1:8769", get_password=lambda _: "x" * 32)
+		client = DockerControlClient(host)
+		for site, addon_id, secret in (
+			("attacker.example", "assistant_ai", "a" * 40),
+			("veederakht.ir", "accounts", "a" * 40),
+			("veederakht.ir", "assistant_ai", "invalid"),
+		):
+			with self.subTest(site=site, addon_id=addon_id), patch(
+				"press.docker_control.client.requests.request"
+			) as request, self.assertRaises(DockerControlError):
+				client.set_site_addon_subscription(site, addon_id, secret)
+			request.assert_not_called()
+
+	@patch("press.docker_control.client.requests.request")
 	def test_site_subscription_accepts_a_valid_asumi_tenant(self, request):
 		response = SimpleNamespace(
 			status_code=200,

@@ -128,6 +128,85 @@ class ResourcesEndpointTest(unittest.TestCase):
 			server.server_close()
 			thread.join(timeout=2)
 
+	def test_site_addon_subscription_endpoint_updates_only_allowlisted_addon_config(self):
+		with tempfile.TemporaryDirectory() as temporary_directory:
+			sites_root = Path(temporary_directory)
+			site_path = sites_root / "veederakht.ir"
+			site_path.mkdir()
+			config_path = site_path / "site_config.json"
+			config_path.write_text('{"db_name":"site_db","sk_accounts":"marketplace"}', encoding="utf-8")
+			server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
+			server.control_config = SimpleNamespace(sites_root=sites_root)
+			server.operation_manager = SimpleNamespace()
+			thread = Thread(target=server.serve_forever, daemon=True)
+			thread.start()
+			secret_key = "d" * 40
+			payload = json.dumps(
+				{"site": "veederakht.ir", "addon_id": "assistant_ai", "secret_key": secret_key}
+			).encode()
+			request = Request(
+				f"http://127.0.0.1:{server.server_port}/v1/site-addon-subscription",
+				data=payload,
+				headers={"Content-Type": "application/json"},
+				method="POST",
+			)
+			try:
+				with (
+					patch.object(ControlHandler, "_authenticate"),
+					patch("press.docker_control_agent.service._installed_apps", return_value=["accounts"]),
+				):
+					response = urlopen(request, timeout=2)
+					response_body = response.read()
+				self.assertEqual(
+					json.loads(response_body),
+					{"site": "veederakht.ir", "addon_id": "assistant_ai", "enabled": True},
+				)
+				self.assertNotIn(secret_key.encode(), response_body)
+				config = json.loads(config_path.read_text(encoding="utf-8"))
+				self.assertEqual(config["asumi_addon_assistant_ai_key"], secret_key)
+				self.assertEqual(config["sk_accounts"], "marketplace")
+				self.assertFalse((sites_root / "operations.db").exists())
+			finally:
+				server.shutdown()
+				server.server_close()
+				thread.join(timeout=2)
+
+	def test_site_addon_subscription_endpoint_rejects_unknown_addon_and_requires_accounts(self):
+		for addon_id, installed_apps in (("unknown", ["accounts"]), ("internal_chat", ["frappe"])):
+			with self.subTest(addon_id=addon_id), tempfile.TemporaryDirectory() as temporary_directory:
+				sites_root = Path(temporary_directory)
+				site_path = sites_root / "veederakht.ir"
+				site_path.mkdir()
+				config_path = site_path / "site_config.json"
+				config_path.write_text('{"db_name":"site_db"}', encoding="utf-8")
+				server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
+				server.control_config = SimpleNamespace(sites_root=sites_root)
+				server.operation_manager = SimpleNamespace()
+				thread = Thread(target=server.serve_forever, daemon=True)
+				thread.start()
+				payload = json.dumps(
+					{"site": "veederakht.ir", "addon_id": addon_id, "secret_key": "e" * 40}
+				).encode()
+				request = Request(
+					f"http://127.0.0.1:{server.server_port}/v1/site-addon-subscription",
+					data=payload,
+					headers={"Content-Type": "application/json"},
+					method="POST",
+				)
+				try:
+					with (
+						patch.object(ControlHandler, "_authenticate"),
+						patch("press.docker_control_agent.service._installed_apps", return_value=installed_apps),
+					):
+						with self.assertRaises(HTTPError) as error:
+							urlopen(request, timeout=2)
+						self.assertEqual(error.exception.code, 400)
+					self.assertEqual(json.loads(config_path.read_text(encoding="utf-8")), {"db_name": "site_db"})
+				finally:
+					server.shutdown()
+					server.server_close()
+					thread.join(timeout=2)
+
 	def test_site_admins_endpoint_rejects_unknown_domain_without_auth_or_query(self):
 		server = ThreadingHTTPServer(("127.0.0.1", 0), ControlHandler)
 		server.control_config = SimpleNamespace()

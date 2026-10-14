@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { loadServiceCheckoutStatus, loadServicePrices } from './pricingApi';
+import { loadServiceAddonCatalog, loadServiceCheckoutStatus, loadServicePrices } from './pricingApi';
 
 const prices = {
 	modules: {
@@ -62,4 +62,34 @@ test('treats disabled and malformed checkout status safely', async () => {
 	await expect(loadServiceCheckoutStatus(disabled)).resolves.toBe(false);
 	const malformed = vi.fn(async () => ({ ok: true, json: async () => ({ message: { enabled: true } }) } as Response));
 	await expect(loadServiceCheckoutStatus(malformed)).rejects.toThrow(/وضعیت فروش/);
+});
+
+test('loads only valid free and paid account add-ons from the public catalog', async () => {
+	const catalog = [
+		{ id: 'assistant_ai', title: 'دستیار هوش مصنوعی حسابیار', status: 'Paid', monthly_price_toman: 25_000 },
+		{ id: 'internal_chat', title: 'چت سازمانی', status: 'Free', monthly_price_toman: 0 },
+	];
+	const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ message: catalog }) } as Response));
+
+	await expect(loadServiceAddonCatalog(fetcher)).resolves.toEqual(catalog);
+	expect(fetcher).toHaveBeenCalledWith('/api/method/press.saas.commerce.api.service_addon_catalog', { credentials: 'same-origin' });
+});
+
+test('hides unconfigured and disabled add-ons returned by a newer backend', async () => {
+	const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ message: [
+		{ id: 'assistant_ai', title: 'هوش مصنوعی', status: 'Disabled', monthly_price_toman: 0 },
+		{ id: 'internal_chat', title: 'چت سازمانی', status: 'Unconfigured', monthly_price_toman: 0 },
+	] }) } as Response));
+	await expect(loadServiceAddonCatalog(fetcher)).resolves.toEqual([]);
+});
+
+test('rejects an unknown or invalid public add-on offer', async () => {
+	for (const offer of [
+		{ id: 'other', title: 'نامعتبر', status: 'Free', monthly_price_toman: 0 },
+		{ id: 'assistant_ai', title: 'هوش مصنوعی', status: 'Paid', monthly_price_toman: 9_999 },
+		{ id: 'internal_chat', title: 'چت', status: 'Free', monthly_price_toman: 1 },
+	]) {
+		const fetcher = vi.fn(async () => ({ ok: true, json: async () => ({ message: [offer] }) } as Response));
+		await expect(loadServiceAddonCatalog(fetcher)).rejects.toThrow(/افزونه/);
+	}
 });
