@@ -63,8 +63,11 @@ from press.saas.commerce.service_requests import (
 )
 from press.saas.commerce.service_orders import build_service_order_snapshot
 from press.saas.commerce.service_pricing import (
+	ADDON_OFFER_TITLES,
 	calculate_service_quote,
+	default_addon_offers,
 	default_service_prices,
+	normalize_addon_offers,
 	normalize_service_prices,
 )
 from press.saas.commerce.zarinpal import (
@@ -189,6 +192,22 @@ def _get_service_prices() -> dict[str, dict[str, int]]:
 		return normalize_service_prices(decoded["modules"], decoded["addons"], decoded["packages"])
 	except (json.JSONDecodeError, TypeError, ValueError) as error:
 		frappe.throw(_(f"تنظیمات تعرفهٔ خدمات آسومی معتبر نیست: {error}"))
+
+
+def _get_addon_offers() -> dict[str, dict[str, object]]:
+	if not frappe.db.exists("DocType", "Asumi Service Pricing"):
+		return default_addon_offers()
+
+	doc = frappe.get_single("Asumi Service Pricing")
+	stored = doc.get("addon_offer_config")
+	if not stored:
+		return default_addon_offers()
+
+	try:
+		decoded = json.loads(stored) if isinstance(stored, str) else stored
+		return normalize_addon_offers(decoded)
+	except (json.JSONDecodeError, TypeError, ValueError) as error:
+		frappe.throw(_(f"تنظیمات افزونه‌های آسومی معتبر نیست: {error}"))
 
 
 def _parse_service_selection(value: str, field: str) -> list[str]:
@@ -2016,6 +2035,38 @@ def submit_service_request(
 def service_pricing() -> dict[str, dict[str, int]]:
 	"""Return the public Asumi service price maps without other commerce settings."""
 	return _get_service_prices()
+
+
+@frappe.whitelist(allow_guest=True)
+def service_addon_catalog() -> list[dict[str, object]]:
+	"""Return only account add-ons currently offered to Asumi customers."""
+	offers = _get_addon_offers()
+	return [
+		{"id": addon_id, "title": ADDON_OFFER_TITLES[addon_id], **offers[addon_id]}
+		for addon_id in ADDON_OFFER_TITLES
+		if offers[addon_id]["status"] in {"Free", "Paid"}
+	]
+
+
+@frappe.whitelist()
+def admin_service_addon_offers() -> dict[str, dict[str, object]]:
+	_require_commerce_admin()
+	return _get_addon_offers()
+
+
+@frappe.whitelist(methods=["POST"])
+def save_admin_service_addon_offers(addon_offer_config: str) -> dict[str, dict[str, object]]:
+	_require_commerce_admin()
+	try:
+		decoded = json.loads(addon_offer_config)
+		offers = normalize_addon_offers(decoded)
+	except (json.JSONDecodeError, TypeError, ValueError) as error:
+		frappe.throw(_(str(error)))
+
+	doc = frappe.get_single("Asumi Service Pricing")
+	doc.set("addon_offer_config", json.dumps(offers, ensure_ascii=False, sort_keys=True))
+	doc.save(ignore_permissions=True)
+	return offers
 
 
 @frappe.whitelist()

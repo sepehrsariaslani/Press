@@ -6,7 +6,8 @@
  "field_order": [
   "module_prices",
   "addon_prices",
-  "package_prices"
+  "package_prices",
+  "addon_offer_config"
  ],
  "fields": [
   {
@@ -26,6 +27,11 @@
    "fieldtype": "Long Text",
    "label": "Package Prices (JSON)",
    "reqd": 1
+  },
+  {
+   "fieldname": "addon_offer_config",
+   "fieldtype": "Long Text",
+   "label": "Account Add-on Offer Configuration (JSON)"
   }
  ],
  "issingle": 1,

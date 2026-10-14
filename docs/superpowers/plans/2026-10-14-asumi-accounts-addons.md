@@ -93,7 +93,7 @@ def test_defaults_keep_addons_unconfigured_and_legacy_prices_unchanged():
 
 - [ ] **Step 2: اجرای آزمון قرمز.** از ریشهٔ `press` اجرا کن: `bench --site asumi.ir run-tests --module press.saas.commerce.test_addon_offers`. انتظار: شکست به‌علت نبود `default_addon_offers` یا validator.
 - [ ] **Step 3: پیاده‌سازی و migration سازگار.** validator فقط دو ID ثابت و چهار وضعیت مجاز را بپذیرد؛ قیمت را با validator موجود بررسی کند؛ در Paid مقدار کمتر از ۱۰٬۰۰۰ و در Free مقدار غیرصفر را رد کند. فیلد JSON جدید `addon_offer_config` به singleton اضافه کن. Patch فقط وقتی فیلد خالی است default را ثبت کند و هیچ‌یک از JSONهای قدیمی را بازنویسی نکند. patch را به `patches.txt` اضافه کن.
-- [ ] **Step 4: API مدیر/عمومی را با backward compatibility آزمون کن.** `service_pricing()` همچنان سه نقشهٔ قبلی را عیناً برگرداند؛ API عمومی جدید `service_addon_catalog()` فقط Free و Paid معتبر را منتشر کند و `admin_service_pricing`/`save_admin_service_pricing` فیلد وضعیت افزونه‌ها را فقط برای مدیر بخوانند/ذخیره کنند. آزمون دسترسی غیرمدیر و payload ناقص/دارای کلید ناشناخته را اضافه کن.
+- [ ] **Step 4: API مجزای مدیر/عمومی را با backward compatibility آزمون کن.** `service_pricing()`, `admin_service_pricing()` و `save_admin_service_pricing()` سه نقشهٔ قدیمی را عیناً نگه دارند. `service_addon_catalog()` فقط Free و Paid معتبر را منتشر کند؛ `admin_service_addon_offers()` و `save_admin_service_addon_offers()` وضعیت‌ها را فقط برای مدیر بخوانند/ذخیره کنند. آزمون دسترسی غیرمدیر و payload ناقص/دارای کلید ناشناخته را اضافه کن.
 - [ ] **Step 5: آزمون‌ها و commit.** `bench --site asumi.ir run-tests --module press.saas.commerce.test_addon_offers` و `bench --site asumi.ir run-tests --module press.saas.commerce.test_service_pricing_endpoints` باید PASS شوند. فایل‌های Task را با پیام فارسی `feat: افزودن تنظیمات فروش افزونه‌های حسابیار` commit کن.
 
 ## Task 2: سفارش مستقل افزونه برای سایت مشخص
@@ -246,10 +246,11 @@ def test_paid_access_fails_closed_when_press_is_unreachable_without_valid_cache(
 type AddonOfferStatus = 'Unconfigured' | 'Free' | 'Paid' | 'Disabled';
 type AddonOffer = { status: AddonOfferStatus; monthly_price_toman: number };
 type AsumiServicePricing = { modules: Record<string, number>; addons: Record<string, number>;
-  packages: Record<string, number>; addon_offers: Record<'assistant_ai' | 'internal_chat', AddonOffer> };
+  packages: Record<string, number> };
+type AsumiAddonOffers = Record<'assistant_ai' | 'internal_chat', AddonOffer>;
 ```
 
-- [ ] **Step 1: تست utility ویرایش قیمت را اضافه کن.** status ناشناخته، مبلغ غیرصحیح/منفی/بالاتر از سقف، Paid زیر ۱۰٬۰۰۰، Free با مبلغ غیرصفر و key اضافه رد شوند؛ payload جدید به‌علاوهٔ سه نقشهٔ قدیمی ارسال شود.
+- [ ] **Step 1: تست utility ویرایش قیمت را اضافه کن.** status ناشناخته، مبلغ غیرصحیح/منفی/بالاتر از سقف، Paid زیر ۱۰٬۰۰۰، Free با مبلغ غیرصفر و key اضافه رد شوند؛ payload وضعیت/قیمت افزونه جدا از payload سه نقشهٔ قدیمی ساخته شود.
 - [ ] **Step 2: اجرای آزمون قرمز.** `cd dashboard && npm test -- --run src/utils/asumiServicePricing.test.ts` باید در ابتدا با نبود `addon_offers` شکست بخورد.
 - [ ] **Step 3: فرم مدیر را اضافه کن.** دو ردیف ثابت با select وضعیت، ورودی تومان فعال فقط در Paid، راهنمای حداقل ۱۰٬۰۰۰ تومان، تعداد سفارش pending و سایت‌های فعال نمایش بده. تغییر `Unconfigured/Free` به `Paid` پیش از submit تعداد سایت‌های در معرض قطع دسترسی را از API بگیر و `window.confirm` روشن با شمارش سایت‌ها بخواهد؛ لغو confirm هیچ تغییری ذخیره نکند. Marketplace app plan و قیمت ۱۵ ماژول دست‌نخورده بماند.
 - [ ] **Step 4: مرحلهٔ دستی تحویل را تکمیل کن.** سفارش‌های addon در جدول سفارش‌ها باید سایت، افزونه، مبلغ تومان/ریال و تاریخ دوره را نشان دهند. دکمهٔ Active فقط پس از Provisioning نمایش یابد و خطای sync را نمایش دهد؛ دکمهٔ تلاش مجدد همان sync را دوباره اجرا کند.

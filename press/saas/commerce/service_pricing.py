@@ -23,6 +23,12 @@ MODULE_TITLES = {
 	"restaurant": "فروش حضوری و رستوران",
 }
 ADDON_TITLES = {"restaurantMenu": "مدیریت منو و کاتالوگ"}
+ADDON_OFFER_TITLES = {
+	"assistant_ai": "دستیار هوش مصنوعی حسابیار",
+	"internal_chat": "چت سازمانی",
+}
+ADDON_OFFER_STATUSES = {"Unconfigured", "Free", "Paid", "Disabled"}
+MIN_PAID_ADDON_PRICE_TOMAN = 10_000
 PACKAGE_TITLES = {
 	"restaurant": "فقط رستوران",
 	"restaurantPurchasing": "رستوران + خرید",
@@ -96,6 +102,42 @@ def default_service_prices() -> dict[str, dict[str, int]]:
 		"addons": dict(DEFAULT_ADDON_PRICES),
 		"packages": dict(DEFAULT_PACKAGE_PRICES),
 	}
+
+
+def default_addon_offers() -> dict[str, dict[str, object]]:
+	return {
+		addon_id: {"status": "Unconfigured", "monthly_price_toman": 0}
+		for addon_id in ADDON_OFFER_TITLES
+	}
+
+
+def normalize_addon_offers(values: Any) -> dict[str, dict[str, object]]:
+	if not isinstance(values, dict) or set(values) != set(ADDON_OFFER_TITLES):
+		raise ValueError("addon offers must contain exactly the known catalog IDs")
+
+	normalized = {}
+	for addon_id in ADDON_OFFER_TITLES:
+		offer = values[addon_id]
+		if not isinstance(offer, dict) or set(offer) != {"status", "monthly_price_toman"}:
+			raise ValueError(f"addon offer for {addon_id} must contain status and monthly_price_toman")
+
+		status = offer["status"]
+		price = offer["monthly_price_toman"]
+		if not isinstance(status, str) or status not in ADDON_OFFER_STATUSES:
+			raise ValueError(f"addon offer status for {addon_id} is invalid")
+		if type(price) is not int or not 0 <= price <= MAX_SERVICE_PRICE_TOMAN:
+			raise ValueError(
+				f"addon offer price for {addon_id} must be an integer between 0 and {MAX_SERVICE_PRICE_TOMAN}"
+			)
+		if status == "Paid" and price < MIN_PAID_ADDON_PRICE_TOMAN:
+			raise ValueError(
+				f"paid addon offer for {addon_id} must be at least {MIN_PAID_ADDON_PRICE_TOMAN} toman"
+			)
+		if status == "Free" and price != 0:
+			raise ValueError(f"free addon offer for {addon_id} must have a zero price")
+
+		normalized[addon_id] = {"status": status, "monthly_price_toman": price}
+	return normalized
 
 
 def normalize_service_prices(

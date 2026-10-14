@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from press.saas.commerce import api
-from press.saas.commerce.service_pricing import default_service_prices
+from press.saas.commerce.service_pricing import default_addon_offers, default_service_prices
 
 
 class PricingDocument:
@@ -12,6 +12,7 @@ class PricingDocument:
 		self.module_prices = json.dumps(prices["modules"])
 		self.addon_prices = json.dumps(prices["addons"])
 		self.package_prices = json.dumps(prices["packages"])
+		self.addon_offer_config = json.dumps(default_addon_offers())
 		self.saved = False
 
 	def get(self, fieldname):
@@ -28,7 +29,42 @@ class PricingDocument:
 class ServicePricingEndpointTests(unittest.TestCase):
 	def setUp(self):
 		self.prices = default_service_prices()
+		self.addon_offers = default_addon_offers()
 		self.doc = PricingDocument(self.prices)
+
+	def test_public_addon_catalog_hides_unconfigured_and_disabled_offers(self):
+		offers = default_addon_offers()
+		offers["assistant_ai"] = {"status": "Free", "monthly_price_toman": 0}
+		offers["internal_chat"] = {"status": "Disabled", "monthly_price_toman": 0}
+		self.doc.addon_offer_config = json.dumps(offers)
+		with (
+			patch.object(api.frappe.db, "exists", return_value=True),
+			patch.object(api.frappe, "get_single", return_value=self.doc),
+		):
+			result = api.service_addon_catalog()
+
+		self.assertEqual(
+			result,
+			[{
+				"id": "assistant_ai",
+				"title": "دستیار هوش مصنوعی حسابیار",
+				"status": "Free",
+				"monthly_price_toman": 0,
+			}],
+		)
+
+	def test_public_addon_catalog_returns_only_valid_paid_offers(self):
+		offers = default_addon_offers()
+		offers["internal_chat"] = {"status": "Paid", "monthly_price_toman": 25_000}
+		self.doc.addon_offer_config = json.dumps(offers)
+		with (
+			patch.object(api.frappe.db, "exists", return_value=True),
+			patch.object(api.frappe, "get_single", return_value=self.doc),
+		):
+			result = api.service_addon_catalog()
+
+		self.assertEqual(result[0]["id"], "internal_chat")
+		self.assertEqual(result[0]["monthly_price_toman"], 25_000)
 
 	def test_public_price_endpoint_returns_only_the_three_public_maps(self):
 		with (
@@ -107,6 +143,48 @@ class ServicePricingEndpointTests(unittest.TestCase):
 		):
 			api.save_admin_service_pricing("{}", json.dumps(self.prices["addons"]), json.dumps(self.prices["packages"]))
 
+		self.assertFalse(self.doc.saved)
+
+	def test_admin_addon_offer_read_requires_commerce_admin(self):
+		with (
+			patch.object(api, "_require_commerce_admin", side_effect=PermissionError("admin only")) as require_admin,
+			self.assertRaises(PermissionError),
+		):
+			api.admin_service_addon_offers()
+		require_admin.assert_called_once_with()
+
+	def test_admin_addon_offer_read_returns_normalized_config(self):
+		with (
+			patch.object(api, "_require_commerce_admin") as require_admin,
+			patch.object(api.frappe.db, "exists", return_value=True),
+			patch.object(api.frappe, "get_single", return_value=self.doc),
+		):
+			result = api.admin_service_addon_offers()
+		require_admin.assert_called_once_with()
+		self.assertEqual(result, self.addon_offers)
+
+	def test_admin_addon_offer_save_validates_and_persists_complete_config(self):
+		changed = default_addon_offers()
+		changed["assistant_ai"] = {"status": "Paid", "monthly_price_toman": 30_000}
+		with (
+			patch.object(api, "_require_commerce_admin"),
+			patch.object(api.frappe, "get_single", return_value=self.doc),
+		):
+			result = api.save_admin_service_addon_offers(json.dumps(changed))
+		self.assertEqual(result, changed)
+		self.assertEqual(json.loads(self.doc.addon_offer_config), changed)
+		self.assertTrue(self.doc.saved)
+
+	def test_admin_addon_offer_save_rejects_invalid_config_without_saving(self):
+		changed = default_addon_offers()
+		changed["assistant_ai"] = {"status": "Paid", "monthly_price_toman": 9_999}
+		with (
+			patch.object(api, "_require_commerce_admin"),
+			patch.object(api.frappe, "get_single", return_value=self.doc),
+			patch.object(api.frappe, "throw", side_effect=ValueError("invalid offer")),
+			self.assertRaises(ValueError),
+		):
+			api.save_admin_service_addon_offers(json.dumps(changed))
 		self.assertFalse(self.doc.saved)
 
 	def test_module_request_uses_server_quote_and_never_creates_an_order(self):
