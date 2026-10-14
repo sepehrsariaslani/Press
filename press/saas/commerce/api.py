@@ -61,7 +61,10 @@ from press.saas.commerce.service_requests import (
 	build_service_request_lead,
 	normalize_service_request_status,
 )
-from press.saas.commerce.service_orders import build_service_order_snapshot
+from press.saas.commerce.service_orders import (
+	build_addon_order_snapshot,
+	build_service_order_snapshot,
+)
 from press.saas.commerce.service_pricing import (
 	ADDON_OFFER_TITLES,
 	calculate_service_quote,
@@ -473,6 +476,66 @@ def _marketplace_purchase_site(site_name: str, site_type: str, team: str) -> dic
 		),
 		"available_apps": bench_apps,
 	}
+
+
+def _installed_apps_for_addon_site(site_type: str, site_name: str) -> list[str]:
+	if site_type == "Site":
+		return frappe.get_all(
+			"Site App",
+			filters={"parent": site_name, "parenttype": "Site", "parentfield": "apps"},
+			pluck="app",
+			ignore_permissions=True,
+		)
+	if site_type == "Docker Control Site":
+		return frappe.get_all(
+			"Docker Control Site App",
+			filters={"parent": site_name, "parenttype": "Docker Control Site", "parentfield": "apps"},
+			pluck="app",
+			ignore_permissions=True,
+		)
+	return []
+
+
+def _addon_purchase_site(site_name: str, site_type: str, team: str) -> dict:
+	if not isinstance(site_name, str) or not site_name.strip():
+		frappe.throw(_("سایت انتخاب‌شده معتبر نیست."), frappe.PermissionError)
+	if site_type == "Site":
+		site = frappe.db.get_value("Site", site_name, ["name", "team", "status"], as_dict=True)
+		if not site or site.team != team or site.status != "Active":
+			frappe.throw(_("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد."), frappe.PermissionError)
+	elif site_type == "Docker Control Site":
+		site = frappe.db.get_value(
+			"Docker Control Site",
+			{"domain": site_name, "team": team, "enabled": 1},
+			["domain", "team", "enabled", "hosted_status"],
+			as_dict=True,
+		)
+		if not site or (site.hosted_status and site.hosted_status != "Active"):
+			frappe.throw(_("سایت انتخاب‌شده فعال نیست یا به این حساب تعلق ندارد."), frappe.PermissionError)
+	else:
+		frappe.throw(_("نوع سایت برای خرید افزونه معتبر نیست."), frappe.PermissionError)
+
+	installed_apps = _installed_apps_for_addon_site(site_type, site_name)
+	if "accounts" not in installed_apps:
+		frappe.throw(_("برنامهٔ حسابیار روی سایت انتخاب‌شده نصب نیست."), frappe.PermissionError)
+	return {
+		"name": site_name,
+		"team": team,
+		"site_type": site_type,
+		"installed_apps": installed_apps,
+	}
+
+
+@frappe.whitelist()
+def eligible_addon_sites() -> list[dict[str, str]]:
+	if frappe.session.user == "Guest":
+		frappe.throw(_("برای خرید افزونه ابتدا وارد حساب شوید."), frappe.AuthenticationError)
+	sites = []
+	for site in my_purchase_sites():
+		installed_apps = _installed_apps_for_addon_site(site["site_type"], site["name"])
+		if "accounts" in installed_apps:
+			sites.append({key: site[key] for key in ("name", "site_type", "key", "label")})
+	return sites
 
 
 def _wait_for_site_backup(backup_name: str) -> dict:
@@ -1309,6 +1372,95 @@ def start_service_purchase(
 		snapshot,
 		settings,
 		f"Asumi service: {snapshot['service_title']}",
+		pending_filters,
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def start_service_addon_purchase(
+	addon_id: str,
+	site_type: str,
+	site_name: str,
+	full_name: str,
+	phone: str,
+	company: str = "",
+) -> dict:
+	"""Create a one-month checkout for one paid add-on and one owned Accounts site."""
+	if frappe.session.user == "Guest":
+		frappe.throw(_("برای خرید افزونه ابتدا وارد حساب شوید."), frappe.AuthenticationError)
+
+	settings = _get_settings()
+	if not _free_service_purchase_enabled(settings):
+		frappe.throw(_("فروش خدمات آسومی هنوز توسط مدیر فعال نشده است."))
+
+	team = get_current_team(get_doc=True)
+	if not team or (team.user != frappe.session.user and not is_user_part_of_team(frappe.session.user, team.name)):
+		frappe.throw(_("به این تیم دسترسی ندارید."), frappe.PermissionError)
+
+	target = _addon_purchase_site(site_name, site_type, team.name)
+	try:
+		snapshot = build_addon_order_snapshot(
+			addon_id=addon_id,
+			site_type=site_type,
+			site_name=target["name"],
+			offers=_get_addon_offers(),
+			customer=frappe.session.user,
+			team=team.name,
+			full_name=full_name,
+			phone=phone,
+			company=company,
+			quoted_at=str(frappe.utils.now_datetime()),
+		)
+		snapshot["customer"] = frappe.session.user
+		snapshot["team"] = team.name
+	except (TypeError, ValueError) as error:
+		frappe.throw(_(str(error)))
+
+	merchant_id = _merchant_id(settings)
+	if not merchant_id or not _checkout_available_for_user(settings, "services"):
+		if _sandbox_checkout_restricted(settings, "services"):
+			frappe.throw(_("پرداخت آزمایشی افزونه‌ها فقط برای مدیران آسومی در دسترس است؛ برای خرید مشتریان، حالت آزمایشی را خاموش کنید."))
+		frappe.throw(_("پرداخت آنلاین افزونه‌های آسومی هنوز توسط مدیر پیکربندی نشده است."))
+
+	if not frappe.db.exists("Currency", "IRR"):
+		frappe.throw(_("واحد پول ریال در تنظیمات آسومی ثبت نشده است."))
+	fingerprint = snapshot["service_fingerprint"]
+	lock_digest = hashlib.sha256(fingerprint.encode()).hexdigest()[:40]
+	if not _acquire_transaction_lock(f"asumi-addon:{lock_digest}"):
+		frappe.throw(_("ثبت همین سفارش افزونه هم‌اکنون در حال انجام است؛ کمی بعد دوباره تلاش کنید."))
+
+	pending_filters = {
+		"customer": frappe.session.user,
+		"team": team.name,
+		"order_type": "Asumi Service",
+		"service_fingerprint": fingerprint,
+	}
+	existing_orders = frappe.get_all(
+		"Commerce Order",
+		filters={
+			**pending_filters,
+			"status": ["in", ["Pending Payment", "Paid", "Provisioning", "Provisioning Failed"]],
+		},
+		fields=["name", "status", "authority", "sandbox_mode"],
+		order_by="creation desc",
+		limit_page_length=1,
+		ignore_permissions=True,
+	)
+	if existing_orders:
+		previous = existing_orders[0]
+		if previous.status == "Pending Payment":
+			if previous.authority:
+				return {
+					"order": previous.name,
+					"checkout_url": checkout_url(previous.authority, sandbox=bool(previous.sandbox_mode)),
+				}
+			frappe.throw(_("درخواست پرداخت قبلی همین افزونه هنوز در حال ثبت است."))
+		return {"order": previous.name, "already_requested": True, "status": previous.status}
+
+	return _create_zarinpal_checkout(
+		snapshot,
+		settings,
+		f"Asumi account add-on: {snapshot['service_title']}",
 		pending_filters,
 	)
 

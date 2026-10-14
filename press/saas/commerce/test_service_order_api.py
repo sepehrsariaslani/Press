@@ -151,6 +151,137 @@ class ServiceOrderApiTests(unittest.TestCase):
 		self.assertEqual(result, {"order": "ORDER-PENDING", "checkout_url": "https://www.zarinpal.com/pg/StartPay/AUTH-1"})
 		checkout.assert_not_called()
 
+	def test_addon_purchase_requires_signin(self):
+		with (
+			patch.object(api.frappe, "session", SimpleNamespace(user="Guest")),
+			patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
+			patch.object(api, "_addon_purchase_site") as resolve_site,
+		):
+			with self.assertRaises(CheckoutRejected):
+				api.start_service_addon_purchase(
+					"assistant_ai", "Site", "tenant.asumi.ir", "مشتری", "09123456789"
+				)
+		resolve_site.assert_not_called()
+
+	def test_paid_addon_checkout_uses_server_price_and_site_target(self):
+		checkout_calls = []
+		with self._addon_purchase_context() as stack:
+			checkout = stack.enter_context(
+				patch.object(
+					api,
+					"_create_zarinpal_checkout",
+					side_effect=lambda *args: checkout_calls.append(args)
+					or {"order": "ORDER-ADDON", "checkout_url": "https://gateway.test/pay"},
+				)
+			)
+			result = api.start_service_addon_purchase(
+				"assistant_ai", "Site", "tenant.asumi.ir", " مشتری ", "۰۹۱۲۱۲۳۴۵۶۷"
+			)
+
+		self.assertEqual(result["order"], "ORDER-ADDON")
+		self.assertEqual(len(checkout_calls), 1)
+		snapshot = checkout_calls[0][0]
+		self.assertEqual(snapshot["amount"], 250_000)
+		self.assertEqual(snapshot["service_amount_toman"], 25_000)
+		self.assertEqual(snapshot["site"], "tenant.asumi.ir")
+		self.assertIsNone(snapshot["docker_site"])
+		self.assertEqual(snapshot["service_quote_snapshot"]["addon_id"], "assistant_ai")
+		self.assertEqual(snapshot["customer"], self.user)
+		checkout.assert_called_once()
+
+	def test_nonpaid_addon_cannot_start_checkout(self):
+		with (
+			self._addon_purchase_context(offers=api.default_addon_offers()),
+			patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
+			patch.object(api, "_create_zarinpal_checkout") as checkout,
+		):
+			with self.assertRaises(CheckoutRejected):
+				api.start_service_addon_purchase(
+					"assistant_ai", "Site", "tenant.asumi.ir", "مشتری", "09123456789"
+				)
+		checkout.assert_not_called()
+
+	def test_addon_purchase_reuses_pending_authority_for_same_site(self):
+		pending = SimpleNamespace(
+			name="ORDER-ADDON", status="Pending Payment", authority="AUTH-ADDON", sandbox_mode=0
+		)
+		with (
+			self._addon_purchase_context(get_all=lambda *_a, **_k: [pending]),
+			patch.object(api, "_create_zarinpal_checkout") as checkout,
+		):
+			result = api.start_service_addon_purchase(
+				"assistant_ai", "Docker Control Site", "veederakht.ir", "مشتری", "09123456789"
+			)
+		self.assertEqual(
+			result,
+			{"order": "ORDER-ADDON", "checkout_url": "https://www.zarinpal.com/pg/StartPay/AUTH-ADDON"},
+		)
+		checkout.assert_not_called()
+
+	def test_active_addon_order_does_not_block_a_manual_renewal_purchase(self):
+		from unittest.mock import Mock
+
+		get_all = Mock(return_value=[])
+		with self._addon_purchase_context(get_all=get_all) as stack:
+			stack.enter_context(patch.object(api, "_create_zarinpal_checkout", return_value={"order": "ORDER-RENEW"}))
+			api.start_service_addon_purchase(
+				"assistant_ai", "Site", "tenant.asumi.ir", "مشتری", "09123456789"
+			)
+		status_filter = get_all.call_args.kwargs["filters"]["status"]
+		self.assertNotIn("Active", status_filter[1])
+
+	def test_eligible_addon_sites_excludes_targets_without_accounts(self):
+		sites = [
+			{"name": "tenant.asumi.ir", "site_type": "Site", "key": "Site:tenant.asumi.ir", "label": "tenant.asumi.ir"},
+			{"name": "veederakht.ir", "site_type": "Docker Control Site", "key": "Docker Control Site:veederakht.ir", "label": "veederakht.ir"},
+		]
+		with (
+			patch.object(api.frappe, "session", SimpleNamespace(user=self.user)),
+			patch.object(api, "my_purchase_sites", return_value=sites),
+			patch.object(api, "_installed_apps_for_addon_site", side_effect=[["frappe", "accounts"], ["frappe"]]),
+		):
+			result = api.eligible_addon_sites()
+		self.assertEqual(result, [sites[0]])
+
+	def test_addon_target_requires_active_site_owned_by_team(self):
+		with (
+			patch.object(
+				api.frappe.db,
+				"get_value",
+				return_value=SimpleNamespace(name="tenant.asumi.ir", team="TEAM-1", status="Active"),
+			),
+			patch.object(api, "_installed_apps_for_addon_site", return_value=["frappe", "accounts"]),
+		):
+			target = api._addon_purchase_site("tenant.asumi.ir", "Site", "TEAM-1")
+		self.assertEqual(target["name"], "tenant.asumi.ir")
+		self.assertEqual(target["installed_apps"], ["frappe", "accounts"])
+
+	def test_addon_target_rejects_foreign_or_inactive_sites(self):
+		for site in (
+			SimpleNamespace(name="tenant.asumi.ir", team="TEAM-2", status="Active"),
+			SimpleNamespace(name="tenant.asumi.ir", team="TEAM-1", status="Suspended"),
+		):
+			with (
+				self.subTest(site=site),
+				patch.object(api.frappe.db, "get_value", return_value=site),
+				patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
+				self.assertRaises(CheckoutRejected),
+			):
+				api._addon_purchase_site("tenant.asumi.ir", "Site", "TEAM-1")
+
+	def test_addon_target_rejects_sites_without_accounts(self):
+		with (
+			patch.object(
+				api.frappe.db,
+				"get_value",
+				return_value=SimpleNamespace(name="tenant.asumi.ir", team="TEAM-1", status="Active"),
+			),
+			patch.object(api, "_installed_apps_for_addon_site", return_value=["frappe", "erpnext"]),
+			patch.object(api.frappe, "throw", side_effect=CheckoutRejected),
+			self.assertRaises(CheckoutRejected),
+		):
+			api._addon_purchase_site("tenant.asumi.ir", "Site", "TEAM-1")
+
 	def test_verified_service_callback_marks_paid_but_never_queues_a_worker(self):
 		order = FakeDocument(
 			name="ORDER-SERVICE",
@@ -237,6 +368,34 @@ class ServiceOrderApiTests(unittest.TestCase):
 	def _purchase_context(self, *, prices=None, get_all=None):
 		with ExitStack() as stack:
 			for patcher in self.common_purchase_patches(prices=prices, get_all=get_all):
+				stack.enter_context(patcher)
+			yield stack
+
+	@contextmanager
+	def _addon_purchase_context(self, *, offers=None, get_all=None):
+		if offers is None:
+			offers = api.default_addon_offers()
+			offers["assistant_ai"] = {"status": "Paid", "monthly_price_toman": 25_000}
+		offers = {key: dict(value) for key, value in offers.items()}
+		with ExitStack() as stack:
+			for patcher in (
+				patch.object(api.frappe, "session", SimpleNamespace(user=self.user)),
+				patch.object(api, "get_current_team", return_value=self.team),
+				patch.object(api, "is_user_part_of_team", return_value=True),
+				patch.object(api, "_get_settings", return_value=self.settings),
+				patch.object(api, "_get_addon_offers", return_value=offers),
+				patch.object(api, "_addon_purchase_site", return_value={
+					"name": "tenant.asumi.ir", "site_type": "Site", "installed_apps": ["accounts"]
+				}),
+				patch.object(api, "_acquire_transaction_lock", return_value=True),
+				patch.object(api.frappe, "get_all", side_effect=get_all or (lambda *_a, **_k: [])),
+				patch.object(
+					api.frappe.db,
+					"exists",
+					side_effect=lambda doctype, name=None: doctype == "Currency" and name == "IRR",
+				),
+				patch.object(api.frappe.utils, "now_datetime", return_value="2026-10-13 12:00:00"),
+			):
 				stack.enter_context(patcher)
 			yield stack
 
