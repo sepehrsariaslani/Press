@@ -117,6 +117,13 @@ YEARLY_PLAN_NAME_E=$(sql_escape "$YEARLY_PLAN_NAME")
 MONTHLY_FEATURE_NAME_E=$(sql_escape "$MONTHLY_FEATURE_NAME")
 YEARLY_FEATURE_NAME_E=$(sql_escape "$YEARLY_FEATURE_NAME")
 
+BENCH_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
+VALID_FRAPPE_VERSION=$(cd "$BENCH_ROOT" && bench --site "$SITE" mariadb -N -e "SELECT name FROM \`tabFrappe Version\` WHERE name = '$VERSION_E' AND status = 'Stable' LIMIT 1")
+if [[ "$VALID_FRAPPE_VERSION" != "$VERSION" ]]; then
+  echo "Invalid --version: '$VERSION'. Use a stable Frappe compatibility name such as 'Version 16', not the app package version such as '0.0.1'."
+  exit 1
+fi
+
 SQL=$(cat <<SQL_EOF
 INSERT INTO \`tabApp\`
 (name, creation, modified, modified_by, owner, docstatus, idx, title, enabled, team, public, branch, url, scrubbed, repo_owner, repo)
@@ -245,8 +252,6 @@ modified=VALUES(modified),
 modified_by=VALUES(modified_by);
 SQL_EOF
 )
-
-BENCH_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
 
 cd "$BENCH_ROOT"
 bench --site "$SITE" mariadb -e "$SQL"

@@ -230,20 +230,27 @@ def create_site_on_private_bench(
 ) -> dict:
 	"""Create site on private bench using Site Group Deploy dt"""
 
-	app_names = [app["app"] for app in apps]
-	app_names.remove("frappe")
-
-	all_latest_stable_version_supported = frappe.db.get_all(
-		"Marketplace App Version",
-		{"parent": ("in", app_names)},
-		pluck="version",
-		order_by="version desc",
+	app_names = list(dict.fromkeys(app["app"] for app in apps if app["app"] != "frappe"))
+	stable_versions = frappe.get_all(
+		"Frappe Version", filters={"status": "Stable"}, fields=["name", "number"]
 	)
+	if app_names:
+		app_version_rows = frappe.db.get_all(
+			"Marketplace App Version",
+			{"parent": ("in", app_names)},
+			["parent", "version"],
+		)
+		versions_by_app = {app_name: set() for app_name in app_names}
+		for row in app_version_rows:
+			versions_by_app[row.parent].add(row.version)
 
-	if not all_latest_stable_version_supported:
-		frappe.throw("No stable version found for the selected app(s)")
+		app_versions = set.intersection(*(versions_by_app[app_name] for app_name in app_names))
+		stable_versions = [version for version in stable_versions if version.name in app_versions]
 
-	latest_stable_version_supported = sorted(all_latest_stable_version_supported, reverse=True)[0]
+	if not stable_versions:
+		frappe.throw("No stable Frappe version is configured for the selected app(s)")
+
+	latest_stable_version_supported = max(stable_versions, key=lambda version: version.number).name
 
 	AppSource = frappe.qb.DocType("App Source")
 	AppSourceVersion = frappe.qb.DocType("App Source Version")
@@ -253,7 +260,6 @@ def create_site_on_private_bench(
 		.on(AppSource.name == AppSourceVersion.parent)
 		.select(AppSource.name.as_("source"), AppSource.app, AppSourceVersion.version)
 		.where(AppSource.app == "frappe")
-		.where(AppSource.public == 1)
 		.where(AppSourceVersion.version == latest_stable_version_supported)
 		.run(as_dict=True)
 	)
@@ -270,6 +276,7 @@ def create_site_on_private_bench(
 			MarketplaceAppVersion.source,
 		)
 		.where(MarketplaceApp.name.isin(app_names))
+		.where(MarketplaceAppVersion.version == latest_stable_version_supported)
 		.orderby(MarketplaceAppVersion.version, order=frappe.qb.desc)
 		.run(as_dict=True)
 	)

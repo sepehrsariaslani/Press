@@ -364,7 +364,10 @@ class TestAPIMarketplace(FrappeTestCase):
 		deploy_doc = Mock()
 		apps = [{"app": "frappe"}, {"app": self.app.name, "plan": plan.name}]
 
-		with patch("press.api.marketplace.frappe.db.get_all", return_value=["Version 14"]):
+		with patch(
+			"press.api.marketplace.frappe.db.get_all",
+			return_value=[frappe._dict(parent=self.app.name, version="Version 14")],
+		):
 			with patch("press.api.marketplace.frappe.qb.DocType", return_value=doctype):
 				with patch(
 					"press.api.marketplace.frappe.qb.from_",
@@ -376,6 +379,35 @@ class TestAPIMarketplace(FrappeTestCase):
 
 		self.assertEqual(get_doc.call_args.args[0]["apps"][1]["plan"], plan.name)
 		self.assertEqual(get_selected_marketplace_app_plan(apps[1]), plan.name)
+
+	def test_private_bench_creation_uses_stable_frappe_compatibility_version(self):
+		frappe_app = create_test_app()
+		frappe_source = create_test_app_source(
+			version=self.version, app=frappe_app, team=self.team.name
+		)
+		frappe_source.db_set("public", 0)
+
+		marketplace_version = frappe.get_all(
+			"Marketplace App Version", {"parent": self.app.name}, pluck="name", limit=1
+		)[0]
+		frappe.db.set_value("Marketplace App Version", marketplace_version, "version", "0.0.1")
+		with self.assertRaisesRegex(frappe.ValidationError, "No stable Frappe version"):
+			create_site_on_private_bench(
+				"invalid-version-site", [{"app": "frappe"}, {"app": self.app.name}], "cluster"
+			)
+
+		frappe.db.set_value(
+			"Marketplace App Version", marketplace_version, "version", self.version
+		)
+		with patch("press.api.marketplace.frappe.get_doc") as get_doc:
+			with patch("press.api.marketplace.get_current_team", return_value=self.team.name):
+				create_site_on_private_bench(
+					"valid-version-site", [{"app": "frappe"}, {"app": self.app.name}], "cluster"
+				)
+
+		payload = get_doc.call_args.args[0]
+		self.assertEqual(payload["version"], self.version)
+		self.assertEqual(payload["apps"][0]["source"], frappe_source.name)
 
 	def test_new_site_validation_requires_plan_for_paid_marketplace_app(self):
 		plan = create_test_marketplace_app_plan(self.app.name)
