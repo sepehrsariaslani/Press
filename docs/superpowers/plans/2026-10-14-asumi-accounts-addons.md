@@ -205,7 +205,6 @@ def DockerControlClient.set_site_addon_subscription(site: str,
 - Modify: `accounts/chat_api.py`
 - Modify: `accounts/chat_utilities.py`
 - Modify: `accounts/chat_utilities_runtime.py`
-- Modify: `accounts/hooks.py` فقط اگر API وضعیت مجوز به hook نیاز دارد.
 
 **Interface produced:**
 
@@ -239,7 +238,7 @@ def test_paid_access_fails_closed_when_press_is_unreachable_without_valid_cache(
 - Modify: `dashboard/src/utils/asumiServicePricing.test.ts`
 - Modify: `dashboard/src/pages/CommerceOrders.vue`
 - Modify: `dashboard/src/pages/CommerceOrders.test.ts`
-- Modify: `press/saas/commerce/api.py` برای endpoint مدیر شمارنده/فهرست مجوز سایت‌ها در صورت نیاز.
+- Modify: `press/saas/commerce/api.py` برای endpoint مدیر شمارنده/فهرست مجوز سایت‌ها.
 
 **Interface produced:**
 
@@ -297,7 +296,7 @@ async function loadEligibleAddonSites(fetcher?: typeof fetch): Promise<AddonSite
 - Modify: آزمون‌های موجود Chat/Assistant در `frontend/tests/`
 
 - [ ] **Step 1: تست وضعیت فرانت را بنویس.** API وضعیت موفق، denial، خطای شبکه و کاربر مهمان را بررسی کن؛ denial ورودی/اعلان چت و AI را نشان ندهد و لینک تعرفهٔ آسومی را عرضه کند؛ وضعیت Unconfigured legacy UI را بدون تغییر نگه دارد.
-- [ ] **Step 2: اجرای آزمون قرمز.** `yarn test frontend/tests/addonEntitlements.test.js` باید با نبود helper یا view-state شکست بخورد؛ اگر مخزن تست Vitest نام دیگری دارد، فرمان واقعی را از `package.json`/`vite.config` بخوان و همان را ثبت کن.
+- [ ] **Step 2: اجرای آزمون قرمز.** از `frontend` اجرا کن: `node --test tests/addonEntitlements.test.js`; باید با نبود helper یا view-state شکست بخورد.
 - [ ] **Step 3: وضعیت را به UI وصل کن.** وضعیت را از API Accounts بارگذاری و در App فراهم کن؛ در خطای شبکه، UI برای Paid را محدود کند و پیام روشن برای بارگذاری مجدد/تعرفه نشان دهد. فقط ورودی، entrypoint و اعلان قابلیت AI/chat را پنهان کن؛ سایر دستیارهای ماژولی خارج از این scope می‌مانند.
 - [ ] **Step 4: تست فرانت و commit.** از `frontend` اجرا کن: `node --test tests/addonEntitlements.test.js tests/assistantPageContext.test.js tests/chatNotificationSound.test.js tests/assistantConversations.test.js`. commit فارسی: `feat: نمایش وضعیت اشتراک افزونه در حسابیار`.
 
