@@ -7,8 +7,8 @@ import stat
 from dataclasses import dataclass
 from pathlib import Path
 
-CUSTOMER_SITES = ("boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir")
-IMPACT_SITES = ("asumi.ir", *CUSTOMER_SITES)
+from press.docker_control.constants import CUSTOMER_SITES, IMPACT_SITES
+
 ALLOWED_SERVICES = (
 	"backend",
 	"websocket",

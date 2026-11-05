@@ -79,7 +79,10 @@ class ControlHandler(BaseHTTPRequestHandler):
 			return
 		path = parsed.path
 		site_admins = re.fullmatch(
-			r"/v1/site-admins/(boller\.ir|dehati\.ir|denroom\.ir|veederakht\.ir)", path
+			r"/v1/site-admins/("
+			+ "|".join(re.escape(domain) for domain in CUSTOMER_SITES)
+			+ ")",
+			path,
 		)
 		preflight = re.fullmatch(r"/v1/preflight/(accounts|restaurant)/([a-f0-9]{40})", path)
 		if not site_admins and not preflight and path not in {"/v1/site-subscription", "/v1/site-addon-subscription", "/v1/available-apps"} and not re.fullmatch(

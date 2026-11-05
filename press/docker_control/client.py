@@ -10,6 +10,8 @@ from urllib.parse import urlsplit
 
 import requests
 
+from press.docker_control.constants import CUSTOMER_SITES
+
 AGENT_HOST = "172.18.0.1"
 HOSTED_SITE_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.asumi\.ir$")
 
@@ -93,7 +95,7 @@ class DockerControlClient:
 		return apps
 
 	def site_admins(self, domain: str) -> dict:
-		if domain not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}:
+		if domain not in CUSTOMER_SITES:
 			raise DockerControlError("سایت برای همگام‌سازی مدیران مجاز نیست.")
 		result = self.request("GET", f"/v1/site-admins/{domain}", timeout=(5, 30))
 		if result.get("domain") != domain or not isinstance(result.get("admins"), list):
@@ -103,7 +105,7 @@ class DockerControlClient:
 	def set_site_subscription(self, site: str, app: str, secret_key: str | None) -> dict:
 		"""Update one installed marketplace key without persisting the secret as an operation."""
 		if not isinstance(site, str) or (
-			site not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}
+			site not in CUSTOMER_SITES
 			and not HOSTED_SITE_RE.fullmatch(site)
 		):
 			raise DockerControlError("سایت برای به‌روزرسانی اشتراک مجاز نیست.")
@@ -124,7 +126,7 @@ class DockerControlClient:
 	def set_site_addon_subscription(self, site: str, addon_id: str, secret_key: str | None) -> dict:
 		"""Update one installed Accounts add-on key without persisting the secret as an operation."""
 		if not isinstance(site, str) or (
-			site not in {"boller.ir", "dehati.ir", "denroom.ir", "veederakht.ir"}
+			site not in CUSTOMER_SITES
 			and not HOSTED_SITE_RE.fullmatch(site)
 		):
 			raise DockerControlError("سایت برای به‌روزرسانی افزونه مجاز نیست.")

@@ -89,7 +89,7 @@ def _validate_inventory(inventory: dict) -> list[dict]:
 	for site in sites:
 		_validate_inventory_site(site, by_domain)
 	if set(by_domain) != set(IMPACT_SITES):
-		frappe.throw("موجودی باید دقیقاً هر پنج دامنهٔ بنچ را شامل شود.")
+		frappe.throw(f"موجودی باید دقیقاً هر {len(IMPACT_SITES)} دامنهٔ بنچ را شامل شود.")
 	return [by_domain[domain] for domain in IMPACT_SITES]
 
 
