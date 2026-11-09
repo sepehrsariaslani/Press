@@ -7,6 +7,7 @@ ASUMI_PASSTHROUGH_ROUTES = {
 	"builder",
 	"login",
 	"logout",
+	"message",
 	"update-password",
 	"complete_signup",
 	"favicon.ico",
